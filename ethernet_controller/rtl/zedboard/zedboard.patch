@@ -1,0 +1,106 @@
+--- a/rtl/template/axis_async_fifo.v
++++ b/rtl/common/axis_async_fifo.v
+@@ -170,26 +170,42 @@ reg [ADDR_WIDTH:0] rd_ptr_gray_reg;
+ reg [ADDR_WIDTH:0] wr_ptr_temp;
+ reg [ADDR_WIDTH:0] rd_ptr_temp;
+ 
++(* SHREG_EXTRACT = "NO" *)
+ reg [ADDR_WIDTH:0] wr_ptr_gray_sync1_reg;
++(* SHREG_EXTRACT = "NO" *)
+ reg [ADDR_WIDTH:0] wr_ptr_gray_sync2_reg;
++(* SHREG_EXTRACT = "NO" *)
+ reg [ADDR_WIDTH:0] rd_ptr_gray_sync1_reg;
++(* SHREG_EXTRACT = "NO" *)
+ reg [ADDR_WIDTH:0] rd_ptr_gray_sync2_reg;
+ 
+ reg wr_ptr_update_valid_reg;
+ reg wr_ptr_update_reg;
++(* SHREG_EXTRACT = "NO" *)
+ reg wr_ptr_update_sync1_reg;
++(* SHREG_EXTRACT = "NO" *)
+ reg wr_ptr_update_sync2_reg;
++(* SHREG_EXTRACT = "NO" *)
+ reg wr_ptr_update_sync3_reg;
++(* SHREG_EXTRACT = "NO" *)
+ reg wr_ptr_update_ack_sync1_reg;
++(* SHREG_EXTRACT = "NO" *)
+ reg wr_ptr_update_ack_sync2_reg;
+ 
++(* SHREG_EXTRACT = "NO" *)
+ reg s_rst_sync1_reg;
++(* SHREG_EXTRACT = "NO" *)
+ reg s_rst_sync2_reg;
++(* SHREG_EXTRACT = "NO" *)
+ reg s_rst_sync3_reg;
++(* SHREG_EXTRACT = "NO" *)
+ reg m_rst_sync1_reg;
++(* SHREG_EXTRACT = "NO" *)
+ reg m_rst_sync2_reg;
++(* SHREG_EXTRACT = "NO" *)
+ reg m_rst_sync3_reg;
+ 
++(* ramstyle = "no_rw_check" *)
+ reg [WIDTH-1:0] mem[(2**ADDR_WIDTH)-1:0];
+ reg [WIDTH-1:0] mem_read_data_reg;
+ 
+--- a/rtl/template/eth_mac_1g_rgmii.v
++++ b/rtl/common/eth_mac_1g_rgmii.v
+@@ -97,12 +98,14 @@ wire        mac_gmii_tx_er;
+ reg [1:0] speed_reg;
+ reg mii_select_reg;
+ 
++(* srl_style = "register" *)
+ reg [1:0] tx_mii_select_sync;
+ 
+ always @(posedge tx_clk) begin
+     tx_mii_select_sync <= {tx_mii_select_sync[0], mii_select_reg};
+ end
+ 
++(* srl_style = "register" *)
+ reg [1:0] rx_mii_select_sync;
+ 
+ always @(posedge rx_clk) begin
+@@ -119,6 +122,7 @@ always @(posedge rx_clk) begin
+         rx_prescale <= rx_prescale + 3'd1;
+ end
+ 
++(* srl_style = "register" *)
+ reg [2:0] rx_prescale_sync;
+ 
+ always @(posedge gtx_clk) begin
+--- a/rtl/template/eth_mac_1g_rgmii_fifo.v
++++ b/rtl/common/eth_mac_1g_rgmii_fifo.v
+@@ -126,8 +128,11 @@ wire        rx_fifo_axis_tuser;
+ wire tx_error_underflow_int;
+ 
+ reg [0:0] tx_sync_reg_1;
++(* ASYNC_REG = "TRUE", SHREG_EXTRACT = "NO" *)
+ reg [0:0] tx_sync_reg_2;
++(* ASYNC_REG = "TRUE", SHREG_EXTRACT = "NO" *)
+ reg [0:0] tx_sync_reg_3;
++(* ASYNC_REG = "TRUE", SHREG_EXTRACT = "NO" *)
+ reg [0:0] tx_sync_reg_4;
+ 
+ assign tx_error_underflow = tx_sync_reg_3[0] ^ tx_sync_reg_4[0];
+@@ -156,8 +161,11 @@ wire rx_error_bad_frame_int;
+ wire rx_error_bad_fcs_int;
+ 
+ reg [1:0] rx_sync_reg_1;
++(* ASYNC_REG = "TRUE", SHREG_EXTRACT = "NO" *)
+ reg [1:0] rx_sync_reg_2;
++(* ASYNC_REG = "TRUE", SHREG_EXTRACT = "NO" *)
+ reg [1:0] rx_sync_reg_3;
++(* ASYNC_REG = "TRUE", SHREG_EXTRACT = "NO" *)
+ reg [1:0] rx_sync_reg_4;
+ 
+ assign rx_error_bad_frame = rx_sync_reg_3[0] ^ rx_sync_reg_4[0];
+@@ -185,7 +193,9 @@ end
+ 
+ wire [1:0] speed_int;
+ 
++(* ASYNC_REG = "TRUE", SHREG_EXTRACT = "NO" *)
+ reg [1:0] speed_sync_reg_1;
++(* ASYNC_REG = "TRUE", SHREG_EXTRACT = "NO" *)
+ reg [1:0] speed_sync_reg_2;
+ 
+ assign speed = speed_sync_reg_2;
