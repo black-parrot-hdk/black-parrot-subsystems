@@ -1,0 +1,7 @@
+This repo hosts an RISCV PLIC device from Opentitan.
+
+Please find the following review doc:
+https://docs.google.com/document/d/1QWTAyxxGx-GbKJT_7ltIbwn-tN27k5OIoJ_HMxUh5t0/edit
+
+And the original repo:
+https://github.com/Yuan-Mao/rv_plic
