@@ -11,8 +11,8 @@
  *   2. Register Map:
  *
  *     Readable Register:
- *       0x1000: Index of current received packet  (a.k.a LITEETH_WRITER_SLOT)
- *       0x1004: Length of current received packet (a.k.a LITEETH_WRITER_LENGTH)
+ *       0x1000: Index of the Received Packet      (a.k.a LITEETH_WRITER_SLOT)
+ *       0x1004: Length of the Received Packet     (a.k.a LITEETH_WRITER_LENGTH)
  *       0x1010: RX Event Pending Bit              (a.k.a LITEETH_WRITER_EV_PENDING)
  *       0x101C: TX Ready Bit                      (a.k.a LITEETH_READER_READY)
  *       0x1030: TX Event Pending Bit              (a.k.a LITEETH_READER_EV_PENDING)
@@ -22,8 +22,8 @@
  *       0x1010: RX Event Pending Bit              (a.k.a LITEETH_WRITER_EV_PENDING)
  *       0x1014: RX Event Enable Bit               (a.k.a LITEETH_WRITER_EV_ENABLE)
  *       0x1018: TX Send Bit                       (a.k.a LITEETH_READER_START)
- *       0x1024: Index of the transmitting packet  (a.k.a LITEETH_READER_SLOT)
- *       0x1028: Length of the transmitting packet (a.k.a LITEETH_READER_LENGTH)
+ *       0x1024: Index of the Transmitting Packet  (a.k.a LITEETH_READER_SLOT)
+ *       0x1028: Length of the Transmitting Packet (a.k.a LITEETH_READER_LENGTH)
  *       0x1030: TX Event Pending Bit              (a.k.a LITEETH_READER_EV_PENDING)
  *       0x1034: TX Event Enable Bit               (a.k.a LITEETH_READER_EV_ENABLE)
  *
@@ -35,7 +35,7 @@
 `include "bsg_defines.v"
 
 
-module ethernet_mmio_decoder #
+module ethernet_memory_map #
 (
       parameter  eth_mtu_p            = 2048 // byte
     , parameter  data_width_p         = 32
@@ -262,9 +262,9 @@ module ethernet_mmio_decoder #
   // synopsys translate_off
   always_ff @(negedge clk_i) begin
     assert(eth_mtu_p <= 2048)
-      else $error("ethernet_mmio_decoder: eth_mtu_p should be <= 2048\n");
+      else $error("ethernet_memory_map: eth_mtu_p should be <= 2048\n");
     assert(data_width_p == 32)
-      else $error("ethernet_mmio_decoder: unsupported data_width_p\n");
+      else $error("ethernet_memory_map: unsupported data_width_p\n");
   end
   // synopsys translate_on
 

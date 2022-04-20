@@ -87,10 +87,10 @@ module ethernet_controller #
 
   logic io_decode_error_lo;
 
-  ethernet_mmio_decoder #(
+  ethernet_memory_map #(
     .eth_mtu_p(eth_mtu_lp)
    ,.data_width_p(data_width_p)
-  ) decoder (
+  ) memory_map (
     .clk_i(clk_i)
    ,.reset_i(reset_i)
 
@@ -208,6 +208,8 @@ module ethernet_controller #
 
    ,.rx_interrupt_pending_o(rx_interrupt_pending_lo)
    ,.tx_interrupt_pending_o(tx_interrupt_pending_lo)
+   // TODO: Add rx_interrupt_o
+   // TODO: Add tx_interrupt_o
    );
 
   assign rx_interrupt_pending_o = rx_interrupt_pending_lo;
