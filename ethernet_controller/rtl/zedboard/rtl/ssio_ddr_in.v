@@ -46,7 +46,6 @@ module ssio_ddr_in #
 );
 
 wire clk_int;
-reg [WIDTH-1:0] delayed_d;
 
 `ifdef SIM_MP
 assign clk_int = input_clk;
@@ -65,36 +64,10 @@ clk_bufr (
 genvar n;
 generate
 for (n = 0; n < WIDTH; n = n + 1) begin : iddr
-`ifdef SIM_MP
-    assign delayed_d[n] = input_d[n];
-`else
-    // We need this to meet the timing
-    //   requirement for RX side of the RGMII signals
-    IDELAYE2 #(
-        .DELAY_SRC("IDATAIN")
-       ,.IDELAY_TYPE("FIXED")
-       ,.IDELAY_VALUE(0)
-       ,.REFCLK_FREQUENCY(200.0)
-       ,.SIGNAL_PATTERN("DATA")
-    ) idelay2_inst (
-        .CNTVALUEOUT() // UNUSED
-       ,.DATAOUT(delayed_d[n])
-       ,.C(1'b0)
-       ,.CE(1'b0)
-       ,.CINVCTRL(1'b0)
-       ,.CNTVALUEIN('0)
-       ,.DATAIN() // UNUSED
-       ,.IDATAIN(input_d[n])
-       ,.INC(1'b0)
-       ,.LD(1'b0)
-       ,.LDPIPEEN(1'b0)
-       ,.REGRST(1'b0)
-    );
-`endif
     bsg_link_iddr_phy #(.width_p(1))
       iddr_inst (
         .clk_i(clk_int)
-       ,.data_i(delayed_d[n])
+       ,.data_i(input_d[n])
        ,.data_r_o({output_q2[n], output_q1[n]})
       );
 end

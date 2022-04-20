@@ -33,7 +33,10 @@ module ethernet_controller_wrapper #
     , output logic                              rgmii_tx_ctl_o
 );
 
-  logic reset_r_lo;
+  logic       reset_r_lo;
+  logic [3:0] rgmii_rxd_delayed_lo;
+  logic       rgmii_rx_ctl_delayed_lo;
+
   bsg_dff #(.width_p(1))
     reset_reg (
       .clk_i(clk_i)
@@ -43,7 +46,11 @@ module ethernet_controller_wrapper #
   iodelay_control iodelay_control(
     .clk_i(clk_i)
     ,.reset_r_i(reset_r_lo)
-    ,.iodelay_ref_clk_i
+    ,.iodelay_ref_clk_i(iodelay_ref_clk_i)
+    ,.rgmii_rxd_i(rgmii_rxd_i)
+    ,.rgmii_rx_ctl_i(rgmii_rx_ctl_i)
+    ,.rgmii_rxd_delayed_o(rgmii_rxd_delayed_lo)
+    ,.rgmii_rx_ctl_delayed_o(rgmii_rx_ctl_delayed_lo)
   );
 
   (* ASYNC_REG = "TRUE", SHREG_EXTRACT = "NO" *)
@@ -78,8 +85,8 @@ module ethernet_controller_wrapper #
     ,.tx_interrupt_pending_o
 
     ,.rgmii_rx_clk_i
-    ,.rgmii_rxd_i
-    ,.rgmii_rx_ctl_i
+    ,.rgmii_rxd_i(rgmii_rxd_delayed_lo)
+    ,.rgmii_rx_ctl_i(rgmii_rx_ctl_delayed_lo)
     ,.rgmii_tx_clk_o
     ,.rgmii_txd_o
     ,.rgmii_tx_ctl_o
