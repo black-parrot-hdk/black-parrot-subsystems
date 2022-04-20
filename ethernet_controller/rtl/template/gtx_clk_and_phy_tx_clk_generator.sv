@@ -75,7 +75,12 @@ bsg_counter_clock_downsample #(.width_p(2))
 
 /** gtx_clk_rst generation **/
 
-localparam max_val_lp = 8;
+// The minimal value for max_val_lp should be 100,
+// because when phy_rgmii_rx_clk is 2.5MHZ,
+// we need to hold the gtx_rst for at least
+// 250MHZ / 2.5MHZ == 100 cycles to guarantee the
+// reset signal will be sampled at least once.
+localparam max_val_lp = 128;
 localparam ptr_width_lp = `BSG_SAFE_CLOG2(max_val_lp+1);
 logic [ptr_width_lp-1:0] reset_cycle_r;
 wire up_li = (reset_cycle_r != max_val_lp);
