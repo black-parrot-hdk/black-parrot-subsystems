@@ -13,9 +13,10 @@ module interrupt_control_unit (
   , input  logic    tx_interrupt_enable_i
   , input  logic    tx_interrupt_enable_v_i
 
-    // High: interrupt pending
   , output logic    rx_interrupt_pending_o
   , output logic    tx_interrupt_pending_o
+  , output logic    rx_interrupt_o
+  , output logic    tx_interrupt_o
 );
 
   logic rx_interrupt_enable_r;
@@ -67,8 +68,10 @@ module interrupt_control_unit (
   // remove one received packet in the RX buffer. If after that the buffer happens
   // to become empty, the RX pending bit will goes to 0, otherwise it keeps being
   // 1.
-  // TODO: enable bit should not mask the pending bit
-  assign rx_interrupt_pending_o = packet_avail_i & rx_interrupt_enable_r;
-  assign tx_interrupt_pending_o = tx_interrupt_pending_r_lo & tx_interrupt_enable_r;
+  assign rx_interrupt_pending_o = packet_avail_i;
+  assign tx_interrupt_pending_o = tx_interrupt_pending_r_lo;
+
+  assign rx_interrupt_o = rx_interrupt_pending_o & rx_interrupt_enable_r;
+  assign tx_interrupt_o = tx_interrupt_pending_o & tx_interrupt_enable_r;
 
 endmodule

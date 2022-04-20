@@ -258,12 +258,12 @@ module ethernet_controller #
 
    ,.rx_interrupt_pending_o(rx_interrupt_pending_lo)
    ,.tx_interrupt_pending_o(tx_interrupt_pending_lo)
-   // TODO: Add rx_interrupt_o
-   // TODO: Add tx_interrupt_o
+   ,.rx_interrupt_o(rx_interrupt_lo)
+   ,.tx_interrupt_o(tx_interrupt_lo)
    );
 
-  assign rx_interrupt_pending_o = rx_interrupt_pending_lo;
-  assign tx_interrupt_pending_o = tx_interrupt_pending_lo;
+  assign rx_interrupt_pending_o = rx_interrupt_lo;
+  assign tx_interrupt_pending_o = tx_interrupt_lo;
 
   // synopsys translate_off
   always_ff @(negedge clk_i) begin
