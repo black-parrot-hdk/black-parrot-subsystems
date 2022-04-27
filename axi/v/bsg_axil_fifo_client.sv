@@ -1,6 +1,12 @@
 
 `include "bsg_defines.v"
 
+// TODO: Replace with https://github.com/bespoke-silicon-group/basejump_stl/pull/565/files
+`ifndef BSG_ALIGN
+`define BSG_ALIGN(addr_mp, nb_mp) \
+  ({addr_mp[$bits(addr_mp)-1:$clog2(nb_mp)], {$clog2(nb_mp){1'b0}}}) 
+`endif
+
 module bsg_axil_fifo_client
  import bsg_axi_pkg::*;
  #(parameter `BSG_INV_PARAM(axil_data_width_p)
@@ -121,7 +127,8 @@ module bsg_axil_fifo_client
 
   // Prioritize reads over writes
   assign data_o  = wdata_li;
-  assign addr_o  = araddr_v_li ? araddr_li : awaddr_li;
+  // Align read addresses to bus width (per axil spec)
+  assign addr_o  = araddr_v_li ? `BSG_ALIGN(araddr_li, `BSG_SAFE_CLOG2(axi_mask_width_lp)) : awaddr_li;
   assign v_o     = araddr_v_li | (awaddr_v_li & wdata_v_li);
   assign w_o     = ~araddr_v_li;
   assign wmask_o = wmask_li;
