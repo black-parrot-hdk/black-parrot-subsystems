@@ -1,12 +1,6 @@
 
 `include "bsg_defines.v"
 
-// TODO: Replace with https://github.com/bespoke-silicon-group/basejump_stl/pull/565/files
-`ifndef BSG_ALIGN
-`define BSG_ALIGN(addr_mp, nb_mp) \
-  ({addr_mp[$bits(addr_mp)-1:$clog2(nb_mp)], {$clog2(nb_mp){1'b0}}}) 
-`endif
-
 module bsg_axil_fifo_client
  import bsg_axi_pkg::*;
  #(parameter `BSG_INV_PARAM(axil_data_width_p)
@@ -71,7 +65,7 @@ module bsg_axil_fifo_client
 
   logic [axil_addr_width_p-1:0] araddr_li;
   logic araddr_v_li, araddr_yumi_lo;
-  bsg_one_fifo
+  bsg_two_fifo
    #(.width_p(axil_addr_width_p))
    araddr_fifo
     (.clk_i(clk_i)
@@ -88,7 +82,7 @@ module bsg_axil_fifo_client
 
   logic [axil_addr_width_p-1:0] awaddr_li;
   logic awaddr_v_li, awaddr_yumi_lo;
-  bsg_one_fifo
+  bsg_two_fifo
    #(.width_p(axil_addr_width_p))
    awaddr_fifo
     (.clk_i(clk_i)
@@ -106,7 +100,7 @@ module bsg_axil_fifo_client
   logic [axil_data_width_p-1:0] wdata_li;
   logic [axil_data_width_p-1:0] wmask_li;
   logic wdata_v_li, wdata_yumi_lo;
-  bsg_one_fifo
+  bsg_two_fifo
    #(.width_p(axi_mask_width_lp+axil_data_width_p))
    wdata_fifo
     (.clk_i(clk_i)
@@ -121,39 +115,46 @@ module bsg_axil_fifo_client
      ,.yumi_i(wdata_yumi_lo)
      );
 
-  assign araddr_yumi_lo = is_wait & ready_and_i & araddr_v_li;
-  assign awaddr_yumi_lo = is_wait & ready_and_i & ~araddr_v_li & awaddr_v_li & wdata_v_li;
+  logic return_ready_lo, return_w_lo, return_v_lo, return_yumi_li;
+  bsg_two_fifo
+   #(.width_p(1))
+   return_fifo
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+
+     ,.data_i(w_o)
+     ,.v_i(v_o)
+     ,.ready_o(return_ready_lo)
+
+     ,.data_o(return_w_lo)
+     ,.v_o(return_v_lo)
+     ,.yumi_i(return_yumi_li)
+     );
+
+  assign araddr_yumi_lo = return_ready_lo & ready_and_i & araddr_v_li;
+  assign awaddr_yumi_lo = return_ready_lo & ready_and_i & ~araddr_v_li & awaddr_v_li & wdata_v_li;
   assign wdata_yumi_lo = awaddr_yumi_lo;
 
-  // Prioritize reads over writes
-  assign data_o  = wdata_li;
   // Align read addresses to bus width (per axil spec)
-  assign addr_o  = araddr_v_li ? `BSG_ALIGN(araddr_li, `BSG_SAFE_CLOG2(axi_mask_width_lp)) : awaddr_li;
-  assign v_o     = araddr_v_li | (awaddr_v_li & wdata_v_li);
-  assign w_o     = ~araddr_v_li;
+  // TODO: Replace with https://github.com/bespoke-silicon-group/basejump_stl/pull/565/files
+  `ifndef BSG_ALIGN
+  `define BSG_ALIGN(addr_mp, nb_mp) \
+    ({addr_mp[$bits(addr_mp)-1:$clog2(nb_mp)], {$clog2(nb_mp){1'b0}}}) 
+  `endif
+
+  // Prioritize reads over writes
+  assign addr_o  = araddr_yumi_lo ? `BSG_ALIGN(araddr_li, `BSG_SAFE_CLOG2(axi_mask_width_lp)) : awaddr_li;
+  assign data_o  = wdata_li;
+  assign v_o     = araddr_yumi_lo | awaddr_yumi_lo;
+  assign w_o     = awaddr_yumi_lo;
   assign wmask_o = wmask_li;
 
-  // synopsys sync_set_reset "reset_i"
-  always_ff @(posedge clk_i)
-    if (reset_i)
-      state_r <= e_wait;
-    else
-      state_r <= state_n;
-
-  always_comb
-    case (state_r)
-      e_wait: state_n = araddr_yumi_lo
-                        ? e_read_rx
-                        : awaddr_yumi_lo
-                          ? e_write_rx
-                          : e_wait;
-      default: state_n = (v_i & ready_and_o) ? e_wait : state_r;
-    endcase
-  assign ready_and_o = (is_read_rx & s_axil_rready_i) | (is_write_rx & s_axil_bready_i);
-
   assign s_axil_rdata_o  = data_i;
-  assign s_axil_rvalid_o = is_read_rx & v_i;
-  assign s_axil_bvalid_o = is_write_rx & v_i;
+  assign s_axil_rvalid_o = v_i & ~return_w_lo;
+  assign s_axil_bvalid_o = v_i &  return_w_lo;
+
+  assign ready_and_o = (return_v_lo & return_w_lo & s_axil_bready_i) | (return_v_lo & ~return_w_lo & s_axil_rready_i);
+  assign return_yumi_li = ready_and_o & v_i;
 
 endmodule
 
