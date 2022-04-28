@@ -5,8 +5,9 @@ module bsg_axil_fifo_client
  import bsg_axi_pkg::*;
  #(parameter `BSG_INV_PARAM(axil_data_width_p)
    , parameter `BSG_INV_PARAM(axil_addr_width_p)
+   , parameter `BSG_INV_PARAM(fifo_els_p)
 
-   , localparam axi_mask_width_lp = axil_data_width_p >> 3
+   , localparam axil_mask_width_lp = axil_data_width_p >> 3
    )
   (//==================== GLOBAL SIGNALS =======================
    input                                        clk_i
@@ -60,8 +61,8 @@ module bsg_axil_fifo_client
 
   logic [axil_addr_width_p-1:0] araddr_li;
   logic araddr_v_li, araddr_yumi_lo;
-  bsg_two_fifo
-   #(.width_p(axil_addr_width_p))
+  bsg_fifo_1r1w_small
+   #(.width_p(axil_addr_width_p), .els_p(fifo_els_p))
    araddr_fifo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
@@ -77,8 +78,8 @@ module bsg_axil_fifo_client
 
   logic [axil_addr_width_p-1:0] awaddr_li;
   logic awaddr_v_li, awaddr_yumi_lo;
-  bsg_two_fifo
-   #(.width_p(axil_addr_width_p))
+  bsg_fifo_1r1w_small
+   #(.width_p(axil_addr_width_p), .els_p(fifo_els_p))
    awaddr_fifo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
@@ -93,10 +94,10 @@ module bsg_axil_fifo_client
      );
 
   logic [axil_data_width_p-1:0] wdata_li;
-  logic [axil_data_width_p-1:0] wmask_li;
+  logic [axil_mask_width_lp-1:0] wmask_li;
   logic wdata_v_li, wdata_yumi_lo;
-  bsg_two_fifo
-   #(.width_p(axi_mask_width_lp+axil_data_width_p))
+  bsg_fifo_1r1w_small
+   #(.width_p(axil_mask_width_lp+axil_data_width_p), .els_p(fifo_els_p))
    wdata_fifo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
@@ -111,8 +112,8 @@ module bsg_axil_fifo_client
      );
 
   logic return_ready_lo, return_w_lo, return_v_lo, return_yumi_li;
-  bsg_two_fifo
-   #(.width_p(1))
+  bsg_fifo_1r1w_small
+   #(.width_p(1), .els_p(fifo_els_p))
    return_fifo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
@@ -126,10 +127,6 @@ module bsg_axil_fifo_client
      ,.yumi_i(return_yumi_li)
      );
 
-  assign araddr_yumi_lo = return_ready_lo & ready_and_i & araddr_v_li;
-  assign awaddr_yumi_lo = return_ready_lo & ready_and_i & ~araddr_v_li & awaddr_v_li & wdata_v_li;
-  assign wdata_yumi_lo = awaddr_yumi_lo;
-
   // Align read addresses to bus width (per axil spec)
   // TODO: Replace with https://github.com/bespoke-silicon-group/basejump_stl/pull/565/files
   `ifndef BSG_ALIGN
@@ -138,11 +135,15 @@ module bsg_axil_fifo_client
   `endif
 
   // Prioritize reads over writes
-  assign addr_o  = araddr_yumi_lo ? `BSG_ALIGN(araddr_li, `BSG_SAFE_CLOG2(axi_mask_width_lp)) : awaddr_li;
+  assign addr_o  = araddr_v_li ? `BSG_ALIGN(araddr_li, `BSG_SAFE_CLOG2(axil_mask_width_lp)) : awaddr_li;
   assign data_o  = wdata_li;
-  assign v_o     = araddr_yumi_lo | awaddr_yumi_lo;
-  assign w_o     = awaddr_yumi_lo;
+  assign v_o     = return_ready_lo & (araddr_v_li | (awaddr_v_li & wdata_v_li));
+  assign w_o     = ~araddr_v_li;
   assign wmask_o = wmask_li;
+
+  assign araddr_yumi_lo = ready_and_i & v_o & araddr_v_li;
+  assign awaddr_yumi_lo = ready_and_i & v_o & ~araddr_v_li;
+  assign wdata_yumi_lo = awaddr_yumi_lo;
 
   assign s_axil_rdata_o  = data_i;
   assign s_axil_rvalid_o = v_i & ~return_w_lo;

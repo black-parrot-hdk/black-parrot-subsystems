@@ -13,6 +13,7 @@ module bp_me_axil_client
   , parameter axil_data_width_p = 32
   , parameter axil_addr_width_p = 32
   , localparam axil_mask_width_lp = axil_data_width_p >> 3
+  , parameter num_outstanding_p = 8
   )
 
   (//==================== GLOBAL SIGNALS =======================
@@ -77,7 +78,10 @@ module bp_me_axil_client
   logic [axil_data_width_p-1:0] rdata_li;
   logic v_li, ready_and_lo;
   bsg_axil_fifo_client
-   #(.axil_data_width_p(axil_data_width_p), .axil_addr_width_p(axil_addr_width_p))
+   #(.axil_data_width_p(axil_data_width_p)
+     ,.axil_addr_width_p(axil_addr_width_p)
+     ,.fifo_els_p(num_outstanding_p)
+     )
    fifo_client
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
