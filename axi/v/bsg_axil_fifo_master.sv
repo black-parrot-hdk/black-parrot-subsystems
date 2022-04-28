@@ -53,11 +53,6 @@ module bsg_axil_fifo_master
   , output logic                               m_axil_rready_o
   );
 
-  enum logic [1:0] {e_wait, e_read_rx, e_write_rx} state_n, state_r;
-  wire is_wait     = (state_r == e_wait);
-  wire is_read_rx  = (state_r == e_read_rx);
-  wire is_write_rx = (state_r == e_write_rx);
-
   wire unused = &{m_axil_rresp_i, m_axil_bresp_i};
 
   logic wdata_ready_lo;

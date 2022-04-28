@@ -54,11 +54,6 @@ module bsg_axil_fifo_client
    , input                                      s_axil_rready_i
   );
 
-  enum logic [1:0] {e_wait, e_read_rx, e_write_rx} state_n, state_r;
-  wire is_wait     = (state_r == e_wait);
-  wire is_read_rx  = (state_r == e_read_rx);
-  wire is_write_rx = (state_r == e_write_rx);
-
   wire unused = &{s_axil_awprot_i, s_axil_arprot_i};
   assign s_axil_bresp_o = e_axi_resp_okay;
   assign s_axil_rresp_o = e_axi_resp_okay;
