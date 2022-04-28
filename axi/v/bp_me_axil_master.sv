@@ -18,6 +18,7 @@ module bp_me_axil_master
   , parameter axil_data_width_p = 32
   , parameter axil_addr_width_p  = 32
   , localparam axi_mask_width_lp = (axil_data_width_p>>3)
+  , parameter num_outstanding_p = 8
   )
  (//==================== GLOBAL SIGNALS =======================
   input                                        clk_i
@@ -72,15 +73,15 @@ module bp_me_axil_master
 
   logic header_v_li, header_ready_lo;
   logic header_v_lo, header_yumi_li;
-  bsg_one_fifo
-   #(.width_p($bits(bp_bedrock_mem_header_s)))
+  bsg_fifo_1r1w_small
+   #(.width_p($bits(bp_bedrock_mem_header_s)), .els_p(num_outstanding_p))
    return_fifo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
 
      ,.data_i(io_cmd_header_cast_i)
      ,.v_i(header_v_li)
-     ,.ready_o(header_ready_lo)
+     ,.ready_o(/* Large enough by construction */)
 
      ,.data_o(io_resp_header_cast_o)
      ,.v_o(header_v_lo)
@@ -97,7 +98,7 @@ module bp_me_axil_master
       addr_li = io_cmd_header_cast_i.addr;
       v_li = io_cmd_v_i;
       w_li = io_cmd_header_cast_i.msg_type inside {e_bedrock_mem_wr, e_bedrock_mem_uc_wr};
-      io_cmd_ready_and_o = ready_and_lo & header_ready_lo;
+      io_cmd_ready_and_o = ready_and_lo;
 
       header_v_li = io_cmd_ready_and_o & io_cmd_v_i;
 
@@ -135,7 +136,10 @@ module bp_me_axil_master
     end
 
   bsg_axil_fifo_master
-   #(.axil_data_width_p(axil_data_width_p), .axil_addr_width_p(axil_addr_width_p))
+   #(.axil_data_width_p(axil_data_width_p)
+     ,.axil_addr_width_p(axil_addr_width_p)
+     ,.fifo_els_p(num_outstanding_p)
+     )
    fifo_master
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
