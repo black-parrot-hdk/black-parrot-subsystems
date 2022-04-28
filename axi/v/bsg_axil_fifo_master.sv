@@ -60,7 +60,8 @@ module bsg_axil_fifo_master
 
   wire unused = &{m_axil_rresp_i, m_axil_bresp_i};
 
-  bsg_one_fifo
+  logic wdata_ready_lo;
+  bsg_two_fifo
    #(.width_p(axil_data_width_p+axi_mask_width_lp))
    wdata_fifo
     (.clk_i(clk_i)
@@ -68,16 +69,17 @@ module bsg_axil_fifo_master
 
      ,.data_i({data_i, wmask_i})
      ,.v_i(v_i & w_i)
-     ,.ready_o()
+     ,.ready_o(wdata_ready_lo)
 
      ,.data_o({m_axil_wdata_o, m_axil_wstrb_o})
      ,.v_o(m_axil_wvalid_o)
      ,.yumi_i(m_axil_wready_i & m_axil_wvalid_o)
      );
 
+  logic addr_ready_lo;
   logic w_lo, addr_v_lo, addr_yumi_li;
   logic [axil_addr_width_p-1:0] addr_lo;
-  bsg_one_fifo
+  bsg_two_fifo
    #(.width_p(1+axil_addr_width_p))
    addr_fifo
     (.clk_i(clk_i)
@@ -85,44 +87,46 @@ module bsg_axil_fifo_master
 
      ,.data_i({w_i, addr_i})
      ,.v_i(v_i)
-     ,.ready_o()
+     ,.ready_o(addr_ready_lo)
 
      ,.data_o({w_lo, addr_lo})
      ,.v_o(addr_v_lo)
      ,.yumi_i(addr_yumi_li)
      );
-  assign m_axil_arvalid_o = addr_v_lo & ~w_lo;
+  assign ready_and_o = addr_ready_lo & wdata_ready_lo;
+
+  logic return_ready_lo, return_w_lo, return_v_lo, return_yumi_li;
+  bsg_two_fifo
+   #(.width_p(1))
+   return_fifo
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+
+     ,.data_i(w_lo)
+     ,.v_i(addr_yumi_li)
+     ,.ready_o(return_ready_lo)
+
+     ,.data_o(return_w_lo)
+     ,.v_o(return_v_lo)
+     ,.yumi_i(return_yumi_li)
+     );
+
+  assign m_axil_arvalid_o = return_ready_lo & addr_v_lo & ~w_lo;
   assign m_axil_araddr_o  = addr_lo;
   assign m_axil_arprot_o  = e_axi_prot_dsn;
 
-  assign m_axil_awvalid_o = addr_v_lo & w_lo;
+  assign m_axil_awvalid_o = return_ready_lo & addr_v_lo & w_lo;
   assign m_axil_awaddr_o  = addr_lo;
   assign m_axil_awprot_o  = e_axi_prot_dsn;
 
   assign addr_yumi_li = (m_axil_arready_i & m_axil_arvalid_o) | (m_axil_awready_i & m_axil_awvalid_o);
 
-  // synopsys sync_set_reset "reset_i"
-  always_ff @(posedge clk_i)
-    if (reset_i)
-      state_r <= e_wait;
-    else
-      state_r <= state_n;
-
-  always_comb
-    case (state_r)
-      e_wait: state_n = (ready_and_o & v_i & w_i)
-                        ? e_write_rx
-                        : (ready_and_o & v_i & ~w_i)
-                          ? e_read_rx
-                          : e_wait;
-      default: state_n = (ready_and_i & v_o) ? e_wait : state_r;
-    endcase
-
-  assign ready_and_o = is_wait;
   assign v_o = m_axil_rvalid_i | m_axil_bvalid_i;
   assign data_o = m_axil_rdata_i;
-  assign m_axil_bready_o = is_write_rx & ready_and_i;
-  assign m_axil_rready_o = is_read_rx & ready_and_i;
+  assign m_axil_bready_o = return_v_lo &  return_w_lo & ready_and_i;
+  assign m_axil_rready_o = return_v_lo & ~return_w_lo & ready_and_i;
+
+  assign return_yumi_li = ready_and_i & v_o;
 
 endmodule
 
