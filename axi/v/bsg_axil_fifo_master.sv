@@ -16,7 +16,7 @@ module bsg_axil_fifo_master
    , input [axil_addr_width_p-1:0]             addr_i
    , input                                     v_i
    , input                                     w_i
-   , input [(axil_data_width_p>>3)-1:0]        wmask_i
+   , input [axi_mask_width_lp-1:0]             wmask_i
    , output logic                              ready_and_o
 
    , output logic [axil_data_width_p-1:0]      data_o
@@ -32,7 +32,7 @@ module bsg_axil_fifo_master
 
   // WRITE DATA CHANNEL SIGNALS
   , output logic [axil_data_width_p-1:0]       m_axil_wdata_o
-  , output logic [(axil_data_width_p>>3)-1:0]  m_axil_wstrb_o
+  , output logic [axi_mask_width_lp-1:0]       m_axil_wstrb_o
   , output logic                               m_axil_wvalid_o
   , input                                      m_axil_wready_i
 

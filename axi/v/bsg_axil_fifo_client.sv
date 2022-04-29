@@ -17,7 +17,7 @@ module bsg_axil_fifo_client
    , output logic [axil_addr_width_p-1:0]       addr_o
    , output logic                               v_o
    , output logic                               w_o
-   , output logic [(axil_data_width_p>>3)-1:0]  wmask_o
+   , output logic [axil_mask_width_lp-1:0]      wmask_o
    , input                                      ready_and_i
 
    , input [axil_data_width_p-1:0]              data_i
@@ -33,7 +33,7 @@ module bsg_axil_fifo_client
 
    // WRITE DATA CHANNEL SIGNALS
    , input [axil_data_width_p-1:0]              s_axil_wdata_i
-   , input [(axil_data_width_p>>3)-1:0]         s_axil_wstrb_i
+   , input [axil_mask_width_lp-1:0]             s_axil_wstrb_i
    , input                                      s_axil_wvalid_i
    , output logic                               s_axil_wready_o
 
@@ -135,7 +135,7 @@ module bsg_axil_fifo_client
   `endif
 
   // Prioritize reads over writes
-  assign addr_o  = araddr_v_li ? `BSG_ALIGN(araddr_li, `BSG_SAFE_CLOG2(axil_mask_width_lp)) : awaddr_li;
+  assign addr_o  = araddr_v_li ? `BSG_ALIGN(araddr_li, axil_mask_width_lp) : awaddr_li;
   assign data_o  = wdata_li;
   assign v_o     = return_ready_lo & (araddr_v_li | (awaddr_v_li & wdata_v_li));
   assign w_o     = ~araddr_v_li;
