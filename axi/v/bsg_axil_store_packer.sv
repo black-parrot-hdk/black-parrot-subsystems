@@ -58,14 +58,11 @@ module bsg_axil_store_packer
 
   enum {e_ready, e_read_req, e_read_resp, e_write_resp} state_n, state_r;
   wire is_ready      = (state_r == e_ready);
-  wire is_read_req   = (state_r == e_read_req);
-  wire is_read_resp  = (state_r == e_read_resp);
-  wire is_write_resp = (state_r == e_write_resp);
 
   // Ready for a request if we can send it out to the fifo
-  assign s_axil_awready_o = is_ready & ready_i;
-  assign s_axil_wready_o  = is_ready & ready_i;
-  assign s_axil_arready_o = is_read_req & ready_i;
+  assign s_axil_awready_o = is_ready & ready_i & ~s_axil_arvalid_i;
+  assign s_axil_wready_o  = is_ready & ready_i & ~s_axil_arvalid_i;
+  assign s_axil_arready_o = is_ready & ready_i &  s_axil_arvalid_i;
 
   // Don't support errors
   assign s_axil_bresp_o = e_axi_resp_okay;
@@ -92,18 +89,10 @@ module bsg_axil_store_packer
       case (state_r)
         e_ready:
           begin
-            v_o = (s_axil_awready_o & s_axil_awvalid_i & s_axil_wready_o & s_axil_wvalid_i);
-            data_o = write_cmd_lo;
+            v_o = (s_axil_awvalid_i & s_axil_wvalid_i) | s_axil_arvalid_i;
+            data_o = s_axil_arvalid_i ? read_cmd_lo : write_cmd_lo;
 
-            state_n = v_o ? e_write_resp : s_axil_arvalid_i ? e_read_req : e_ready;
-          end
-
-        e_read_req:
-          begin
-            v_o = s_axil_arready_o & s_axil_arvalid_i;
-            data_o = read_cmd_lo;
-
-            state_n = v_o ? e_read_resp : e_read_req;
+            state_n = (v_o & ready_i) ? (s_axil_arvalid_i ? e_read_resp : e_write_resp) : e_ready;
           end
 
         e_read_resp:
