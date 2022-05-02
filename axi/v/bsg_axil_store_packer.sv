@@ -56,16 +56,12 @@ module bsg_axil_store_packer
     , output logic                               ready_o
     );
 
-  enum {e_ready, e_read_req, e_read_resp, e_write_resp} state_n, state_r;
+  enum logic [2:0] {e_ready, e_write_req, e_read_req, e_read_resp, e_write_resp} state_n, state_r;
   wire is_ready      = (state_r == e_ready);
+  wire is_write_req  = (state_r == e_write_req);
   wire is_read_req   = (state_r == e_read_req);
   wire is_read_resp  = (state_r == e_read_resp);
   wire is_write_resp = (state_r == e_write_resp);
-
-  // Ready for a request if we can send it out to the fifo
-  assign s_axil_awready_o = is_ready & ready_i;
-  assign s_axil_wready_o  = is_ready & ready_i;
-  assign s_axil_arready_o = is_read_req & ready_i;
 
   // Don't support errors
   assign s_axil_bresp_o = e_axi_resp_okay;
@@ -82,6 +78,10 @@ module bsg_axil_store_packer
 
   always_comb
     begin
+      s_axil_awready_o = '0;
+      s_axil_wready_o  = '0;
+      s_axil_arready_o = '0;
+
       s_axil_bvalid_o  = '0;
       s_axil_rvalid_o  = '0;
 
@@ -92,18 +92,30 @@ module bsg_axil_store_packer
       case (state_r)
         e_ready:
           begin
-            v_o = (s_axil_awready_o & s_axil_awvalid_i & s_axil_wready_o & s_axil_wvalid_i);
+            state_n = (s_axil_awvalid_i & s_axil_wvalid_i)
+                      ? e_write_req
+                      : s_axil_arvalid_i
+                        ? e_read_req
+                        : e_ready;
+          end
+
+        e_write_req:
+          begin
+            v_o = 1'b1;
+            s_axil_awready_o = ready_i;
+            s_axil_wready_o = ready_i;
             data_o = write_cmd_lo;
 
-            state_n = v_o ? e_write_resp : s_axil_arvalid_i ? e_read_req : e_ready;
+            state_n = (ready_i & v_o) ? e_write_resp : e_write_req;
           end
 
         e_read_req:
           begin
-            v_o = s_axil_arready_o & s_axil_arvalid_i;
+            v_o = 1'b1;
+            s_axil_arready_o = ready_i;
             data_o = read_cmd_lo;
 
-            state_n = v_o ? e_read_resp : e_read_req;
+            state_n = (ready_i & v_o) ? e_read_resp : e_read_req;
           end
 
         e_read_resp:
