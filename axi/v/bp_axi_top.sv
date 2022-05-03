@@ -13,14 +13,16 @@ module bp_axi_top
    `declare_bp_proc_params(bp_params_p)
 
    // AXI4-LITE PARAMS
-   , parameter axil_addr_width_p = 32
-   , parameter axil_data_width_p = 32
+   , parameter axil_addr_width_p   = 32
+   , parameter axil_data_width_p   = 32
+   , localparam axil_mask_width_lp = axil_data_width_p>>3
 
    , parameter axi_addr_width_p = 32
    , parameter axi_data_width_p = 64
    , parameter axi_id_width_p   = 6
    , parameter axi_len_width_p  = 4
    , parameter axi_size_width_p = 3
+   , localparam axi_mask_width_lp = axi_data_width_p>>3
 
    `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
    )
@@ -34,7 +36,7 @@ module bp_axi_top
    , input                                     m_axil_awready_i
 
    , output logic [axil_data_width_p-1:0]      m_axil_wdata_o
-   , output logic [(axil_data_width_p>>3)-1:0] m_axil_wstrb_o
+   , output logic [axil_mask_width_lp-1:0]     m_axil_wstrb_o
    , output logic                              m_axil_wvalid_o
    , input                                     m_axil_wready_i
 
@@ -59,7 +61,7 @@ module bp_axi_top
    , output logic                              s_axil_awready_o
 
    , input [axil_data_width_p-1:0]             s_axil_wdata_i
-   , input [(axil_data_width_p>>3)-1:0]        s_axil_wstrb_i
+   , input [axil_mask_width_lp-1:0]            s_axil_wstrb_i
    , input                                     s_axil_wvalid_i
    , output logic                              s_axil_wready_o
 
@@ -95,7 +97,7 @@ module bp_axi_top
    , input                                     m_axi_wready_i
    , output logic [axi_id_width_p-1:0]         m_axi_wid_o
    , output logic                              m_axi_wlast_o
-   , output logic [(axi_data_width_p>>3)-1:0]  m_axi_wstrb_o
+   , output logic [axi_mask_width_lp-1:0]      m_axi_wstrb_o
 
    , input                                     m_axi_bvalid_i
    , output logic                              m_axi_bready_o

@@ -1,18 +1,20 @@
 
-// This module converts an AXI load/store into a store in the following format
+// This module converts an AXI load/store into a store in the following format (for 8b payload)
 //   {write_not_read, addr[22:0], data[7:0]}
 //  Loads will then ready for data to come back as a blocking operation
 // To avoid dealing with ordering transactions, only 1 req is outstanding
 // We could very easily increase throughput here, but wait until it's a bottleneck
 
 `include "bsg_defines.v"
-`include "bp_me_defines.svh"
 
 module bsg_axil_store_packer
- import bp_me_pkg::*;
+ import bsg_axi_pkg::*;
  #(parameter `BSG_INV_PARAM(axil_addr_width_p)
    , parameter `BSG_INV_PARAM(axil_data_width_p)
    , parameter `BSG_INV_PARAM(payload_data_width_p)
+   , parameter payload_addr_width_p = axil_data_width_p - payload_data_width_p - 1
+   
+   , localparam axil_mask_width_lp = axil_data_width_p>>3
    )
    (input clk_i
     , input reset_i
@@ -26,12 +28,12 @@ module bsg_axil_store_packer
 
     // WRITE DATA CHANNEL SIGNALS
     , input [axil_data_width_p-1:0]              s_axil_wdata_i
-    , input [(axil_data_width_p>>3)-1:0]         s_axil_wstrb_i
+    , input [axil_mask_width_lp-1:0]             s_axil_wstrb_i
     , input                                      s_axil_wvalid_i
     , output logic                               s_axil_wready_o
 
     // WRITE RESPONSE CHANNEL SIGNALS
-    , output axi_resp_type_e                     s_axil_bresp_o
+    , output logic [1:0]                         s_axil_bresp_o
     , output logic                               s_axil_bvalid_o
     , input                                      s_axil_bready_i
 
@@ -43,7 +45,7 @@ module bsg_axil_store_packer
 
     // READ DATA CHANNEL SIGNALS
     , output logic [axil_data_width_p-1:0]       s_axil_rdata_o
-    , output axi_resp_type_e                     s_axil_rresp_o
+    , output logic [1:0]                         s_axil_rresp_o
     , output logic                               s_axil_rvalid_o
     , input                                      s_axil_rready_i
 
@@ -70,11 +72,10 @@ module bsg_axil_store_packer
   assign s_axil_rdata_o = data_i;
   assign ready_o = s_axil_rready_i;
 
-  localparam payload_addr_width_lp = axil_data_width_p - payload_data_width_p - 1;
   wire [axil_data_width_p-1:0] read_cmd_lo =
-    {1'b0, s_axil_araddr_i[0+:payload_addr_width_lp], {payload_data_width_p{1'b0}}};
+    {1'b0, s_axil_araddr_i[0+:payload_addr_width_p], {payload_data_width_p{1'b0}}};
   wire [axil_data_width_p-1:0] write_cmd_lo =
-    {1'b1, s_axil_awaddr_i[0+:payload_addr_width_lp], s_axil_wdata_i[0+:payload_data_width_p]};
+    {1'b1, s_axil_awaddr_i[0+:payload_addr_width_p], s_axil_wdata_i[0+:payload_data_width_p]};
 
   always_comb
     begin
