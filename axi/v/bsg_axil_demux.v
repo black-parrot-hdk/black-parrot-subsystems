@@ -86,59 +86,69 @@ module bsg_axil_demux
    , output logic                        m01_axil_rready
    );
 
-  logic select_m00_r, select_m01_r;
-  wire clear_selection = ((s00_axil_rvalid & s00_axil_rready) | (s00_axil_bvalid & s00_axil_bready));
-  wire select_m00_n = ((s00_axil_arvalid && (s00_axil_araddr < split_addr_p))
-                       || (s00_axil_awvalid && (s00_axil_awaddr < split_addr_p))
-                       )
-                      && ~select_m00_r
-                      && ~select_m01_r;
-  // Prioritize m00 statically. Could arbitrate, but this is low performance anyway
-  wire select_m01_n = ((s00_axil_arvalid & (s00_axil_araddr >= split_addr_p))
-                       || (s00_axil_awvalid & (s00_axil_awaddr >= split_addr_p))
-                       )
-                      && ~select_m00_n
-                      && ~select_m00_r
-                      && ~select_m01_r;
+  wire m00_rvld = (s00_axil_arvalid && (s00_axil_araddr < split_addr_p));
+  wire m00_wvld = (s00_axil_awvalid && (s00_axil_awaddr < split_addr_p));
+  wire m01_rvld = (s00_axil_arvalid && (s00_axil_araddr >= split_addr_p));
+  wire m01_wvld = (s00_axil_awvalid && (s00_axil_awaddr >= split_addr_p));
+
+  wire m00_rrsp = (m00_axil_rready & m00_axil_rvalid);
+  wire m00_wrsp = (m00_axil_bready & m00_axil_bvalid);
+  wire m01_rrsp = (m01_axil_rready & m01_axil_rvalid);
+  wire m01_wrsp = (m01_axil_bready & m01_axil_bvalid);
+  wire any_rsp = |{m00_rrsp, m00_wrsp, m01_rrsp, m01_wrsp};
+
+  logic m00_rreq, m00_wreq, m01_rreq, m01_wreq;
   bsg_dff_reset_set_clear
-   #(.width_p(2))
-   select_reg
+   #(.width_p(4))
+   req_reg
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
 
-     ,.set_i({select_m01_n, select_m00_n})
-     ,.clear_i({2{clear_selection}})
-     ,.data_o({select_m01_r, select_m00_r})
+     ,.set_i({m01_wvld, m01_rvld, m00_wvld, m00_rvld})
+     ,.clear_i({m01_wrsp, m01_rrsp, m00_wrsp, m00_rrsp})
+     ,.data_o({m01_wreq, m01_rreq, m00_wreq, m00_rreq})
+     );
+
+  logic m00_rgnt, m00_wgnt, m01_rgnt, m01_wgnt;
+  bsg_arb_round_robin
+   #(.width_p(4))
+   rr
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+
+     ,.reqs_i({m01_wreq, m01_rreq, m00_wreq, m00_rreq})
+     ,.grants_o({m01_wgnt, m01_rgnt, m00_wgnt, m00_rgnt})
+     ,.yumi_i(any_rsp)
      );
 
   assign {m01_axil_awaddr, m00_axil_awaddr} = {2{s00_axil_awaddr}};
   assign {m01_axil_awprot, m00_axil_awprot} = {2{s00_axil_awprot}};
-  assign m00_axil_awvalid = select_m00_r & s00_axil_awvalid;
-  assign m01_axil_awvalid = select_m01_r & s00_axil_awvalid;
-  assign s00_axil_awready = (select_m00_r & m00_axil_awready) | (select_m01_r & m01_axil_awready);
+  assign m00_axil_awvalid = m00_wgnt & s00_axil_awvalid;
+  assign m01_axil_awvalid = m01_wgnt & s00_axil_awvalid;
+  assign s00_axil_awready = (m00_wgnt & m00_axil_awready) | (m01_wgnt & m01_axil_awready);
 
   assign {m01_axil_wdata, m00_axil_wdata} = {2{s00_axil_wdata}};
   assign {m01_axil_wstrb, m00_axil_wstrb} = {2{s00_axil_wstrb}};
-  assign m00_axil_wvalid = select_m00_r & s00_axil_wvalid;
-  assign m01_axil_wvalid = select_m01_r & s00_axil_wvalid;
-  assign s00_axil_wready = (select_m00_r & m00_axil_wready) | (select_m01_r & m01_axil_wready);
+  assign m00_axil_wvalid = m00_wgnt & s00_axil_wvalid;
+  assign m01_axil_wvalid = m01_wgnt & s00_axil_wvalid;
+  assign s00_axil_wready = (m00_wgnt & m00_axil_wready) | (m01_wgnt & m01_axil_wready);
 
-  assign s00_axil_bresp  = select_m01_r ? m01_axil_bresp : m00_axil_bresp;
-  assign s00_axil_bvalid = (select_m00_r & m00_axil_bvalid) | (select_m01_r & m01_axil_bvalid);
-  assign m00_axil_bready = select_m00_r & s00_axil_bready;
-  assign m01_axil_bready = select_m01_r & s00_axil_bready;
+  assign s00_axil_bresp  = m01_wgnt ? m01_axil_bresp : m00_axil_bresp;
+  assign s00_axil_bvalid = (m00_wgnt & m00_axil_bvalid) | (m01_wgnt & m01_axil_bvalid);
+  assign m00_axil_bready = m00_wgnt & s00_axil_bready;
+  assign m01_axil_bready = m01_wgnt & s00_axil_bready;
 
   assign {m01_axil_araddr, m00_axil_araddr} = {2{s00_axil_araddr}};
   assign {m01_axil_arprot, m00_axil_arprot} = {2{s00_axil_arprot}};
-  assign m00_axil_arvalid = select_m00_r & s00_axil_arvalid;
-  assign m01_axil_arvalid = select_m01_r & s00_axil_arvalid;
-  assign s00_axil_arready = (select_m00_r & m00_axil_arready) | (select_m01_r & m01_axil_arready);
+  assign m00_axil_arvalid = m00_rgnt & s00_axil_arvalid;
+  assign m01_axil_arvalid = m01_rgnt & s00_axil_arvalid;
+  assign s00_axil_arready = (m00_rgnt & m00_axil_arready) | (m01_rgnt & m01_axil_arready);
 
-  assign s00_axil_rdata = select_m01_r ? m01_axil_rdata : m00_axil_rdata;
-  assign s00_axil_rresp = select_m01_r ? m01_axil_rresp : m00_axil_rresp;
-  assign s00_axil_rvalid = (select_m00_r & m00_axil_rvalid) | (select_m01_r & m01_axil_rvalid);
-  assign m00_axil_rready = select_m00_r & s00_axil_rready;
-  assign m01_axil_rready = select_m01_r & s00_axil_rready;
+  assign s00_axil_rdata = m01_rgnt ? m01_axil_rdata : m00_axil_rdata;
+  assign s00_axil_rresp = m01_rgnt ? m01_axil_rresp : m00_axil_rresp;
+  assign s00_axil_rvalid = (m00_rgnt & m00_axil_rvalid) | (m01_rgnt & m01_axil_rvalid);
+  assign m00_axil_rready = m00_rgnt & s00_axil_rready;
+  assign m01_axil_rready = m01_rgnt & s00_axil_rready;
 
 endmodule
 
