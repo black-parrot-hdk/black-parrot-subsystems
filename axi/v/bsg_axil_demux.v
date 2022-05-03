@@ -1,14 +1,12 @@
 
-// TODO: This module will only work if the incoming axil stream
-//   is not multiplexed between reads and writes. This is the case in BP.
-//   More specifically, arvalid and awvalid should be mutex
-
 `include "bsg_defines.v"
 
 module bsg_axil_demux
  #(parameter `BSG_INV_PARAM(addr_width_p)
    , parameter `BSG_INV_PARAM(data_width_p)
    , parameter `BSG_INV_PARAM(split_addr_p)
+
+   , localparam mask_width_lp = data_width_p>>3
    )
   (input                                 clk_i
    , input                               reset_i
@@ -19,7 +17,7 @@ module bsg_axil_demux
    , output logic                        s00_axil_awready
 
    , input [data_width_p-1:0]            s00_axil_wdata
-   , input [(data_width_p/8)-1:0]        s00_axil_wstrb
+   , input [mask_width_lp-1:0]           s00_axil_wstrb
    , input                               s00_axil_wvalid
    , output logic                        s00_axil_wready
 
@@ -43,7 +41,7 @@ module bsg_axil_demux
    , input                               m00_axil_awready
 
    , output logic [data_width_p-1:0]     m00_axil_wdata
-   , output logic [(data_width_p/8)-1:0] m00_axil_wstrb
+   , output logic [mask_width_lp-1:0]    m00_axil_wstrb
    , output logic                        m00_axil_wvalid
    , input                               m00_axil_wready
 
@@ -67,7 +65,7 @@ module bsg_axil_demux
    , input                               m01_axil_awready
 
    , output logic [data_width_p-1:0]     m01_axil_wdata
-   , output logic [(data_width_p/8)-1:0] m01_axil_wstrb
+   , output logic [mask_width_lp-1:0]    m01_axil_wstrb
    , output logic                        m01_axil_wvalid
    , input                               m01_axil_wready
 
