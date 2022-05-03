@@ -12,7 +12,7 @@ module bp_me_axil_client
   // AXI CHANNEL PARAMS
   , parameter axil_data_width_p = 32
   , parameter axil_addr_width_p = 32
-  , localparam axil_mask_width_lp = axil_data_width_p >> 3
+  , localparam axil_mask_width_lp = axil_data_width_p>>3
   , parameter num_outstanding_p = 8
   )
 
@@ -20,7 +20,7 @@ module bp_me_axil_client
    input                                        clk_i
    , input                                      reset_i
 
-   //==================== BP-LITE SIGNALS ======================
+   //==================== BP-STREAM SIGNALS ======================
    , input [lce_id_width_p-1:0]                 lce_id_i
    , input [did_width_p-1:0]                    did_i
 
@@ -28,11 +28,13 @@ module bp_me_axil_client
    , output logic [axil_data_width_p-1:0]       io_cmd_data_o
    , output logic                               io_cmd_v_o
    , input                                      io_cmd_ready_and_i
+   , output logic                               io_cmd_last_o
 
    , input [mem_header_width_lp-1:0]            io_resp_header_i
    , input [axil_data_width_p-1:0]              io_resp_data_i
    , input                                      io_resp_v_i
    , output logic                               io_resp_ready_and_o
+   , input                                      io_resp_last_i
 
    //====================== AXI-4 LITE =========================
    // WRITE ADDRESS CHANNEL SIGNALS
@@ -63,7 +65,10 @@ module bp_me_axil_client
    , output logic [1:0]                         s_axil_rresp_o
    , output logic                               s_axil_rvalid_o
    , input                                      s_axil_rready_i
-  );
+   );
+
+  wire unused = &{io_resp_last_i};
+  assign io_cmd_last_o = io_cmd_v_o;
 
   // declaring i/o command and response struct type and size
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
@@ -109,10 +114,10 @@ module bp_me_axil_client
       io_cmd_header_cast_o.addr           = addr_lo;
       io_cmd_header_cast_o.msg_type       = w_lo ? e_bedrock_mem_uc_wr : e_bedrock_mem_uc_rd;
       case (wmask_lo)
-        (axil_data_width_p>>3)'('h1): io_cmd_header_cast_o.size = e_bedrock_msg_size_1;
-        (axil_data_width_p>>3)'('h3): io_cmd_header_cast_o.size = e_bedrock_msg_size_2;
-        (axil_data_width_p>>3)'('hF): io_cmd_header_cast_o.size = e_bedrock_msg_size_4;
-        // (axil_data_width_p>>3)'('hFF):
+        axil_mask_width_lp'('h1): io_cmd_header_cast_o.size = e_bedrock_msg_size_1;
+        axil_mask_width_lp'('h3): io_cmd_header_cast_o.size = e_bedrock_msg_size_2;
+        axil_mask_width_lp'('hF): io_cmd_header_cast_o.size = e_bedrock_msg_size_4;
+        // axil_mask_width_lp'('hFF):
         default: io_cmd_header_cast_o.size = e_bedrock_msg_size_8;
       endcase
 
