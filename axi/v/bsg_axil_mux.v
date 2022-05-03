@@ -90,8 +90,8 @@ module bsg_axil_mux
 
   wire s00_rrsp = (s00_axil_rready & s00_axil_rvalid);
   wire s00_wrsp = (s00_axil_bready & s00_axil_bvalid);
-  wire s01_rrsp = (s00_axil_rready & s00_axil_rvalid);
-  wire s01_wrsp = (s00_axil_bready & s00_axil_bvalid);
+  wire s01_rrsp = (s01_axil_rready & s01_axil_rvalid);
+  wire s01_wrsp = (s01_axil_bready & s01_axil_bvalid);
   wire any_rsp = |{s00_rrsp, s00_wrsp, s01_rrsp, s01_wrsp};
 
   logic s00_rreq, s00_wreq, s01_rreq, s01_wreq;
@@ -132,7 +132,7 @@ module bsg_axil_mux
 
   assign {s01_axil_bresp, s00_axil_bresp} = {2{m00_axil_bresp}};
   assign s00_axil_bvalid = s00_wgnt & m00_axil_bvalid;
-  assign s00_axil_bvalid = s01_wgnt & m00_axil_bvalid;
+  assign s01_axil_bvalid = s01_wgnt & m00_axil_bvalid;
   assign m00_axil_bready = (s00_wgnt & s00_axil_bready) | (s01_wgnt & s01_axil_bready);
 
   assign m00_axil_araddr  = s01_rgnt ? s01_axil_araddr : s00_axil_araddr;
