@@ -15,6 +15,7 @@
 module bp_me_axil_to_burst
  import bp_common_pkg::*;
  import bp_me_pkg::*;
+ import bsg_axi_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
   `declare_bp_proc_params(bp_params_p)
   `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
