@@ -1,0 +1,3 @@
+[submodule "ethernet_controller/import/basejump_stl"]
+	path = ethernet_controller/import/basejump_stl
+	url = https://github.com/bespoke-silicon-group/basejump_stl.git
