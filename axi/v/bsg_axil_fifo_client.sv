@@ -111,15 +111,15 @@ module bsg_axil_fifo_client
      ,.yumi_i(wdata_yumi_lo)
      );
 
-  logic return_ready_lo, return_w_lo, return_v_lo, return_yumi_li;
+  logic return_v_li, return_ready_lo, return_w_lo, return_v_lo, return_yumi_li;
   bsg_fifo_1r1w_small
-   #(.width_p(1), .els_p(fifo_els_p))
+   #(.width_p(1), .els_p(fifo_els_p), .ready_THEN_valid_p(1))
    return_fifo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
 
      ,.data_i(w_o)
-     ,.v_i(v_o)
+     ,.v_i(return_v_li)
      ,.ready_o(return_ready_lo)
 
      ,.data_o(return_w_lo)
@@ -150,6 +150,8 @@ module bsg_axil_fifo_client
   assign s_axil_bvalid_o = v_i &  return_w_lo;
 
   assign ready_and_o = (return_v_lo & return_w_lo & s_axil_bready_i) | (return_v_lo & ~return_w_lo & s_axil_rready_i);
+
+  assign return_v_li = ready_and_i & v_o;
   assign return_yumi_li = ready_and_o & v_i;
 
 endmodule
