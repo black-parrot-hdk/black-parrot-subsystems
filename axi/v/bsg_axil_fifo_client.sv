@@ -27,7 +27,7 @@ module bsg_axil_fifo_client
    //====================== AXI-4 LITE =========================
    // WRITE ADDRESS CHANNEL SIGNALS
    , input [axil_addr_width_p-1:0]              s_axil_awaddr_i
-   , input axi_prot_type_e                      s_axil_awprot_i
+   , input [2:0]                                s_axil_awprot_i
    , input                                      s_axil_awvalid_i
    , output logic                               s_axil_awready_o
 
@@ -38,19 +38,19 @@ module bsg_axil_fifo_client
    , output logic                               s_axil_wready_o
 
    // WRITE RESPONSE CHANNEL SIGNALS
-   , output axi_resp_type_e                     s_axil_bresp_o
+   , output [1:0]                               s_axil_bresp_o
    , output logic                               s_axil_bvalid_o
    , input                                      s_axil_bready_i
 
    // READ ADDRESS CHANNEL SIGNALS
    , input [axil_addr_width_p-1:0]              s_axil_araddr_i
-   , input axi_prot_type_e                      s_axil_arprot_i
+   , input [2:0]                                s_axil_arprot_i
    , input                                      s_axil_arvalid_i
    , output logic                               s_axil_arready_o
 
    // READ DATA CHANNEL SIGNALS
    , output logic [axil_data_width_p-1:0]       s_axil_rdata_o
-   , output axi_resp_type_e                     s_axil_rresp_o
+   , output [1:0]                               s_axil_rresp_o
    , output logic                               s_axil_rvalid_o
    , input                                      s_axil_rready_i
   );
