@@ -28,6 +28,7 @@ module bp_axi_top
    )
   (input                                       clk_i
    , input                                     reset_i
+   , input                                     rt_clk_i
 
    //======================== Outgoing I/O ========================
    , output logic [axil_addr_width_p-1:0]      m_axil_awaddr_o
@@ -154,7 +155,7 @@ module bp_axi_top
        #(.bp_params_p(bp_params_p))
        unicore
        (.clk_i(clk_i)
-        ,.rt_clk_i('0)
+        ,.rt_clk_i(rt_clk_i)
         ,.reset_i(reset_i)
 
         // Irrelevant for current AXI wrapper
@@ -272,7 +273,7 @@ module bp_axi_top
        #(.bp_params_p(bp_params_p))
        multicore
         (.core_clk_i(clk_i)
-         ,.rt_clk_i('0)
+         ,.rt_clk_i(rt_clk_i)
          ,.core_reset_i(reset_i)
 
          ,.coh_clk_i(clk_i)
