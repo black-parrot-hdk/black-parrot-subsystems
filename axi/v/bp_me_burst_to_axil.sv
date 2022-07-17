@@ -51,7 +51,7 @@ module bp_me_burst_to_axil
   //====================== AXI4-LITE ==========================
   // WRITE ADDRESS CHANNEL SIGNALS
   , output logic [axil_addr_width_p-1:0]       m_axil_awaddr_o
-  , output axi_prot_type_e                     m_axil_awprot_o
+  , output logic [2:0]                         m_axil_awprot_o
   , output logic                               m_axil_awvalid_o
   , input                                      m_axil_awready_i
 
@@ -62,19 +62,19 @@ module bp_me_burst_to_axil
   , input                                      m_axil_wready_i
 
   // WRITE RESPONSE CHANNEL SIGNALS
-  , input axi_resp_type_e                      m_axil_bresp_i
+  , input [1:0]                                m_axil_bresp_i
   , input                                      m_axil_bvalid_i
   , output logic                               m_axil_bready_o
 
   // READ ADDRESS CHANNEL SIGNALS
   , output logic [axil_addr_width_p-1:0]       m_axil_araddr_o
-  , output axi_prot_type_e                     m_axil_arprot_o
+  , output logic [2:0]                         m_axil_arprot_o
   , output logic                               m_axil_arvalid_o
   , input                                      m_axil_arready_i
 
   // READ DATA CHANNEL SIGNALS
   , input [axil_data_width_p-1:0]              m_axil_rdata_i
-  , input axi_resp_type_e                      m_axil_rresp_i
+  , input [1:0]                                m_axil_rresp_i
   , input                                      m_axil_rvalid_i
   , output logic                               m_axil_rready_o
   );
