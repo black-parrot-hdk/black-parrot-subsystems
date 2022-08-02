@@ -83,69 +83,270 @@ module bsg_axil_mux
    , output logic                          m00_axil_rready
    );
 
-  wire s00_rvld = s00_axil_arvalid;
-  wire s00_wvld = s00_axil_awvalid;
-  wire s01_rvld = s01_axil_arvalid;
-  wire s01_wvld = s01_axil_awvalid;
+  localparam fifo_els_lp = 2;
 
-  wire s00_rrsp = (s00_axil_rready & s00_axil_rvalid);
-  wire s00_wrsp = (s00_axil_bready & s00_axil_bvalid);
-  wire s01_rrsp = (s01_axil_rready & s01_axil_rvalid);
-  wire s01_wrsp = (s01_axil_bready & s01_axil_bvalid);
-  wire any_rsp = |{s00_rrsp, s00_wrsp, s01_rrsp, s01_wrsp};
+  logic [addr_width_p-1:0]  s00_axil_awaddr_buffered;
+  logic [2:0]               s00_axil_awprot_buffered;
+  logic                     s00_axil_awvalid_buffered;
+  logic                     s00_axil_awready_buffered;
 
-  logic s00_rreq, s00_wreq, s01_rreq, s01_wreq;
-  bsg_dff_reset_set_clear
-   #(.width_p(4))
-   req_reg
+  logic [data_width_p-1:0]  s00_axil_wdata_buffered;
+  logic [mask_width_lp-1:0] s00_axil_wstrb_buffered;
+  logic                     s00_axil_wvalid_buffered;
+  logic                     s00_axil_wready_buffered;
+
+  logic [addr_width_p-1:0]  s00_axil_araddr_buffered;
+  logic [2:0]               s00_axil_arprot_buffered;
+  logic                     s00_axil_arvalid_buffered;
+  logic                     s00_axil_arready_buffered;
+
+
+  logic [addr_width_p-1:0]  s01_axil_awaddr_buffered;
+  logic [2:0]               s01_axil_awprot_buffered;
+  logic                     s01_axil_awvalid_buffered;
+  logic                     s01_axil_awready_buffered;
+
+  logic [data_width_p-1:0]  s01_axil_wdata_buffered;
+  logic [mask_width_lp-1:0] s01_axil_wstrb_buffered;
+  logic                     s01_axil_wvalid_buffered;
+  logic                     s01_axil_wready_buffered;
+
+  logic [addr_width_p-1:0]  s01_axil_araddr_buffered;
+  logic [2:0]               s01_axil_arprot_buffered;
+  logic                     s01_axil_arvalid_buffered;
+  logic                     s01_axil_arready_buffered;
+
+  bsg_fifo_1r1w_small
+   #(.width_p(addr_width_p+3), .els_p(fifo_els_lp))
+   input_awaddr_fifo_0
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
 
-     ,.set_i({s01_wvld, s01_rvld, s00_wvld, s00_rvld})
-     ,.clear_i({s01_wrsp, s01_rrsp, s00_wrsp, s00_rrsp})
-     ,.data_o({s01_wreq, s01_rreq, s00_wreq, s00_rreq})
-     );
+     ,.data_i({s00_axil_awaddr, s00_axil_awprot})
+     ,.v_i(s00_axil_awvalid)
+     ,.ready_o(s00_axil_awready)
 
-  logic s00_rgnt, s00_wgnt, s01_rgnt, s01_wgnt;
-  bsg_arb_round_robin
-   #(.width_p(4))
-   rr
+     ,.data_o({s00_axil_awaddr_buffered, s00_axil_awprot_buffered})
+     ,.v_o(s00_axil_awvalid_buffered)
+     ,.yumi_i(s00_axil_awvalid_buffered & s00_axil_awready_buffered)
+     );
+  bsg_fifo_1r1w_small
+   #(.width_p(data_width_p+mask_width_lp), .els_p(fifo_els_lp))
+   input_wdata_fifo_0
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
 
-     ,.reqs_i({s01_wreq, s01_rreq, s00_wreq, s00_rreq})
-     ,.grants_o({s01_wgnt, s01_rgnt, s00_wgnt, s00_rgnt})
-     ,.yumi_i(any_rsp)
+     ,.data_i({s00_axil_wdata, s00_axil_wstrb})
+     ,.v_i(s00_axil_wvalid)
+     ,.ready_o(s00_axil_wready)
+
+     ,.data_o({s00_axil_wdata_buffered, s00_axil_wstrb_buffered})
+     ,.v_o(s00_axil_wvalid_buffered)
+     ,.yumi_i(s00_axil_wvalid_buffered & s00_axil_wready_buffered)
+     );
+  bsg_fifo_1r1w_small
+   #(.width_p(addr_width_p+3), .els_p(fifo_els_lp))
+   input_araddr_fifo_0
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+
+     ,.data_i({s00_axil_araddr, s00_axil_arprot})
+     ,.v_i(s00_axil_arvalid)
+     ,.ready_o(s00_axil_arready)
+
+     ,.data_o({s00_axil_araddr_buffered, s00_axil_arprot_buffered})
+     ,.v_o(s00_axil_arvalid_buffered)
+     ,.yumi_i(s00_axil_arvalid_buffered & s00_axil_arready_buffered)
      );
 
-  assign m00_axil_awaddr  = s01_wgnt ? s01_axil_awaddr : s00_axil_awaddr;
-  assign m00_axil_awprot  = s01_wgnt ? s01_axil_awprot : s00_axil_awprot;
-  assign m00_axil_awvalid = (s00_wgnt & s00_axil_awvalid) || (s01_wgnt & s01_axil_awvalid);
-  assign s00_axil_awready = m00_axil_awready & s00_wgnt;
-  assign s01_axil_awready = m00_axil_awready & s01_wgnt;
+  bsg_fifo_1r1w_small
+   #(.width_p(addr_width_p+3), .els_p(fifo_els_lp))
+   input_awaddr_fifo_1
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
 
-  assign m00_axil_wdata  = s01_wgnt ? s01_axil_wdata : s00_axil_wdata;
-  assign m00_axil_wstrb  = s01_wgnt ? s01_axil_wstrb : s00_axil_wstrb;
-  assign m00_axil_wvalid = (s00_wgnt & s00_axil_wvalid) | (s01_wgnt & s01_axil_wvalid);
-  assign s00_axil_wready = m00_axil_wready & s00_wgnt;
-  assign s01_axil_wready = m00_axil_wready & s01_wgnt;
+     ,.data_i({s01_axil_awaddr, s01_axil_awprot})
+     ,.v_i(s01_axil_awvalid)
+     ,.ready_o(s01_axil_awready)
+
+     ,.data_o({s01_axil_awaddr_buffered, s01_axil_awprot_buffered})
+     ,.v_o(s01_axil_awvalid_buffered)
+     ,.yumi_i(s01_axil_awvalid_buffered & s01_axil_awready_buffered)
+     );
+  bsg_fifo_1r1w_small
+   #(.width_p(data_width_p+mask_width_lp), .els_p(fifo_els_lp))
+   input_wdata_fifo_1
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+
+     ,.data_i({s01_axil_wdata, s01_axil_wstrb})
+     ,.v_i(s01_axil_wvalid)
+     ,.ready_o(s01_axil_wready)
+
+     ,.data_o({s01_axil_wdata_buffered, s01_axil_wstrb_buffered})
+     ,.v_o(s01_axil_wvalid_buffered)
+     ,.yumi_i(s01_axil_wvalid_buffered & s01_axil_wready_buffered)
+     );
+  bsg_fifo_1r1w_small
+   #(.width_p(addr_width_p+3), .els_p(fifo_els_lp))
+   input_araddr_fifo_1
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+
+     ,.data_i({s01_axil_araddr, s01_axil_arprot})
+     ,.v_i(s01_axil_arvalid)
+     ,.ready_o(s01_axil_arready)
+
+     ,.data_o({s01_axil_araddr_buffered, s01_axil_arprot_buffered})
+     ,.v_o(s01_axil_arvalid_buffered)
+     ,.yumi_i(s01_axil_arvalid_buffered & s01_axil_arready_buffered)
+     );
+
+// Write Channel
+
+  /////////////////////////////////////////////////////////////////////////////
+  //   "wvalid_completed_r", "awvalid_completed_r" track the corresponding
+  // completed handshaking, so that waddr and wdata channels can have separate
+  // handshaking. If both waddr and wdata handshakings will be completed in
+  // next cycle, both of them will be clear. This implies that the two
+  // *completed_r signals will never be held high at the same time.
+
+  logic wvalid_completed_n, awvalid_completed_n;
+  logic wvalid_completed_r, awvalid_completed_r;
+  wire write_complete = (((m00_axil_awvalid & m00_axil_awready) | awvalid_completed_r) &
+    ((m00_axil_wvalid & m00_axil_wready) | wvalid_completed_r));
+
+  bsg_dff_reset
+   #(.width_p(2))
+   write_valid_completed_regs
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+     ,.data_i({wvalid_completed_n, awvalid_completed_n})
+     ,.data_o({wvalid_completed_r, awvalid_completed_r})
+     );
+
+  always_comb begin
+    wvalid_completed_n  = wvalid_completed_r;
+    awvalid_completed_n = awvalid_completed_r;
+    if(write_complete) begin
+      wvalid_completed_n  = 1'b0;
+      awvalid_completed_n = 1'b0;
+    end
+    else begin
+      if(m00_axil_awvalid & m00_axil_awready)
+        awvalid_completed_n = 1'b1;
+      if(m00_axil_wvalid & m00_axil_wready)
+        wvalid_completed_n = 1'b1;
+    end
+  end
+
+  logic s00_wgnt, s01_wgnt;
+  logic write_resp_ready_lo;
+
+  bsg_round_robin_arb
+   #(.inputs_p(2), .hold_on_valid_p(1))
+   write_rr
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+     ,.grants_en_i(write_resp_ready_lo)
+     ,.reqs_i({(s00_axil_awvalid_buffered & s00_axil_wvalid_buffered) & write_resp_ready_lo,
+               (s01_axil_awvalid_buffered & s01_axil_wvalid_buffered) & write_resp_ready_lo})
+     ,.grants_o({s00_wgnt, s01_wgnt})
+     ,.sel_one_hot_o(/* UNUSED */)
+     ,.v_o(/* UNUSED */)
+     ,.tag_o(/* UNUSED */)
+     ,.yumi_i(write_complete)
+    );
+
+  logic s00_wgnt_resp;
+  logic s00_wgnt_resp_v_lo;
+  wire s00_wgnt_resp_yumi_li = m00_axil_bvalid & m00_axil_bready;
+  bsg_fifo_1r1w_small
+   #(.width_p(1), .els_p(fifo_els_lp), .ready_THEN_valid_p(1))
+   write_resp_fifo
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+
+     ,.data_i(s00_wgnt)
+     ,.v_i(write_complete)
+     ,.ready_o(write_resp_ready_lo)
+
+     ,.data_o(s00_wgnt_resp)
+     ,.v_o(s00_wgnt_resp_v_lo)
+     ,.yumi_i(s00_wgnt_resp_yumi_li)
+     );
+  assign m00_axil_awaddr = s01_wgnt ? s01_axil_awaddr_buffered : s00_axil_awaddr_buffered;
+  assign m00_axil_awprot = s01_wgnt ? s01_axil_awprot_buffered : s00_axil_awprot_buffered;
+  assign m00_axil_awvalid = ((s00_wgnt & s00_axil_awvalid_buffered) |
+        (s01_wgnt & s01_axil_awvalid_buffered)) & ~awvalid_completed_r;
+  assign s00_axil_awready_buffered = write_complete & s00_wgnt;
+  assign s01_axil_awready_buffered = write_complete & s01_wgnt;
+
+  assign m00_axil_wdata  = s01_wgnt ? s01_axil_wdata_buffered : s00_axil_wdata_buffered;
+  assign m00_axil_wstrb  = s01_wgnt ? s01_axil_wstrb_buffered : s00_axil_wstrb_buffered;
+  assign m00_axil_wvalid  = ((s00_wgnt & s00_axil_wvalid_buffered) |
+        (s01_wgnt & s01_axil_wvalid_buffered)) & ~wvalid_completed_r;
+  assign s00_axil_wready_buffered  = write_complete & s00_wgnt;
+  assign s01_axil_wready_buffered  = write_complete & s01_wgnt;
 
   assign {s01_axil_bresp, s00_axil_bresp} = {2{m00_axil_bresp}};
-  assign s00_axil_bvalid = s00_wgnt & m00_axil_bvalid;
-  assign s01_axil_bvalid = s01_wgnt & m00_axil_bvalid;
-  assign m00_axil_bready = (s00_wgnt & s00_axil_bready) | (s01_wgnt & s01_axil_bready);
+  assign s00_axil_bvalid = s00_wgnt_resp_v_lo ?  (s00_wgnt_resp & m00_axil_bvalid) : 1'b0;
+  assign s01_axil_bvalid = s00_wgnt_resp_v_lo ? (~s00_wgnt_resp & m00_axil_bvalid) : 1'b0;
+  assign m00_axil_bready = s00_wgnt_resp_v_lo ? (s00_wgnt_resp ?
+        s00_axil_bready : s01_axil_bready) : 1'b0;
 
-  assign m00_axil_araddr  = s01_rgnt ? s01_axil_araddr : s00_axil_araddr;
-  assign m00_axil_arprot  = s01_rgnt ? s01_axil_arprot : s00_axil_arprot;
-  assign m00_axil_arvalid = (s00_rgnt & s00_axil_arvalid) | (s01_rgnt & s01_axil_arvalid);
-  assign s00_axil_arready = s00_rgnt & m00_axil_arready;
-  assign s01_axil_arready = s01_rgnt & m00_axil_arready;
+// Read Channel
+  logic s00_rgnt, s01_rgnt;
+  logic read_resp_ready_lo;
+  wire read_complete = m00_axil_arvalid & m00_axil_arready;
+
+  bsg_round_robin_arb
+   #(.inputs_p(2), .hold_on_valid_p(1))
+   read_rr
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+     ,.grants_en_i(read_resp_ready_lo)
+     ,.reqs_i({s00_axil_arvalid_buffered & read_resp_ready_lo,
+               s01_axil_arvalid_buffered & read_resp_ready_lo})
+     ,.grants_o({s00_rgnt, s01_rgnt})
+     ,.sel_one_hot_o(/* UNUSED */)
+     ,.v_o(/* UNUSED */)
+     ,.tag_o(/* UNUSED */)
+     ,.yumi_i(read_complete)
+    );
+
+  logic s00_rgnt_resp;
+  logic s00_rgnt_resp_v_lo;
+  wire s00_rgnt_resp_yumi_li = m00_axil_rvalid & m00_axil_rready;
+  bsg_fifo_1r1w_small
+   #(.width_p(1), .els_p(fifo_els_lp), .ready_THEN_valid_p(1))
+   read_resp_fifo
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+
+     ,.data_i(s00_rgnt)
+     ,.v_i(read_complete)
+     ,.ready_o(read_resp_ready_lo)
+
+     ,.data_o(s00_rgnt_resp)
+     ,.v_o(s00_rgnt_resp_v_lo)
+     ,.yumi_i(s00_rgnt_resp_yumi_li)
+     );
+
+  assign m00_axil_araddr  = s01_rgnt ? s01_axil_araddr_buffered : s00_axil_araddr_buffered;
+  assign m00_axil_arprot  = s01_rgnt ? s01_axil_arprot_buffered : s00_axil_arprot_buffered;
+  assign m00_axil_arvalid = (s00_rgnt & s00_axil_arvalid_buffered) |
+                            (s01_rgnt & s01_axil_arvalid_buffered);
+  assign s00_axil_arready_buffered = s00_rgnt & m00_axil_arready;
+  assign s01_axil_arready_buffered = s01_rgnt & m00_axil_arready;
 
   assign {s01_axil_rdata, s00_axil_rdata} = {2{m00_axil_rdata}};
   assign {s01_axil_rresp, s00_axil_rresp} = {2{m00_axil_rresp}};
-  assign s00_axil_rvalid = s00_rgnt & m00_axil_rvalid;
-  assign s01_axil_rvalid = s01_rgnt & m00_axil_rvalid;
-  assign m00_axil_rready = (s00_rgnt & s00_axil_rready) | (s01_rgnt & s01_axil_rready);
+  assign s00_axil_rvalid = s00_rgnt_resp_v_lo ?  (s00_rgnt_resp & m00_axil_rvalid) : 1'b0;
+  assign s01_axil_rvalid = s00_rgnt_resp_v_lo ? (~s00_rgnt_resp & m00_axil_rvalid) : 1'b0;
+  assign m00_axil_rready = s00_rgnt_resp_v_lo ? (s00_rgnt_resp ?
+        s00_axil_rready : s01_axil_rready) : 1'b0;
+
 
 endmodule
 
