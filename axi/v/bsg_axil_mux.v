@@ -234,16 +234,21 @@ module bsg_axil_mux
 
   logic s00_wgnt, s01_wgnt;
   logic write_resp_ready_lo;
-  bsg_arb_round_robin_with_hold
-   #(.width_p(2))
+
+  bsg_round_robin_arb
+   #(.inputs_p(2), .hold_on_valid_p(1))
    write_rr
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
+     ,.grants_en_i(1'b1)
      ,.reqs_i({(s00_axil_awvalid_buffered & s00_axil_wvalid_buffered) & write_resp_ready_lo,
                (s01_axil_awvalid_buffered & s01_axil_wvalid_buffered) & write_resp_ready_lo})
      ,.grants_o({s00_wgnt, s01_wgnt})
-     ,.complete_i(write_complete)
-     );
+     ,.sel_one_hot_o(/* UNUSED */)
+     ,.v_o(/* UNUSED */)
+     ,.tag_o(/* UNUSED */)
+     ,.yumi_i(write_complete)
+    );
 
   logic s00_wgnt_resp;
   logic s00_wgnt_resp_v_lo;
@@ -286,16 +291,21 @@ module bsg_axil_mux
   logic s00_rgnt, s01_rgnt;
   logic read_resp_ready_lo;
   wire read_complete = m00_axil_arvalid & m00_axil_arready;
-  bsg_arb_round_robin_with_hold
-   #(.width_p(2))
+
+  bsg_round_robin_arb
+   #(.inputs_p(2), .hold_on_valid_p(1))
    read_rr
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
+     ,.grants_en_i(1'b1)
      ,.reqs_i({s00_axil_arvalid_buffered & read_resp_ready_lo,
                s01_axil_arvalid_buffered & read_resp_ready_lo})
      ,.grants_o({s00_rgnt, s01_rgnt})
-     ,.complete_i(read_complete)
-     );
+     ,.sel_one_hot_o(/* UNUSED */)
+     ,.v_o(/* UNUSED */)
+     ,.tag_o(/* UNUSED */)
+     ,.yumi_i(read_complete)
+    );
 
   logic s00_rgnt_resp;
   logic s00_rgnt_resp_v_lo;
