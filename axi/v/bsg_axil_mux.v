@@ -203,32 +203,40 @@ module bsg_axil_mux
      );
 
 // Write Channel
-  logic wvalid_complete_n, awvalid_complete_n;
-  logic wvalid_complete_r, awvalid_complete_r;
-  wire write_complete = (((m00_axil_awvalid & m00_axil_awready) | awvalid_complete_r) &
-    ((m00_axil_wvalid & m00_axil_wready) | wvalid_complete_r));
+
+  /////////////////////////////////////////////////////////////////////////////
+  //   "wvalid_completed_r", "awvalid_completed_r" track the corresponding
+  // completed handshaking, so that waddr and wdata channels can have separate
+  // handshaking. If both waddr and wdata handshakings will be completed in
+  // next cycle, both of them will be clear. This implies that the two
+  // *completed_r signals will never be held high at the same time.
+
+  logic wvalid_completed_n, awvalid_completed_n;
+  logic wvalid_completed_r, awvalid_completed_r;
+  wire write_complete = (((m00_axil_awvalid & m00_axil_awready) | awvalid_completed_r) &
+    ((m00_axil_wvalid & m00_axil_wready) | wvalid_completed_r));
 
   bsg_dff_reset
    #(.width_p(2))
-   write_valid_complete_regs
+   write_valid_completed_regs
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
-     ,.data_i({wvalid_complete_n, awvalid_complete_n})
-     ,.data_o({wvalid_complete_r, awvalid_complete_r})
+     ,.data_i({wvalid_completed_n, awvalid_completed_n})
+     ,.data_o({wvalid_completed_r, awvalid_completed_r})
      );
 
   always_comb begin
-    wvalid_complete_n  = wvalid_complete_r;
-    awvalid_complete_n = awvalid_complete_r;
+    wvalid_completed_n  = wvalid_completed_r;
+    awvalid_completed_n = awvalid_completed_r;
     if(write_complete) begin
-      wvalid_complete_n  = 1'b0;
-      awvalid_complete_n = 1'b0;
+      wvalid_completed_n  = 1'b0;
+      awvalid_completed_n = 1'b0;
     end
     else begin
       if(m00_axil_awvalid & m00_axil_awready)
-        awvalid_complete_n = 1'b1;
+        awvalid_completed_n = 1'b1;
       if(m00_axil_wvalid & m00_axil_wready)
-        wvalid_complete_n = 1'b1;
+        wvalid_completed_n = 1'b1;
     end
   end
 
@@ -240,7 +248,7 @@ module bsg_axil_mux
    write_rr
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
-     ,.grants_en_i(1'b1)
+     ,.grants_en_i(write_resp_ready_lo)
      ,.reqs_i({(s00_axil_awvalid_buffered & s00_axil_wvalid_buffered) & write_resp_ready_lo,
                (s01_axil_awvalid_buffered & s01_axil_wvalid_buffered) & write_resp_ready_lo})
      ,.grants_o({s00_wgnt, s01_wgnt})
@@ -270,14 +278,14 @@ module bsg_axil_mux
   assign m00_axil_awaddr = s01_wgnt ? s01_axil_awaddr_buffered : s00_axil_awaddr_buffered;
   assign m00_axil_awprot = s01_wgnt ? s01_axil_awprot_buffered : s00_axil_awprot_buffered;
   assign m00_axil_awvalid = ((s00_wgnt & s00_axil_awvalid_buffered) |
-        (s01_wgnt & s01_axil_awvalid_buffered)) & ~awvalid_complete_r;
+        (s01_wgnt & s01_axil_awvalid_buffered)) & ~awvalid_completed_r;
   assign s00_axil_awready_buffered = write_complete & s00_wgnt;
   assign s01_axil_awready_buffered = write_complete & s01_wgnt;
 
   assign m00_axil_wdata  = s01_wgnt ? s01_axil_wdata_buffered : s00_axil_wdata_buffered;
   assign m00_axil_wstrb  = s01_wgnt ? s01_axil_wstrb_buffered : s00_axil_wstrb_buffered;
   assign m00_axil_wvalid  = ((s00_wgnt & s00_axil_wvalid_buffered) |
-        (s01_wgnt & s01_axil_wvalid_buffered)) & ~wvalid_complete_r;
+        (s01_wgnt & s01_axil_wvalid_buffered)) & ~wvalid_completed_r;
   assign s00_axil_wready_buffered  = write_complete & s00_wgnt;
   assign s01_axil_wready_buffered  = write_complete & s01_wgnt;
 
@@ -297,7 +305,7 @@ module bsg_axil_mux
    read_rr
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
-     ,.grants_en_i(1'b1)
+     ,.grants_en_i(read_resp_ready_lo)
      ,.reqs_i({s00_axil_arvalid_buffered & read_resp_ready_lo,
                s01_axil_arvalid_buffered & read_resp_ready_lo})
      ,.grants_o({s00_rgnt, s01_rgnt})

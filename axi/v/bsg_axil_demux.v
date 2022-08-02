@@ -172,18 +172,24 @@ module bsg_axil_demux
   assign s00_axil_arready_buffered = read_resp_fifo_ready_lo &
                 (read_m00_select ? m00_axil_arready : m01_axil_arready);
 
+  /////////////////////////////////////////////////////////////////////////////
+  //   "wvalid_completed_r", "awvalid_completed_r" track the corresponding
+  // completed handshaking, so that waddr and wdata channels can have separate
+  // handshaking. If both waddr and wdata handshakings will be completed in
+  // next cycle, both of them will be clear. This implies that the two
+  // *completed_r signals will never be held high at the same time.
 
-  logic wvalid_complete_n, awvalid_complete_n;
-  logic wvalid_complete_r, awvalid_complete_r;
+  logic wvalid_completed_n, awvalid_completed_n;
+  logic wvalid_completed_r, awvalid_completed_r;
   logic next_write_req;
 
   bsg_dff_reset
    #(.width_p(2))
-   write_valid_complete_regs
+   write_valid_completed_regs
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
-     ,.data_i({wvalid_complete_n, awvalid_complete_n})
-     ,.data_o({wvalid_complete_r, awvalid_complete_r})
+     ,.data_i({wvalid_completed_n, awvalid_completed_n})
+     ,.data_o({wvalid_completed_r, awvalid_completed_r})
      );
 
   wire axil_awvalid = write_m00_select ? m00_axil_awvalid : m01_axil_awvalid;
@@ -192,33 +198,33 @@ module bsg_axil_demux
   wire axil_wready  = s00_axil_awvalid_buffered & (write_m00_select ? m00_axil_wready : m01_axil_wready);
 
   always_comb begin
-    wvalid_complete_n  = wvalid_complete_r;
-    awvalid_complete_n = awvalid_complete_r;
+    wvalid_completed_n  = wvalid_completed_r;
+    awvalid_completed_n = awvalid_completed_r;
     if(next_write_req) begin
-      wvalid_complete_n  = 1'b0;
-      awvalid_complete_n = 1'b0;
+      wvalid_completed_n  = 1'b0;
+      awvalid_completed_n = 1'b0;
     end
     else begin
       if(axil_awvalid & axil_awready)
-        awvalid_complete_n = 1'b1;
+        awvalid_completed_n = 1'b1;
       if(axil_wvalid & axil_wready)
-        wvalid_complete_n = 1'b1;
+        wvalid_completed_n = 1'b1;
     end
   end
 
-  assign next_write_req = (((axil_awvalid & axil_awready) | awvalid_complete_r) &
-    ((axil_wvalid & axil_wready) | wvalid_complete_r)) & write_resp_fifo_ready_lo;
+  assign next_write_req = (((axil_awvalid & axil_awready) | awvalid_completed_r) &
+    ((axil_wvalid & axil_wready) | wvalid_completed_r)) & write_resp_fifo_ready_lo;
 
 
   assign m00_axil_awvalid =  write_m00_select & s00_axil_awvalid_buffered &
-        ~awvalid_complete_r;
+        ~awvalid_completed_r;
   assign m01_axil_awvalid = ~write_m00_select & s00_axil_awvalid_buffered &
-        ~awvalid_complete_r;
+        ~awvalid_completed_r;
 
   assign m00_axil_wvalid =  write_m00_select & s00_axil_awvalid_buffered &
-        s00_axil_wvalid_buffered & ~wvalid_complete_r;
+        s00_axil_wvalid_buffered & ~wvalid_completed_r;
   assign m01_axil_wvalid = ~write_m00_select & s00_axil_awvalid_buffered &
-        s00_axil_wvalid_buffered & ~wvalid_complete_r;
+        s00_axil_wvalid_buffered & ~wvalid_completed_r;
 
   assign s00_axil_awready_buffered = next_write_req;
   assign s00_axil_wready_buffered  = next_write_req;
