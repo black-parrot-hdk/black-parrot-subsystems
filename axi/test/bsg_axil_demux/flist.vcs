@@ -1,5 +1,5 @@
 bsg_axi_pkg.v
-bsg_axil_demux.sv
+bsg_axil_demux.v
 bsg_defines.v
 bsg_fifo_1r1w_small.v
 bsg_fifo_1r1w_small_unhardened.v
