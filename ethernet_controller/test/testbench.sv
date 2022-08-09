@@ -1,6 +1,8 @@
 
 `timescale 1ns/1ps
 
+`define TEST_SIZE 1000
+
 module testbench();
 
     parameter  buf_size_p       = 2048; // byte
@@ -248,8 +250,8 @@ module testbench();
         // enable RX 1 INT
         write_addr('h1014, 'd1, 2'b10, 1);
         fork
-            sender(1000);
-            receiver(1000);
+            sender(`TEST_SIZE);
+            receiver(`TEST_SIZE);
         join
 
         $display("End of testbench1");
