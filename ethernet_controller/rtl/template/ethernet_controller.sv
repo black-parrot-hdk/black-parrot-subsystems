@@ -107,10 +107,10 @@ module ethernet_controller #
 
   logic io_decode_error_lo;
 
-  ethernet_memory_map #(
+  ethernet_control_unit #(
     .eth_mtu_p(eth_mtu_lp)
    ,.data_width_p(data_width_p)
-  ) memory_map (
+  ) ethernet_control_unit (
     .clk_i
    ,.reset_i
 

@@ -35,7 +35,7 @@
 `include "bsg_defines.v"
 
 
-module ethernet_memory_map #
+module ethernet_control_unit #
 (
       parameter  eth_mtu_p            = 2048 // byte
     , parameter  data_width_p         = 32
@@ -90,33 +90,25 @@ module ethernet_memory_map #
     , output logic                              io_decode_error_o
 );
 
+  logic output_fifo_ready_lo;
+
   logic buffer_read_v_r;
   logic [data_width_p-1:0] readable_reg_r, readable_reg_n;
   logic rx_interrupt_clear, tx_interrupt_clear;
   // Not used in this Ethernet controller, always points to 0
   logic tx_idx_r, tx_idx_n;
-
-  wire  en_li = ready_and_i | ~valid_o;
-  assign ready_and_o = en_li;
+  logic request_en_r;
+  wire  request_backpressured = ~output_fifo_ready_lo & request_en_r;
+  assign ready_and_o = ~request_backpressured;
 
   bsg_dff_reset_en
    #(.width_p(data_width_p + 2))
     registers
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
-      ,.en_i(en_li)
+      ,.en_i(~request_backpressured & (read_en_i | write_en_i))
       ,.data_i({readable_reg_n, packet_rvalid_o, tx_idx_n})
       ,.data_o({readable_reg_r, buffer_read_v_r, tx_idx_r})
-      );
-
-  bsg_dff_reset_en
-   #(.width_p(1))
-    valid_reg
-     (.clk_i(clk_i)
-      ,.reset_i(reset_i)
-      ,.en_i(en_li)
-      ,.data_i(read_en_i | write_en_i)
-      ,.data_o(valid_o)
       );
 
   always_comb begin
@@ -143,7 +135,7 @@ module ethernet_memory_map #
 
     packet_wsize_o = '0;
     packet_wsize_valid_o = 1'b0;
-    if(en_li) begin
+    if(~request_backpressured) begin
       casez(addr_i)
         16'h0???: begin
           if(addr_i < 16'h0800) begin
@@ -272,8 +264,31 @@ module ethernet_memory_map #
       io_decode_error_o = 1'b1;
   end
 
+  bsg_dff_reset_en
+   #(.width_p(1))
+    request_reg
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      ,.en_i(~request_backpressured)
+      ,.data_i(read_en_i | write_en_i)
+      ,.data_o(request_en_r)
+      );
+
   // Output can either come from RX buffer or registers
-  assign read_data_o = buffer_read_v_r ? packet_rdata_i : readable_reg_r;
+  wire [data_width_p-1:0] read_data_li = buffer_read_v_r ? packet_rdata_i : readable_reg_r;
+
+  bsg_two_fifo
+   #(.width_p(data_width_p))
+    output_fifo
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      ,.ready_o(output_fifo_ready_lo)
+      ,.data_i(read_data_li)
+      ,.v_i(request_en_r)
+      ,.v_o(valid_o)
+      ,.data_o(read_data_o)
+      ,.yumi_i(ready_and_i & valid_o)
+      );
 
   assign packet_ack_o       = rx_interrupt_clear;
   assign tx_interrupt_clear_o = tx_interrupt_clear;
@@ -281,9 +296,9 @@ module ethernet_memory_map #
   // synopsys translate_off
   always_ff @(negedge clk_i) begin
     assert(eth_mtu_p <= 2048)
-      else $error("ethernet_memory_map: eth_mtu_p should be <= 2048\n");
+      else $error("ethernet_control_unit: eth_mtu_p should be <= 2048\n");
     assert(data_width_p == 32)
-      else $error("ethernet_memory_map: unsupported data_width_p\n");
+      else $error("ethernet_control_unit: unsupported data_width_p\n");
   end
   // synopsys translate_on
 
