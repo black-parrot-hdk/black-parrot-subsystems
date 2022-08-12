@@ -18,12 +18,8 @@ module ethernet_controller_wrapper #
     , input  logic [addr_width_lp-1:0]          addr_i
     , input  logic                              write_en_i
     , input  logic                              read_en_i
-    , output logic                              ready_and_o
     , input  logic [size_width_lp-1:0]          op_size_i
     , input  logic [data_width_p-1:0]           write_data_i
-
-    , output logic                              valid_o
-    , input  logic                              ready_and_i
     , output logic [data_width_p-1:0]           read_data_o // sync read
 
     , output logic                              rx_interrupt_pending_o
@@ -81,12 +77,8 @@ module ethernet_controller_wrapper #
     ,.addr_i
     ,.write_en_i
     ,.read_en_i
-    ,.ready_and_o
     ,.op_size_i
     ,.write_data_i
-
-    ,.valid_o
-    ,.ready_and_i
     ,.read_data_o // sync read
 
     ,.rx_interrupt_pending_o

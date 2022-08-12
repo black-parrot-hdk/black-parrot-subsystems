@@ -51,12 +51,8 @@ module ethernet_control_unit #
     , input  logic [addr_width_lp-1:0]          addr_i
     , input  logic                              write_en_i
     , input  logic                              read_en_i
-    , output logic                              ready_and_o
     , input  logic [size_width_lp-1:0]          op_size_i
     , input  logic [data_width_p-1:0]           write_data_i
-
-    , output logic                              valid_o
-    , input  logic                              ready_and_i
     , output logic [data_width_p-1:0]           read_data_o // sync read
 
     , input  logic [15:0]                       debug_info_i
@@ -90,23 +86,18 @@ module ethernet_control_unit #
     , output logic                              io_decode_error_o
 );
 
-  logic output_fifo_ready_lo;
-
   logic buffer_read_v_r;
   logic [data_width_p-1:0] readable_reg_r, readable_reg_n;
   logic rx_interrupt_clear, tx_interrupt_clear;
   // Not used in this Ethernet controller, always points to 0
   logic tx_idx_r, tx_idx_n;
-  logic request_en_r;
-  wire  request_backpressured = ~output_fifo_ready_lo & request_en_r;
-  assign ready_and_o = ~request_backpressured;
 
   bsg_dff_reset_en
    #(.width_p(data_width_p + 2))
     registers
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
-      ,.en_i(~request_backpressured & (read_en_i | write_en_i))
+      ,.en_i(read_en_i | write_en_i)
       ,.data_i({readable_reg_n, packet_rvalid_o, tx_idx_n})
       ,.data_o({readable_reg_r, buffer_read_v_r, tx_idx_r})
       );
@@ -135,160 +126,135 @@ module ethernet_control_unit #
 
     packet_wsize_o = '0;
     packet_wsize_valid_o = 1'b0;
-    if(~request_backpressured) begin
-      casez(addr_i)
-        16'h0???: begin
-          if(addr_i < 16'h0800) begin
-            // RX buffer; R
-            if(read_en_i) begin
-              packet_raddr_o = addr_i[packet_addr_width_lp-1:0];
-              packet_rvalid_o = 1'b1;
-              packet_rdata_size_o = op_size_i;
-            end
-            if(write_en_i)
-              io_decode_error_o = 1'b1;
-          end
-          else begin
-            // TX buffer; W
-            if(read_en_i)
-              io_decode_error_o = 1'b1;
-            if(write_en_i) begin
-              packet_waddr_o = addr_i[packet_addr_width_lp-1:0];
-              packet_wdata_size_o = op_size_i;
-              packet_wdata_o = write_data_i;
-              packet_wvalid_o = 1'b1;
-            end
-          end
-        end
-        16'h1000: begin
-          // RX current slot index; R
-          if(read_en_i)
-            readable_reg_n  = '0; // always 0
-          if(write_en_i)
-            io_decode_error_o = 1'b1;
-        end
-        16'h1004: begin
-          // RX received size; R
+    casez(addr_i)
+      16'h0???: begin
+        if(addr_i < 16'h0800) begin
+          // RX buffer; R
           if(read_en_i) begin
-            if(packet_avail_i)
-              readable_reg_n  = packet_rsize_i;
+            packet_raddr_o = addr_i[packet_addr_width_lp-1:0];
+            packet_rvalid_o = 1'b1;
+            packet_rdata_size_o = op_size_i;
           end
           if(write_en_i)
             io_decode_error_o = 1'b1;
         end
-        16'h1010: begin
-          // RX EV Pending; RW
-          if(read_en_i)
-            readable_reg_n = rx_interrupt_pending_i;
-          if(write_en_i) begin
-            if(write_data_i[0] == 'b1) begin
-              rx_interrupt_clear = 1'b1;
-            end
-          end
-        end
-        16'h1014: begin
-          // RX EV Enable; W
+        else begin
+          // TX buffer; W
           if(read_en_i)
             io_decode_error_o = 1'b1;
           if(write_en_i) begin
-            rx_interrupt_enable_o = write_data_i[0];
-            rx_interrupt_enable_v_o = 1'b1;
+            packet_waddr_o = addr_i[packet_addr_width_lp-1:0];
+            packet_wdata_size_o = op_size_i;
+            packet_wdata_o = write_data_i;
+            packet_wvalid_o = 1'b1;
           end
         end
-        16'h1018: begin
-          // TX Send Bit; W
-          if(read_en_i)
-            io_decode_error_o = 1'b1;
-          if(write_en_i)
-            packet_send_o = 1'b1;
+      end
+      16'h1000: begin
+        // RX current slot index; R
+        if(read_en_i)
+          readable_reg_n  = '0; // always 0
+        if(write_en_i)
+          io_decode_error_o = 1'b1;
+      end
+      16'h1004: begin
+        // RX received size; R
+        if(read_en_i) begin
+          if(packet_avail_i)
+            readable_reg_n  = packet_rsize_i;
         end
-        16'h101C: begin
-          // TX Ready bit; R
-          if(read_en_i)
-            readable_reg_n = packet_req_i;
-          if(write_en_i)
-            io_decode_error_o = 1'b1;
-        end
-        16'h1024: begin
-          // TX current slot index; W
-          if(read_en_i)
-            io_decode_error_o = 1'b1;
-          if(write_en_i)
-            tx_idx_n = write_data_i[0];
-        end
-        16'h1028: begin
-          // TX size; W
-          if(read_en_i)
-            io_decode_error_o = 1'b1;
-          if(write_en_i) begin
-            packet_wsize_o = write_data_i;
-            packet_wsize_valid_o = 1'b1;
+        if(write_en_i)
+          io_decode_error_o = 1'b1;
+      end
+      16'h1010: begin
+        // RX EV Pending; RW
+        if(read_en_i)
+          readable_reg_n = rx_interrupt_pending_i;
+        if(write_en_i) begin
+          if(write_data_i[0] == 'b1) begin
+            rx_interrupt_clear = 1'b1;
           end
         end
-        16'h1030: begin
-          // TX Pending Bit; RW
-          if(read_en_i)
-            readable_reg_n = tx_interrupt_pending_i;
-          if(write_en_i) begin
-            if(write_data_i[0] == 'b1) begin
-              // Generate a pulse signal for clear
-              tx_interrupt_clear = 1'b1;
-            end
+      end
+      16'h1014: begin
+        // RX EV Enable; W
+        if(read_en_i)
+          io_decode_error_o = 1'b1;
+        if(write_en_i) begin
+          rx_interrupt_enable_o = write_data_i[0];
+          rx_interrupt_enable_v_o = 1'b1;
+        end
+      end
+      16'h1018: begin
+        // TX Send Bit; W
+        if(read_en_i)
+          io_decode_error_o = 1'b1;
+        if(write_en_i)
+          packet_send_o = 1'b1;
+      end
+      16'h101C: begin
+        // TX Ready bit; R
+        if(read_en_i)
+          readable_reg_n = packet_req_i;
+        if(write_en_i)
+          io_decode_error_o = 1'b1;
+      end
+      16'h1024: begin
+        // TX current slot index; W
+        if(read_en_i)
+          io_decode_error_o = 1'b1;
+        if(write_en_i)
+          tx_idx_n = write_data_i[0];
+      end
+      16'h1028: begin
+        // TX size; W
+        if(read_en_i)
+          io_decode_error_o = 1'b1;
+        if(write_en_i) begin
+          packet_wsize_o = write_data_i;
+          packet_wsize_valid_o = 1'b1;
+        end
+      end
+      16'h1030: begin
+        // TX Pending Bit; RW
+        if(read_en_i)
+          readable_reg_n = tx_interrupt_pending_i;
+        if(write_en_i) begin
+          if(write_data_i[0] == 'b1) begin
+            // Generate a pulse signal for clear
+            tx_interrupt_clear = 1'b1;
           end
         end
-        16'h1034: begin
-          // TX Enable Bit; W
-          if(read_en_i)
-            io_decode_error_o = 1'b1;
-          if(write_en_i) begin
-            tx_interrupt_enable_o = write_data_i[0];
-            tx_interrupt_enable_v_o = 1'b1;
-          end
+      end
+      16'h1034: begin
+        // TX Enable Bit; W
+        if(read_en_i)
+          io_decode_error_o = 1'b1;
+        if(write_en_i) begin
+          tx_interrupt_enable_o = write_data_i[0];
+          tx_interrupt_enable_v_o = 1'b1;
         end
-        16'h1050: begin
-          // Debug Info; R
-          if(read_en_i)
-            readable_reg_n = debug_info_i;
-          if(write_en_i)
-            io_decode_error_o = 1'b1;
-        end
+      end
+      16'h1050: begin
+        // Debug Info; R
+        if(read_en_i)
+          readable_reg_n = debug_info_i;
+        if(write_en_i)
+          io_decode_error_o = 1'b1;
+      end
 
-        default: begin
-          // Unsupported MMIO
-          if(read_en_i || write_en_i)
-            io_decode_error_o = 1'b1;
-        end
-      endcase
-    end
+      default: begin
+        // Unsupported MMIO
+        if(read_en_i || write_en_i)
+          io_decode_error_o = 1'b1;
+      end
+    endcase
     if(read_en_i & write_en_i)
       io_decode_error_o = 1'b1;
   end
 
-  bsg_dff_reset_en
-   #(.width_p(1))
-    request_reg
-     (.clk_i(clk_i)
-      ,.reset_i(reset_i)
-      ,.en_i(~request_backpressured)
-      ,.data_i(read_en_i | write_en_i)
-      ,.data_o(request_en_r)
-      );
-
   // Output can either come from RX buffer or registers
-  wire [data_width_p-1:0] read_data_li = buffer_read_v_r ? packet_rdata_i : readable_reg_r;
-
-  bsg_two_fifo
-   #(.width_p(data_width_p))
-    output_fifo
-     (.clk_i(clk_i)
-      ,.reset_i(reset_i)
-      ,.ready_o(output_fifo_ready_lo)
-      ,.data_i(read_data_li)
-      ,.v_i(request_en_r)
-      ,.v_o(valid_o)
-      ,.data_o(read_data_o)
-      ,.yumi_i(ready_and_i & valid_o)
-      );
+  assign read_data_o = buffer_read_v_r ? packet_rdata_i : readable_reg_r;
 
   assign packet_ack_o       = rx_interrupt_clear;
   assign tx_interrupt_clear_o = tx_interrupt_clear;
