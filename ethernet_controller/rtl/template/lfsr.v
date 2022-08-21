@@ -507,8 +507,8 @@ end else if (STYLE_INT == "LOOP") begin
     // same size as generated code with Quartus
     // --> better for synthesis
 
-    reg [LFSR_WIDTH-1:0] state_out_reg = 0;
-    reg [DATA_WIDTH-1:0] data_out_reg = 0;
+    reg [LFSR_WIDTH-1:0] state_out_reg;
+    reg [DATA_WIDTH-1:0] data_out_reg;
 
     assign state_out = state_out_reg;
     assign data_out = data_out_reg;

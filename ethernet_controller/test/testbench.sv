@@ -1,327 +1,260 @@
+`default_nettype none
+
+`include "bsg_defines.v"
 
 `timescale 1ns/1ps
-
-`define TEST_SIZE 1000
-
-module testbench();
-
-    parameter  buf_size_p       = 2048; // byte
-    parameter  data_width_p     = 32;   // bit
-    localparam reg_addr_width_p = 16;   // address width(bit)
-
-    localparam packet_size_width_lp = $clog2(buf_size_p) + 1;
-    localparam addr_width_lp = $clog2(buf_size_p / (data_width_p / 8));
-    parameter  packet_count_p = 5;
-
-    logic                              clk_i;
-    logic                              reset_i;
-    logic                              clk250_i;
-    logic                              reset_clk250_i;
-
-    logic [1:0][reg_addr_width_p-1:0]  addr_i;
-    logic [1:0]                        write_en_i;
-    logic [1:0]                        read_en_i;
-    logic [1:0][1:0]                   op_size_i;
-    logic [1:0][data_width_p-1:0]      write_data_i;
-    logic [1:0][data_width_p-1:0]      read_data_o;
-
-    logic [1:0]                        rx_interrupt_pending_o;
-    logic [1:0]                        tx_interrupt_pending_o;
-
-    logic [1:0]                        rgmii_rx_clk_i;
-    logic [1:0][3:0]                   rgmii_rxd_i;
-    logic [1:0]                        rgmii_rx_ctl_i;
-    logic [1:0]                        rgmii_tx_clk_o;
-    logic [1:0][3:0]                   rgmii_txd_o;
-    logic [1:0]                        rgmii_tx_ctl_o;
-
-    import "DPI" function int get_time();
-    integer tx_file, rx_file;
-    integer tx_send_cnt, rx_recv_cnt;
-
-    always #25 clk_i    = ~clk_i; // 20 MHZ
-    always #2  clk250_i = ~clk250_i; // 250 MHZ
+`define TEST_SIZE 100
+`define SEED 0
 
 
-    task clk250_tick();
-        @(posedge clk250_i);
-        @(negedge clk250_i);
-    endtask
-    task clk_tick();
-        @(posedge clk_i);
-        @(negedge clk_i);
-    endtask
+program user_signals #(
+    parameter data_width_p
+  , localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p/8))
+  , localparam addr_width_lp = 14
+)
+(
+      input  bit                         clk_i
+    , output bit                         reset_o
+    , input  bit                         clk250_i
+    , output bit                         reset_clk250_o
+    , input  bit                         reset_clk125_i
 
-    // clk250_i, reset_clk250_i init
-    initial begin
-        clk250_i = 1'b0;
-        reset_clk250_i = 1'b1;
+    , output logic [addr_width_lp-1:0]   addr_o
+    , output logic                       write_en_o
+    , output logic                       read_en_o
+    , output logic [size_width_lp-1:0]   op_size_o
+    , output logic [data_width_p-1:0]    write_data_o
+    , input  logic [data_width_p-1:0]    read_data_i
 
-        clk250_tick();
-        clk250_tick();
-        reset_clk250_i = 1'b0;
-    end
+    , input  logic                       rx_interrupt_pending_i
+    , input  logic                       tx_interrupt_pending_i
+);
+  // clk250_i, reset_clk250_i init
+  initial begin
+    reset_clk250_o = 1'b1;
+    @(posedge clk250_i)
+    @(posedge clk250_i)
+    reset_clk250_o = 1'b0;
+  end
 
-    // clk_i, reset_i init
-    initial begin
-        clk_i = 1'b0;
-        reset_i = 1'b1;
-        clk_tick();
-        reset_i = 1'b0;
-    end
+  // clk_i, reset_i init
+  initial begin
+    reset_o = 1'b1;
+    @(posedge clk_i)
+    @(posedge clk_i)
+    reset_o = 1'b0;
+  end
 
-    // Set timeout
-    initial begin
-/*        #1000000
-        $fclose(tx_file);
-        $fclose(rx_file);
-        $display("Timeout");
-        $finish;*/
-    end
+  task automatic write_addr (
+       input int unsigned address
+      ,input int unsigned data
+      ,input int unsigned op_size);
+    assert((address % ('b1 << op_size)) == 0);
+    op_size_o    = op_size;
+    addr_o       = address;
+    write_data_o = data;
+    write_en_o   = 1'b1;
+    @(posedge clk_i)
+    write_en_o   = 1'b0;
+  endtask
 
-    task automatic write_addr (
-            input logic [reg_addr_width_p-1:0] address
-           ,input logic [data_width_p-1:0] data
-           ,input logic [1:0]  op_size
-           ,input logic id_i);
-      case(op_size)
-        2'b01: // 2
-          assert(address[0] == 1'b0) else begin $error("Misalgined write"); $finish; end
-        2'b10: // 4
-          assert(address[1:0] == 2'b0) else begin $error("Misalgined write"); $finish; end
-        2'b11: // 8
-          assert(address[2:0] == 3'b0) else begin $error("Misalgined write"); $finish; end
-      endcase
-      op_size_i[id_i] = op_size;
-      addr_i[id_i] = address;
-      write_data_i[id_i] = data;
-      write_en_i[id_i] = 1'b1;
-      clk_tick();
-      write_en_i[id_i] = 1'b0;
-    endtask
+  task automatic read_addr (
+       input int unsigned address
+      ,output int unsigned read_data
+      ,input int unsigned op_size);
+    assert((address % ('b1 << op_size)) == 0);
+    op_size_o = op_size;
+    addr_o    = address;
+    read_en_o = 1'b1;
+    @(posedge clk_i)
+    read_data = read_data_i;
+    read_en_o = 1'b0;
+  endtask
 
-    task automatic read_addr (
-            input  logic [reg_addr_width_p-1:0] address_i
-           ,output logic [data_width_p-1:0] data_o
-           ,input  logic [1:0]  op_size
-           ,input  logic id_i);
-        op_size_i[id_i] = op_size;
-        addr_i[id_i] = address_i;
-        read_en_i[id_i] = 1'b1;
-        clk_tick();
-        data_o = read_data_o[id_i];
-        read_en_i[id_i] = 1'b0;
-    endtask
-
-
-    task automatic send_random_packet(input [reg_addr_width_p-1:0] size);
-        logic [reg_addr_width_p-1:0] count, cur;
-        logic [data_width_p-1:0] data_lo, value;
-        logic [buf_size_p*8-1:0] packet;
-        integer i, wait_cnt;
-        assert((size % (data_width_p / 8)) == 0);
-        count = size / (data_width_p / 8);
-        $display("Sending packet with size 0x%x:", size);
-        for(i = 0;i < count;i = i + 1) begin
-            value = {$urandom, $urandom};
-            packet[(i * data_width_p)+:data_width_p] = value;
-        end
-        // wait for TX 0 to be ready
-        wait_cnt = 0;
-        forever begin
-            read_addr('h101C, data_lo, 2'b10, 0);
-            if(data_lo == 'd1)
-                break;
-            if(wait_cnt > 100000) begin
-                $display("TX Timeout");
-                $fclose(tx_file);
-                $fclose(rx_file);
-                $finish;
-            end
-            wait_cnt = wait_cnt + 1;
-        end
-        // write content
-        for(i = 0;i < count;i = i + 1) begin
-            value = packet[i * data_width_p+:data_width_p];
-            write_addr('h0800 + (i * data_width_p / 8), (data_width_p)'(value),
-                    $clog2(data_width_p / 8) , 0);
-            $fwrite(tx_file, "%x\n", value);
-        end
-
-        // write size
-        write_addr('h1028, size, 2'b10, 0);
-        // send
-        write_addr('h1018, 'd0, 2'b10, 0);
-        $fwrite(tx_file, "End\n");
-    endtask
-
-    task automatic receive_packet();
-        logic [data_width_p-1:0] data_lo, size;
-        logic [reg_addr_width_p-1:0] upper, lower, cur;
-
-        int ret;
-        integer i, wait_cnt = 0;
-        // wait, read packets
-        forever begin
-            read_addr('h1010, data_lo, 2'b10, 1);
-            if(data_lo == 'b1)
-                break;
-            if(wait_cnt > 100000) begin
-                $display("RX Timeout");
-                $fclose(tx_file);
-                $fclose(rx_file);
-                $finish;
-            end
-            wait_cnt = wait_cnt + 1;
-        end
-        read_addr('h1004, data_lo, 2'b10, 1);
-        size = data_lo;
-        $display("Received packet size:\n0x%x\n", size);
-
-        upper = size / (data_width_p / 8);
-        lower = size % (data_width_p / 8);
-        for(i = 0;i < upper;i = i + 1) begin
-            read_addr('h0000 + i * (data_width_p / 8), data_lo, $clog2(data_width_p / 8), 1);
-            $fwrite(rx_file, "%x\n", data_lo);
-        end
-        cur = upper * (data_width_p / 8);
-        if(lower) begin
-          for(i = $clog2(data_width_p / 8) - 1;i >= 0;i = i - 1) begin
-            if(lower >= (1 << i)) begin
-              read_addr('h0000 + cur, data_lo, i, 1);
-              case(i)
-                2'b10: begin
-                  $fwrite(rx_file, "%x\n", data_lo[0+:32]);
-                end
-                2'b01: begin
-                  $fwrite(rx_file, "%x\n", data_lo[0+:16]);
-                end
-                2'b00: begin
-                  $fwrite(rx_file, "%x\n", data_lo[0+:8]);
-                end
-              endcase
-              lower = lower - (1 << i);
-              cur = cur + (1 << i);
-            end
-          end
-        end
-        assert(lower == 0);
-        // clear RX pending
-        write_addr('h1010, 'd1, 2'b10, 1);
-        $fwrite(rx_file, "End\n");
-
-    endtask
-    task automatic sender(int cnt);
-        int size, delay;
-        for(tx_send_cnt = 0;tx_send_cnt < cnt;tx_send_cnt = tx_send_cnt + 1) begin
-            // make sure the RX packet buffer does not overflow
-            wait(tx_send_cnt <= rx_recv_cnt + 4);
-            delay = $urandom() % 128;
-            for(int i = 0;i < delay;i = i + 1) begin
-                clk_tick();
-            end
-            size = $urandom() % 1400 + 64;
-            size = size / (data_width_p / 8) * (data_width_p / 8);
-            $display("Sending %d packet", tx_send_cnt);
-            send_random_packet(size);
-        end
-    endtask
-    task automatic receiver(int cnt);
-        int delay;
-        for(rx_recv_cnt = 0;rx_recv_cnt < cnt;rx_recv_cnt = rx_recv_cnt + 1) begin
-            delay = $urandom() % 128;
-            for(int i = 0;i < delay;i = i + 1) begin
-                clk_tick();
-            end
-            $display("Receiving %d packet", rx_recv_cnt);
-            receive_packet();
-        end
-    endtask
-    task automatic testbench1();
-        integer seed;
-        seed = 0;
-        if(seed == 0) begin
-          seed = get_time();
-          $srandom(seed);
-          $display("Seed: %d", seed);
-        end
-        // enable TX 0 INT
-        write_addr('h1034, 'd1, 2'b10, 0);
-        // enable RX 1 INT
-        write_addr('h1014, 'd1, 2'b10, 1);
-        fork
-            sender(`TEST_SIZE);
-            receiver(`TEST_SIZE);
-        join
-
-        $display("End of testbench1");
-    endtask
-
-
-
-    initial begin
-        $dumpfile("dump.vcd");
-        $dumpvars;
-        tx_file = $fopen("tx.txt", "w");
-        rx_file = $fopen("rx.txt", "w");
-
-        read_en_i  = 2'b00;
-        write_en_i = 2'b00;
-
-        // wait for the resets to complete
-        wait(reset_i == 1'b0);
-        wait(reset_clk250_i == 1'b0);
-        clk_tick();
-        clk_tick();
-        clk_tick();
-
-        testbench1();
-        $fclose(tx_file);
-        $fclose(rx_file);
+  task automatic send_packet (
+       input int unsigned size
+      ,input int unsigned op_size);
+    static bit [7:0] next_char;
+    int unsigned word, wait_cnt, read_data;
+    bit [31:0] write_data;
+    assert((size % ('b1 << op_size)) == 0);
+    word = size / ('b1 << op_size);
+    $display("Sending packet with size 0x%x:", size);
+    // wait until TX is ready
+    wait_cnt = 0;
+    forever begin
+      read_addr(32'h101C, read_data, 32'b10);
+      if(read_data == 32'd1)
+        break;
+      if(wait_cnt > 10000) begin
+        $display("TX Timeout");
         $finish;
+      end
+      wait_cnt = wait_cnt + 1;
+    end
+    for(int unsigned i = 0;i < word;i++) begin
+      write_data = '0;
+      for(int j = 0;j < (1 << op_size);j++)
+        write_data[j * 8+:8] = next_char++;
+
+      write_addr('h0800 + (i * ('d1 << op_size)), write_data, op_size);
     end
 
+    // write size
+    write_addr(32'h1028, size, 32'b10);
+    // send
+    write_addr(32'h1018, 32'b0, 32'b10);
+  endtask
 
-generate
+  task automatic receive_packet (input int unsigned op_size);
+    int unsigned read_data, size;
+    int unsigned word;
 
-    for(genvar k = 0;k < 2;k = k + 1) begin: ethernet_controller_core
-        ethernet_controller #(
-            .buf_size_p(buf_size_p)
-           ,.data_width_p(data_width_p)
-        ) eth (
-            .clk_i(clk_i)
-           ,.reset_i(reset_i)
-           ,.clk250_i(clk250_i)
-           ,.reset_clk250_i(reset_clk250_i)
-           ,.reset_clk125_o(/* UNUSED */)
-
-           ,.addr_i(addr_i[k])
-           ,.write_en_i(write_en_i[k])
-           ,.read_en_i(read_en_i[k])
-           ,.op_size_i(op_size_i[k])
-           ,.write_data_i(write_data_i[k])
-           ,.read_data_o(read_data_o[k])
-
-           ,.rx_interrupt_pending_o(rx_interrupt_pending_o[k])
-           ,.tx_interrupt_pending_o(tx_interrupt_pending_o[k])
-
-           ,.rgmii_rx_clk_i(rgmii_rx_clk_i[k])
-           ,.rgmii_rxd_i(rgmii_rxd_i[k])
-           ,.rgmii_rx_ctl_i(rgmii_rx_ctl_i[k])
-           ,.rgmii_tx_clk_o(rgmii_tx_clk_o[k])
-           ,.rgmii_txd_o(rgmii_txd_o[k])
-           ,.rgmii_tx_ctl_o(rgmii_tx_ctl_o[k])
-        );
+    int unsigned ret, i, wait_cnt = 0;
+    // wait, read packets
+    forever begin
+      read_addr(32'h1010, read_data, 32'b10);
+      if(read_data == 32'd1)
+        break;
+      if(wait_cnt > 10000) begin
+        $display("RX Timeout");
+        $finish;
+      end
+      wait_cnt = wait_cnt + 1;
     end
-endgenerate
+    read_addr(32'h1004, size, 32'b10);
+    assert((size % ('b1 << op_size)) == 0);
+    $display("Received packet size:\n0x%x\n", size);
 
-    assign rgmii_rx_clk_i[1] = rgmii_tx_clk_o[0];
-    assign rgmii_rxd_i[1]    = rgmii_txd_o[0];
-    assign rgmii_rx_ctl_i[1] = rgmii_tx_ctl_o[0];
+    word = size / ('b1 << op_size);
+    for(i = 0;i < word;i = i + 1) begin
+        read_addr(32'h0000 + i * (1 << op_size), read_data, op_size);
+        $display("%x", read_data);
+    end
+    // clear RX pending
+    write_addr(32'h1010, 32'd1, 32'b10);
+  endtask
 
-    assign rgmii_rx_clk_i[0] = rgmii_tx_clk_o[1];
-    assign rgmii_rxd_i[0]    = rgmii_txd_o[1];
-    assign rgmii_rx_ctl_i[0] = rgmii_tx_ctl_o[1];
+/*
+  // Set timeout
+  initial begin
+    #1000000
+    $fclose(tx_fd);
+    $fclose(rx_fd);
+    $display("Timeout");
+    $finish;
+  end
+*/
+  initial begin
+    write_en_o = 1'b0;
+    read_en_o = 1'b0;
 
+    @(negedge reset_clk125_i);
+    // test starts
+    send_packet(32'd128, 2'b10);
+    receive_packet(2);
+    for(int i = 0;i < 4096;i++)
+      @(posedge clk_i);
+    $display("Test completed");
+    $finish;
+  end
+endprogram
+
+
+module wrapper();
+  parameter data_width_p = 32;
+  localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p/8));
+  localparam addr_width_lp = 14;
+  initial begin
+    $dumpfile("dump.vcd");
+    $dumpvars;
+  end
+  bit clk_i;
+  bit reset_i;
+  bit clk250_i;
+  bit reset_clk250_i;
+
+  bit                         reset_clk125_lo;
+
+  logic [addr_width_lp-1:0]   addr_li;
+  logic                       write_en_li;
+  logic                       read_en_li;
+  logic [size_width_lp-1:0]   op_size_li;
+  logic [data_width_p-1:0]    write_data_li;
+  logic [data_width_p-1:0]    read_data_lo;
+
+  logic                       rx_interrupt_pending_lo;
+  logic                       tx_interrupt_pending_lo;
+
+  logic                       rgmii_rx_clk_li;
+  logic [3:0]                 rgmii_rxd_li;
+  logic                       rgmii_rx_ctl_li;
+  logic                       rgmii_tx_clk_lo;
+  logic [3:0]                 rgmii_txd_lo;
+  logic                       rgmii_tx_ctl_lo;
+
+  always #25 clk_i  = ~clk_i; // 20 MHZ
+  always #2  clk250_i = ~clk250_i; // 250 MHZ
+
+
+  user_signals #(
+     .data_width_p(data_width_p)
+  ) user_signals (
+     .clk_i(clk_i)
+    ,.reset_o(reset_i)
+    ,.clk250_i(clk250_i)
+    ,.reset_clk250_o(reset_clk250_i)
+    ,.reset_clk125_i(reset_clk125_lo)
+                            
+    ,.addr_o(addr_li)
+    ,.write_en_o(write_en_li)
+    ,.read_en_o(read_en_li)
+    ,.op_size_o(op_size_li)
+    ,.write_data_o(write_data_li)
+    ,.read_data_i(read_data_lo)
+                            
+    ,.rx_interrupt_pending_i(rx_interrupt_pending_lo)
+    ,.tx_interrupt_pending_i(tx_interrupt_pending_lo)
+                            
+  );
+
+  phy_nonsynth phy (
+     .rgmii_rx_clk_o(rgmii_rx_clk_li)
+    ,.rgmii_rxd_o(rgmii_rxd_li)
+    ,.rgmii_rx_ctl_o(rgmii_rx_ctl_li)
+    ,.rgmii_tx_clk_i(rgmii_tx_clk_lo)
+    ,.rgmii_txd_i(rgmii_txd_lo)
+    ,.rgmii_tx_ctl_i(rgmii_tx_ctl_lo)
+    ,.reset_clk125_i(reset_clk125_lo)
+    ,.speed_i(dut.mac.speed)
+  );
+
+  ethernet_controller #(
+     .data_width_p(data_width_p)
+  ) dut (
+     .clk_i(clk_i)
+    ,.reset_i(reset_i)
+    ,.clk250_i(clk250_i)
+    ,.reset_clk250_i(reset_clk250_i)
+    ,.reset_clk125_o(reset_clk125_lo)
+
+    ,.addr_i(addr_li)
+    ,.write_en_i(write_en_li)
+    ,.read_en_i(read_en_li)
+    ,.op_size_i(op_size_li)
+    ,.write_data_i(write_data_li)
+    ,.read_data_o(read_data_lo)
+
+    ,.rx_interrupt_pending_o(rx_interrupt_pending_lo)
+    ,.tx_interrupt_pending_o(tx_interrupt_pending_lo)
+
+    ,.rgmii_rx_clk_i(rgmii_rx_clk_li)
+    ,.rgmii_rxd_i(rgmii_rxd_li)
+    ,.rgmii_rx_ctl_i(rgmii_rx_ctl_li)
+    ,.rgmii_tx_clk_o(rgmii_tx_clk_lo)
+    ,.rgmii_txd_o(rgmii_txd_lo)
+    ,.rgmii_tx_ctl_o(rgmii_tx_ctl_lo)
+  );
 
 endmodule
+

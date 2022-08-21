@@ -8,9 +8,9 @@ module ethernet_controller #
     , localparam addr_width_lp = 14
 )
 (
-      input  logic                              clk_i
+      input  bit                                clk_i
     , input  logic                              reset_i
-    , input  logic                              clk250_i
+    , input  bit                                clk250_i
     , input  logic                              reset_clk250_i
     , output logic                              reset_clk125_o
 
@@ -24,10 +24,10 @@ module ethernet_controller #
     , output logic                              rx_interrupt_pending_o
     , output logic                              tx_interrupt_pending_o
 
-    , input  logic                              rgmii_rx_clk_i
+    , input  bit                                rgmii_rx_clk_i
     , input  logic [3:0]                        rgmii_rxd_i
     , input  logic                              rgmii_rx_ctl_i
-    , output logic                              rgmii_tx_clk_o
+    , output bit                                rgmii_tx_clk_o
     , output logic [3:0]                        rgmii_txd_o
     , output logic                              rgmii_tx_ctl_o
 );
@@ -242,7 +242,8 @@ module ethernet_controller #
 
      ,.ifg_delay(8'd12)
   );
-
+  wire rx_interrupt_lo;
+  wire tx_interrupt_lo;
   interrupt_control_unit interrupt_control_unit (
     .clk_i(clk_i)
    ,.reset_i(reset_i)
@@ -268,7 +269,7 @@ module ethernet_controller #
   // synopsys translate_off
   always_ff @(negedge clk_i) begin
     if(~reset_i) begin
-      assert(io_decode_error_lo == 0) else
+      assert(io_decode_error_lo == 1'b0) else
         $error("ethernet_controller.sv: io decode error\n");
     end
   end

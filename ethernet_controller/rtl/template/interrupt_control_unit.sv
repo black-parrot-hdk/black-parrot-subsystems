@@ -1,7 +1,7 @@
 
 module interrupt_control_unit (
 
-    input  logic    clk_i
+    input  bit      clk_i
   , input  logic    reset_i
   , input  logic    packet_avail_i
   , input  logic    packet_req_i
@@ -21,6 +21,7 @@ module interrupt_control_unit (
 
   logic rx_interrupt_enable_r;
   logic tx_interrupt_enable_r;
+  wire tx_interrupt_set_li;
 
   bsg_dff_reset_en #(.width_p(1))
     rx_interrupt_enable_reg (

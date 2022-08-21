@@ -45,7 +45,7 @@ module ethernet_control_unit #
     , localparam addr_width_lp        = 14
 )
 (
-      input  logic                              clk_i
+      input  bit                                clk_i
     , input  logic                              reset_i
 
     , input  logic [addr_width_lp-1:0]          addr_i
