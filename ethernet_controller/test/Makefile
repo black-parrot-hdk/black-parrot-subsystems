@@ -1,6 +1,5 @@
 .PHONY: all clean test view
 
-VCS := vcs
 
 TOP := $(shell git rev-parse --show-toplevel)
 export TEST_DIR     := $(TOP)/ethernet_controller/test
@@ -8,9 +7,6 @@ export SRC_DIR      := $(TOP)/ethernet_controller/rtl/asic/work
 export BASEJUMP_STL_DIR := $(TOP)/ethernet_controller/import/basejump_stl
 
 TOP_MODULE := wrapper
-CFLAGS := -I$(TEST_DIR)
-CFLAGS += -I$(BASEJUMP_STL_DIR)/bsg_test
-CFLAGS += -std=c++14
 
 VCS_OPTS := -full64
 VCS_OPTS += -f flist.vcs

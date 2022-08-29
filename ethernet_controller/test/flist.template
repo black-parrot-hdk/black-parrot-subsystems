@@ -24,6 +24,7 @@ $SRC_DIR/ssio_ddr_in.v
 $SRC_DIR/gtx_clk_and_phy_tx_clk_generator.sv
 $SRC_DIR/oddr_clock_downsample_and_right_shift.sv
 $SRC_DIR/rgmii_phy_if.v
+$SRC_DIR/arst_sync.sv
 
 $BASEJUMP_STL_DIR/bsg_link/bsg_link_oddr_phy.v
 $BASEJUMP_STL_DIR/bsg_link/bsg_link_iddr_phy.v
@@ -42,6 +43,7 @@ $BASEJUMP_STL_DIR/bsg_misc/bsg_dff_en_bypass.v
 $BASEJUMP_STL_DIR/bsg_misc/bsg_dff_reset.v
 $BASEJUMP_STL_DIR/bsg_misc/bsg_dff_reset_set_clear.v
 $BASEJUMP_STL_DIR/bsg_misc/bsg_dff_reset_en.v
+$BASEJUMP_STL_DIR/bsg_misc/bsg_dff_async_reset.v
 $BASEJUMP_STL_DIR/bsg_misc/bsg_counter_up_down.v
 $BASEJUMP_STL_DIR/bsg_misc/bsg_decode.v
 $BASEJUMP_STL_DIR/bsg_misc/bsg_mux_one_hot.v
@@ -54,3 +56,6 @@ $BASEJUMP_STL_DIR/bsg_mem/bsg_mem_1rw_sync_mask_write_byte.v
 $BASEJUMP_STL_DIR/bsg_mem/bsg_mem_1rw_sync_mask_write_byte_synth.v
 $BASEJUMP_STL_DIR/bsg_mem/bsg_mem_1rw_sync.v
 $BASEJUMP_STL_DIR/bsg_mem/bsg_mem_1rw_sync_synth.v
+$BASEJUMP_STL_DIR/bsg_async/bsg_async_fifo.v
+$BASEJUMP_STL_DIR/bsg_async/bsg_launch_sync_sync.v
+$BASEJUMP_STL_DIR/bsg_async/bsg_async_ptr_gray.v

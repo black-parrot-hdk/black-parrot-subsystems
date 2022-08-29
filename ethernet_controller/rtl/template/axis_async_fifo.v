@@ -161,34 +161,37 @@ localparam WIDTH       = USER_OFFSET + (USER_ENABLE ? USER_WIDTH : 0);
 
 reg [ADDR_WIDTH:0] wr_ptr_reg;
 reg [ADDR_WIDTH:0] wr_ptr_cur_reg;
+reg [ADDR_WIDTH:0] wr_ptr_gray_reg_n;
 reg [ADDR_WIDTH:0] wr_ptr_gray_reg;
 reg [ADDR_WIDTH:0] wr_ptr_sync_gray_reg;
 reg [ADDR_WIDTH:0] wr_ptr_cur_gray_reg;
 reg [ADDR_WIDTH:0] rd_ptr_reg;
+reg [ADDR_WIDTH:0] rd_ptr_gray_reg_n;
 reg [ADDR_WIDTH:0] rd_ptr_gray_reg;
 
 reg [ADDR_WIDTH:0] wr_ptr_temp;
-reg [ADDR_WIDTH:0] rd_ptr_temp;
+wire [ADDR_WIDTH:0] rd_ptr_inc;
 
 reg [ADDR_WIDTH:0] wr_ptr_gray_sync1_reg;
 reg [ADDR_WIDTH:0] wr_ptr_gray_sync2_reg;
-reg [ADDR_WIDTH:0] rd_ptr_gray_sync1_reg;
-reg [ADDR_WIDTH:0] rd_ptr_gray_sync2_reg;
+//reg [ADDR_WIDTH:0] rd_ptr_gray_sync1_reg;
+wire [ADDR_WIDTH:0] rd_ptr_gray_sync2_reg;
 
 reg wr_ptr_update_valid_reg;
+reg wr_ptr_update_reg_n;
 reg wr_ptr_update_reg;
-reg wr_ptr_update_sync1_reg;
+//reg wr_ptr_update_sync1_reg;
 reg wr_ptr_update_sync2_reg;
-reg wr_ptr_update_sync3_reg;
-reg wr_ptr_update_ack_sync1_reg;
+wire wr_ptr_update_sync3_reg;
+//reg wr_ptr_update_ack_sync1_reg;
 reg wr_ptr_update_ack_sync2_reg;
 
-reg s_rst_sync1_reg;
-reg s_rst_sync2_reg;
-reg s_rst_sync3_reg;
-reg m_rst_sync1_reg;
-reg m_rst_sync2_reg;
-reg m_rst_sync3_reg;
+//reg s_rst_sync1_reg;
+//reg s_rst_sync2_reg;
+wire s_rst_sync3_reg;
+//reg m_rst_sync1_reg;
+//reg m_rst_sync2_reg;
+wire m_rst_sync3_reg;
 
 reg [WIDTH-1:0] mem[(2**ADDR_WIDTH)-1:0];
 reg [WIDTH-1:0] mem_read_data_reg;
@@ -207,11 +210,6 @@ wire empty = rd_ptr_gray_reg == (FRAME_FIFO ? wr_ptr_gray_sync1_reg : wr_ptr_gra
 // overflow within packet
 wire full_wr = wr_ptr_reg == (wr_ptr_cur_reg ^ {1'b1, {ADDR_WIDTH{1'b0}}});
 
-// control signals
-reg write;
-reg read;
-reg store_output;
-
 reg s_frame_reg;
 reg m_frame_reg;
 
@@ -224,16 +222,21 @@ reg good_frame_reg;
 reg m_drop_frame_reg;
 reg m_terminate_frame_reg;
 
+reg overflow_sync1_reg_n;
 reg overflow_sync1_reg;
-reg overflow_sync2_reg;
+//reg overflow_sync2_reg;
 reg overflow_sync3_reg;
 reg overflow_sync4_reg;
+
+reg bad_frame_sync1_reg_n;
 reg bad_frame_sync1_reg;
-reg bad_frame_sync2_reg;
+//reg bad_frame_sync2_reg;
 reg bad_frame_sync3_reg;
 reg bad_frame_sync4_reg;
+
+reg good_frame_sync1_reg_n;
 reg good_frame_sync1_reg;
-reg good_frame_sync2_reg;
+//reg good_frame_sync2_reg;
 reg good_frame_sync3_reg;
 reg good_frame_sync4_reg;
 
@@ -274,7 +277,9 @@ assign m_status_overflow = overflow_sync3_reg ^ overflow_sync4_reg;
 assign m_status_bad_frame = bad_frame_sync3_reg ^ bad_frame_sync4_reg;
 assign m_status_good_frame = good_frame_sync3_reg ^ good_frame_sync4_reg;
 
+
 // reset synchronization
+/*
 always @(posedge m_clk or posedge m_rst) begin
     if (m_rst) begin
         s_rst_sync1_reg <= 1'b1;
@@ -287,7 +292,23 @@ always @(posedge s_clk) begin
     s_rst_sync2_reg <= s_rst_sync1_reg;
     s_rst_sync3_reg <= s_rst_sync2_reg;
 end
+*/
+wire s_rst_sync_oclk_data_lo;
+bsg_launch_sync_sync #(
+   .width_p(1)
+  ,.use_negedge_for_launch_p(0)
+  ,.use_async_reset_p(1)
+) s_rst_sync (
+   .iclk_i(m_clk)
+  ,.iclk_reset_i(m_rst)
+  ,.oclk_i(s_clk)
+  ,.iclk_data_i(1'b1)
+  ,.iclk_data_o() // UNUSED
+  ,.oclk_data_o(s_rst_sync_oclk_data_lo)
+);
+assign s_rst_sync3_reg = ~s_rst_sync_oclk_data_lo;
 
+/*
 always @(posedge s_clk or posedge s_rst) begin
     if (s_rst) begin
         m_rst_sync1_reg <= 1'b1;
@@ -300,6 +321,21 @@ always @(posedge m_clk) begin
     m_rst_sync2_reg <= m_rst_sync1_reg;
     m_rst_sync3_reg <= m_rst_sync2_reg;
 end
+*/
+wire m_rst_sync_oclk_data_lo;
+bsg_launch_sync_sync #(
+   .width_p(1)
+  ,.use_negedge_for_launch_p(0)
+  ,.use_async_reset_p(1)
+) m_rst_sync (
+   .iclk_i(s_clk)
+  ,.iclk_reset_i(s_rst)
+  ,.oclk_i(m_clk)
+  ,.iclk_data_i(1'b1)
+  ,.iclk_data_o() // UNUSED
+  ,.oclk_data_o(m_rst_sync_oclk_data_lo)
+);
+assign m_rst_sync3_reg = ~m_rst_sync_oclk_data_lo;
 
 // Write logic
 always @(posedge s_clk) begin
@@ -313,7 +349,6 @@ always @(posedge s_clk) begin
             // no sync in progress; sync update
             wr_ptr_update_valid_reg <= 1'b0;
             wr_ptr_sync_gray_reg <= wr_ptr_gray_reg;
-            wr_ptr_update_reg <= !wr_ptr_update_ack_sync2_reg;
         end
     end
 
@@ -348,7 +383,7 @@ always @(posedge s_clk) begin
                 // update pointers
                 wr_ptr_temp = wr_ptr_reg + 1;
                 wr_ptr_reg <= wr_ptr_temp;
-                wr_ptr_gray_reg <= wr_ptr_temp ^ (wr_ptr_temp >> 1);
+//                wr_ptr_gray_reg <= wr_ptr_temp ^ (wr_ptr_temp >> 1);
             end
         end else if ((full_cur && DROP_WHEN_FULL) || (full_wr && DROP_OVERSIZE_FRAME) || drop_frame_reg) begin
             // full, packet overflow, or currently dropping frame
@@ -380,13 +415,12 @@ always @(posedge s_clk) begin
                     // good packet or packet overflow, update write pointer
                     wr_ptr_temp = wr_ptr_cur_reg + 1;
                     wr_ptr_reg <= wr_ptr_temp;
-                    wr_ptr_gray_reg <= wr_ptr_temp ^ (wr_ptr_temp >> 1);
+  //                  wr_ptr_gray_reg <= wr_ptr_temp ^ (wr_ptr_temp >> 1);
 
                     if (wr_ptr_update_reg == wr_ptr_update_ack_sync2_reg) begin
                         // no sync in progress; sync update
                         wr_ptr_update_valid_reg <= 1'b0;
                         wr_ptr_sync_gray_reg <= wr_ptr_temp ^ (wr_ptr_temp >> 1);
-                        wr_ptr_update_reg <= !wr_ptr_update_ack_sync2_reg;
                     end else begin
                         // sync in progress; flag it for later
                         wr_ptr_update_valid_reg <= 1'b1;
@@ -402,13 +436,12 @@ always @(posedge s_clk) begin
         send_frame_reg <= 1'b1;
         wr_ptr_temp = wr_ptr_cur_reg;
         wr_ptr_reg <= wr_ptr_temp;
-        wr_ptr_gray_reg <= wr_ptr_temp ^ (wr_ptr_temp >> 1);
+//        wr_ptr_gray_reg <= wr_ptr_temp ^ (wr_ptr_temp >> 1);
 
         if (wr_ptr_update_reg == wr_ptr_update_ack_sync2_reg) begin
             // no sync in progress; sync update
             wr_ptr_update_valid_reg <= 1'b0;
             wr_ptr_sync_gray_reg <= wr_ptr_temp ^ (wr_ptr_temp >> 1);
-            wr_ptr_update_reg <= !wr_ptr_update_ack_sync2_reg;
         end else begin
             // sync in progress; flag it for later
             wr_ptr_update_valid_reg <= 1'b1;
@@ -418,23 +451,21 @@ always @(posedge s_clk) begin
     if (s_rst_sync3_reg) begin
         wr_ptr_reg <= {ADDR_WIDTH+1{1'b0}};
         wr_ptr_cur_reg <= {ADDR_WIDTH+1{1'b0}};
-        wr_ptr_gray_reg <= {ADDR_WIDTH+1{1'b0}};
+//        wr_ptr_gray_reg <= {ADDR_WIDTH+1{1'b0}};
         wr_ptr_sync_gray_reg <= {ADDR_WIDTH+1{1'b0}};
         wr_ptr_cur_gray_reg <= {ADDR_WIDTH+1{1'b0}};
 
         wr_ptr_update_valid_reg <= 1'b0;
-        wr_ptr_update_reg <= 1'b0;
     end
 
     if (s_rst) begin
         wr_ptr_reg <= {ADDR_WIDTH+1{1'b0}};
         wr_ptr_cur_reg <= {ADDR_WIDTH+1{1'b0}};
-        wr_ptr_gray_reg <= {ADDR_WIDTH+1{1'b0}};
+//        wr_ptr_gray_reg <= {ADDR_WIDTH+1{1'b0}};
         wr_ptr_sync_gray_reg <= {ADDR_WIDTH+1{1'b0}};
         wr_ptr_cur_gray_reg <= {ADDR_WIDTH+1{1'b0}};
 
         wr_ptr_update_valid_reg <= 1'b0;
-        wr_ptr_update_reg <= 1'b0;
 
         s_frame_reg <= 1'b0;
 
@@ -448,82 +479,195 @@ end
 
 // pointer synchronization
 always @(posedge s_clk) begin
-    rd_ptr_gray_sync1_reg <= rd_ptr_gray_reg;
-    rd_ptr_gray_sync2_reg <= rd_ptr_gray_sync1_reg;
-    wr_ptr_update_ack_sync1_reg <= wr_ptr_update_sync3_reg;
-    wr_ptr_update_ack_sync2_reg <= wr_ptr_update_ack_sync1_reg;
+//    rd_ptr_gray_sync1_reg <= rd_ptr_gray_reg;
+//    rd_ptr_gray_sync2_reg <= rd_ptr_gray_sync1_reg;
+//    wr_ptr_update_ack_sync1_reg <= wr_ptr_update_sync3_reg;
+//    wr_ptr_update_ack_sync2_reg <= wr_ptr_update_ack_sync1_reg;
 
     if (s_rst) begin
-        rd_ptr_gray_sync1_reg <= {ADDR_WIDTH+1{1'b0}};
-        rd_ptr_gray_sync2_reg <= {ADDR_WIDTH+1{1'b0}};
-        wr_ptr_update_ack_sync1_reg <= 1'b0;
-        wr_ptr_update_ack_sync2_reg <= 1'b0;
+//        rd_ptr_gray_sync1_reg <= {ADDR_WIDTH+1{1'b0}};
+//        rd_ptr_gray_sync2_reg <= {ADDR_WIDTH+1{1'b0}};
+//        wr_ptr_update_ack_sync1_reg <= 1'b0;
+//        wr_ptr_update_ack_sync2_reg <= 1'b0;
     end
 end
 
+bsg_launch_sync_sync #(
+   .width_p(ADDR_WIDTH + 1)
+  ,.use_negedge_for_launch_p(0)
+  ,.use_async_reset_p(0)
+) rd_ptr_gray_reg_sync (
+   .iclk_i(m_clk)
+  ,.iclk_reset_i(m_rst)
+  ,.oclk_i(s_clk)
+  ,.iclk_data_i(rd_ptr_gray_reg_n)
+  ,.iclk_data_o(rd_ptr_gray_reg)
+  ,.oclk_data_o(rd_ptr_gray_sync2_reg)
+);
+
 always @(posedge m_clk) begin
     if (!FRAME_FIFO) begin
-        wr_ptr_gray_sync1_reg <= wr_ptr_gray_reg;
+//        wr_ptr_gray_sync1_reg <= wr_ptr_gray_reg;
     end else if (wr_ptr_update_sync2_reg ^ wr_ptr_update_sync3_reg) begin
         wr_ptr_gray_sync1_reg <= wr_ptr_sync_gray_reg;
     end
-    wr_ptr_gray_sync2_reg <= wr_ptr_gray_sync1_reg;
-    wr_ptr_update_sync1_reg <= wr_ptr_update_reg;
-    wr_ptr_update_sync2_reg <= wr_ptr_update_sync1_reg;
-    wr_ptr_update_sync3_reg <= wr_ptr_update_sync2_reg;
+//    wr_ptr_gray_sync2_reg <= wr_ptr_gray_sync1_reg;
+//    wr_ptr_update_sync1_reg <= wr_ptr_update_reg;
+//    wr_ptr_update_sync2_reg <= wr_ptr_update_sync1_reg;
+//    wr_ptr_update_sync3_reg <= wr_ptr_update_sync2_reg;
 
     if (FRAME_FIFO && m_rst_sync3_reg) begin
         wr_ptr_gray_sync1_reg <= {ADDR_WIDTH+1{1'b0}};
     end
 
     if (m_rst) begin
-        wr_ptr_gray_sync1_reg <= {ADDR_WIDTH+1{1'b0}};
-        wr_ptr_gray_sync2_reg <= {ADDR_WIDTH+1{1'b0}};
-        wr_ptr_update_sync1_reg <= 1'b0;
-        wr_ptr_update_sync2_reg <= 1'b0;
-        wr_ptr_update_sync3_reg <= 1'b0;
+//        wr_ptr_gray_sync1_reg <= {ADDR_WIDTH+1{1'b0}};
+//        wr_ptr_gray_sync2_reg <= {ADDR_WIDTH+1{1'b0}};
+//        wr_ptr_update_sync1_reg <= 1'b0;
+//        wr_ptr_update_sync2_reg <= 1'b0;
+//        wr_ptr_update_sync3_reg <= 1'b0;
     end
 end
 
+if (FRAME_FIFO == 0) begin: frameless
+
+  bsg_launch_sync_sync #(
+     .width_p(ADDR_WIDTH + 1)
+    ,.use_negedge_for_launch_p(0)
+    ,.use_async_reset_p(0)
+  ) wr_ptr_gray_reg_sync (
+     .iclk_i(s_clk)
+    ,.iclk_reset_i(s_rst)
+    ,.oclk_i(m_clk)
+    ,.iclk_data_i(wr_ptr_gray_reg_n)
+    ,.iclk_data_o(wr_ptr_gray_reg)
+    ,.oclk_data_o(wr_ptr_gray_sync2_reg)
+  );
+
+end else begin: frame
+
+  always @(posedge s_clk) begin
+    if(s_rst) begin
+      wr_ptr_gray_reg <= '0;
+    end else begin
+      wr_ptr_gray_reg <= wr_ptr_gray_reg_n;
+    end
+  end
+
+end
+bsg_launch_sync_sync #(
+   .width_p(1)
+  ,.use_negedge_for_launch_p(0)
+  ,.use_async_reset_p(0)
+) wr_ptr_update_reg_sync (
+   .iclk_i(s_clk)
+  ,.iclk_reset_i(s_rst)
+  ,.oclk_i(m_clk)
+  ,.iclk_data_i(wr_ptr_update_reg_n)
+  ,.iclk_data_o(wr_ptr_update_reg)
+  ,.oclk_data_o(wr_ptr_update_sync2_reg)
+);
+
+bsg_launch_sync_sync #(
+   .width_p(1)
+  ,.use_negedge_for_launch_p(0)
+  ,.use_async_reset_p(0)
+) wr_ptr_update_reg_ack_sync (
+   .iclk_i(m_clk)
+  ,.iclk_reset_i(m_rst)
+  ,.oclk_i(s_clk)
+  ,.iclk_data_i(wr_ptr_update_sync2_reg)
+  ,.iclk_data_o(wr_ptr_update_sync3_reg)
+  ,.oclk_data_o(wr_ptr_update_ack_sync2_reg)
+);
+
+
 // status synchronization
 always @(posedge s_clk) begin
-    overflow_sync1_reg <= overflow_sync1_reg ^ overflow_reg;
-    bad_frame_sync1_reg <= bad_frame_sync1_reg ^ bad_frame_reg;
-    good_frame_sync1_reg <= good_frame_sync1_reg ^ good_frame_reg;
+//    overflow_sync1_reg <= overflow_sync1_reg ^ overflow_reg;
+//    bad_frame_sync1_reg <= bad_frame_sync1_reg ^ bad_frame_reg;
+//    good_frame_sync1_reg <= good_frame_sync1_reg ^ good_frame_reg;
 
     if (s_rst) begin
-        overflow_sync1_reg <= 1'b0;
-        bad_frame_sync1_reg <= 1'b0;
-        good_frame_sync1_reg <= 1'b0;
+//        overflow_sync1_reg <= 1'b0;
+//        bad_frame_sync1_reg <= 1'b0;
+//        good_frame_sync1_reg <= 1'b0;
     end
 end
 
 always @(posedge m_clk) begin
-    overflow_sync2_reg <= overflow_sync1_reg;
-    overflow_sync3_reg <= overflow_sync2_reg;
+//    overflow_sync2_reg <= overflow_sync1_reg;
+//    overflow_sync3_reg <= overflow_sync2_reg;
     overflow_sync4_reg <= overflow_sync3_reg;
-    bad_frame_sync2_reg <= bad_frame_sync1_reg;
-    bad_frame_sync3_reg <= bad_frame_sync2_reg;
+
+//    bad_frame_sync2_reg <= bad_frame_sync1_reg;
+//    bad_frame_sync3_reg <= bad_frame_sync2_reg;
     bad_frame_sync4_reg <= bad_frame_sync3_reg;
-    good_frame_sync2_reg <= good_frame_sync1_reg;
-    good_frame_sync3_reg <= good_frame_sync2_reg;
+
+//    good_frame_sync2_reg <= good_frame_sync1_reg;
+//    good_frame_sync3_reg <= good_frame_sync2_reg;
     good_frame_sync4_reg <= good_frame_sync3_reg;
 
     if (m_rst) begin
-        overflow_sync2_reg <= 1'b0;
-        overflow_sync3_reg <= 1'b0;
+//        overflow_sync2_reg <= 1'b0;
+//        overflow_sync3_reg <= 1'b0;
         overflow_sync4_reg <= 1'b0;
-        bad_frame_sync2_reg <= 1'b0;
-        bad_frame_sync3_reg <= 1'b0;
+
+//        bad_frame_sync2_reg <= 1'b0;
+//        bad_frame_sync3_reg <= 1'b0;
         bad_frame_sync4_reg <= 1'b0;
-        good_frame_sync2_reg <= 1'b0;
-        good_frame_sync3_reg <= 1'b0;
+
+//        good_frame_sync2_reg <= 1'b0;
+//        good_frame_sync3_reg <= 1'b0;
         good_frame_sync4_reg <= 1'b0;
     end
 end
 
+assign overflow_sync1_reg_n   = overflow_sync1_reg ^ overflow_reg;
+assign bad_frame_sync1_reg_n  = bad_frame_sync1_reg ^ bad_frame_reg;
+assign good_frame_sync1_reg_n = good_frame_sync1_reg ^ good_frame_reg;
+bsg_launch_sync_sync #(
+   .width_p(1)
+  ,.use_negedge_for_launch_p(0)
+  ,.use_async_reset_p(0)
+) overflow_reg_sync (
+   .iclk_i(s_clk)
+  ,.iclk_reset_i(s_rst)
+  ,.oclk_i(m_clk)
+  ,.iclk_data_i(overflow_sync1_reg_n)
+  ,.iclk_data_o(overflow_sync1_reg)
+  ,.oclk_data_o(overflow_sync3_reg)
+);
+bsg_launch_sync_sync #(
+   .width_p(1)
+  ,.use_negedge_for_launch_p(0)
+  ,.use_async_reset_p(0)
+) bad_frame_reg_sync (
+   .iclk_i(s_clk)
+  ,.iclk_reset_i(s_rst)
+  ,.oclk_i(m_clk)
+  ,.iclk_data_i(bad_frame_sync1_reg_n)
+  ,.iclk_data_o(bad_frame_sync1_reg)
+  ,.oclk_data_o(bad_frame_sync3_reg)
+);
+bsg_launch_sync_sync #(
+   .width_p(1)
+  ,.use_negedge_for_launch_p(0)
+  ,.use_async_reset_p(0)
+) good_frame_reg_sync (
+   .iclk_i(s_clk)
+  ,.iclk_reset_i(s_rst)
+  ,.oclk_i(m_clk)
+  ,.iclk_data_i(good_frame_sync1_reg_n)
+  ,.iclk_data_o(good_frame_sync1_reg)
+  ,.oclk_data_o(good_frame_sync3_reg)
+);
+
+
 // Read logic
 integer j;
+
+assign rd_ptr_inc = rd_ptr_reg + (ADDR_WIDTH+1)'(1'b1);
 
 always @(posedge m_clk) begin
     if (m_axis_tready) begin
@@ -548,9 +692,7 @@ always @(posedge m_clk) begin
         if (!empty && !m_rst_sync3_reg && !m_drop_frame_reg) begin
             // not empty, increment pointer
             m_axis_tvalid_pipe_reg[0] <= 1'b1;
-            rd_ptr_temp = rd_ptr_reg + 1;
-            rd_ptr_reg <= rd_ptr_temp;
-            rd_ptr_gray_reg <= rd_ptr_temp ^ (rd_ptr_temp >> 1);
+            rd_ptr_reg <= rd_ptr_inc;
         end
     end
 
@@ -588,16 +730,80 @@ always @(posedge m_clk) begin
 
     if (m_rst_sync3_reg) begin
         rd_ptr_reg <= {ADDR_WIDTH+1{1'b0}};
-        rd_ptr_gray_reg <= {ADDR_WIDTH+1{1'b0}};
     end
 
     if (m_rst) begin
         rd_ptr_reg <= {ADDR_WIDTH+1{1'b0}};
-        rd_ptr_gray_reg <= {ADDR_WIDTH+1{1'b0}};
         m_axis_tvalid_pipe_reg <= {PIPELINE_OUTPUT{1'b0}};
         m_frame_reg <= 1'b0;
         m_drop_frame_reg <= 1'b0;
         m_terminate_frame_reg <= 1'b0;
+    end
+end
+
+// Comb logic for rd_ptr_gray_reg (w_clk)
+always @(*) begin
+    rd_ptr_gray_reg_n = rd_ptr_gray_reg;
+    if(m_rst_sync3_reg) begin
+        rd_ptr_gray_reg_n = {ADDR_WIDTH+1{1'b0}};
+    end else if (m_axis_tready || ~m_axis_tvalid_pipe_reg) begin
+        // output ready or bubble in pipeline; read new data from FIFO
+        if (!empty && !m_rst_sync3_reg && !m_drop_frame_reg) begin
+            // not empty, increment pointer
+            rd_ptr_gray_reg_n = rd_ptr_inc ^ ((rd_ptr_inc) >> 1);
+        end
+    end
+end
+// Comb logic for wr_ptr_update_reg, wr_ptr_gray_reg (s_clk)
+always @(*) begin
+    wr_ptr_update_reg_n = wr_ptr_update_reg;
+    wr_ptr_gray_reg_n = wr_ptr_gray_reg;
+    if (FRAME_FIFO && wr_ptr_update_valid_reg) begin
+        // have updated pointer to sync
+        if (wr_ptr_update_reg == wr_ptr_update_ack_sync2_reg) begin
+            // no sync in progress; sync update
+            wr_ptr_update_reg_n = !wr_ptr_update_ack_sync2_reg;
+        end
+    end
+
+    if (s_axis_tready && s_axis_tvalid) begin
+        // transfer in
+        if (!FRAME_FIFO) begin
+            // normal FIFO mode
+            if (drop_frame_reg && LAST_ENABLE) begin
+            end else begin
+                // update pointers
+                wr_ptr_gray_reg_n = (wr_ptr_reg + 1) ^ ((wr_ptr_reg + 1) >> 1);
+            end
+
+        end else if ((full_cur && DROP_WHEN_FULL) || (full_wr && DROP_OVERSIZE_FRAME) || drop_frame_reg) begin
+        end else begin
+            if (s_axis_tlast || (!DROP_OVERSIZE_FRAME && (full_wr || send_frame_reg))) begin
+                // end of frame or send frame
+                if (s_axis_tlast && DROP_BAD_FRAME && USER_BAD_FRAME_MASK & ~(s_axis_tuser ^ USER_BAD_FRAME_VALUE)) begin
+                    // bad packet, reset write pointer
+                end else begin
+                    // good packet or packet overflow, update write pointer
+                    wr_ptr_gray_reg_n = (wr_ptr_cur_reg + 1) ^ ((wr_ptr_cur_reg + 1) >> 1);
+                    if (wr_ptr_update_reg == wr_ptr_update_ack_sync2_reg) begin
+                        // no sync in progress; sync update
+                        wr_ptr_update_reg_n = !wr_ptr_update_ack_sync2_reg;
+                    end
+                end
+            end
+        end
+    end else if (s_axis_tvalid && full_wr && FRAME_FIFO && !DROP_OVERSIZE_FRAME) begin
+        // data valid with packet overflow
+        // update write pointer
+        wr_ptr_gray_reg_n = (wr_ptr_cur_reg) ^ ((wr_ptr_cur_reg) >> 1);
+        if (wr_ptr_update_reg == wr_ptr_update_ack_sync2_reg) begin
+            // no sync in progress; sync update
+            wr_ptr_update_reg_n = !wr_ptr_update_ack_sync2_reg;
+        end
+    end
+    if (s_rst_sync3_reg) begin
+        wr_ptr_update_reg_n = 1'b0;
+        wr_ptr_gray_reg_n = {ADDR_WIDTH+1{1'b0}};
     end
 end
 

@@ -3,8 +3,6 @@
 `include "bsg_defines.v"
 
 `timescale 1ns/1ps
-`define TEST_SIZE 100
-`define SEED 0
 
 
 program user_signals #(
@@ -124,7 +122,8 @@ program user_signals #(
     end
     read_addr(32'h1004, size, 32'b10);
     assert((size % ('b1 << op_size)) == 0);
-    $display("Received packet size:\n0x%x\n", size);
+    $display("RX received packet size: 0x%x", size);
+    $display("The recieved packet:");
 
     word = size / ('b1 << op_size);
     for(i = 0;i < word;i = i + 1) begin
