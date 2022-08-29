@@ -205,6 +205,9 @@ generate
     logic [buffer_mem_addr_width_lp-1:0] selected_addr_lo;
     wire v_li = per_slot_data_reading | per_slot_data_writing;
     wire w_li = per_slot_data_writing;
+    wire read_en = v_li & ~w_li;
+    logic read_en_r;
+    logic [data_width_p-1:0] data_out;
 
     bsg_mux_one_hot #(
         .width_p(buffer_mem_addr_width_lp)
@@ -218,7 +221,7 @@ generate
     bsg_mem_1rw_sync_mask_write_byte #(
         .els_p(buffer_mem_els_lp)
        ,.data_width_p(data_width_p)
-       ,.latch_last_read_p(1)
+       ,.latch_last_read_p(0)
       ) buffer_mem (
         .clk_i(clk_i)
        ,.reset_i(reset_i)
@@ -227,6 +230,22 @@ generate
        ,.addr_i(selected_addr_lo)
        ,.data_i(packet_wdata_i)
        ,.write_mask_i(write_mask_li)
+       ,.data_o(data_out)
+      );
+
+    bsg_dff #(
+        .width_p(1)
+      ) read_en_dff (
+        .clk_i(clk_i)
+       ,.data_i(read_en)
+       ,.data_o(read_en_r)
+      );
+    bsg_dff_en_bypass #(
+        .width_p(data_width_p)
+      ) dff_bypass (
+        .clk_i(clk_i)
+       ,.en_i(read_en_r)
+       ,.data_i(data_out)
        ,.data_o(read_data_r_lo[i])
       );
 
