@@ -25,6 +25,7 @@ $SRC_DIR/gtx_clk_and_phy_tx_clk_generator.sv
 $SRC_DIR/oddr_clock_downsample_and_right_shift.sv
 $SRC_DIR/rgmii_phy_if.v
 $SRC_DIR/arst_sync.sv
+$SRC_DIR/mem_1r1w_sync_fpga.sv
 
 $BASEJUMP_STL_DIR/bsg_link/bsg_link_oddr_phy.v
 $BASEJUMP_STL_DIR/bsg_link/bsg_link_iddr_phy.v

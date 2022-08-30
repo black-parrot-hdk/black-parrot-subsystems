@@ -159,6 +159,8 @@ localparam DEST_OFFSET = ID_OFFSET   + (ID_ENABLE   ? ID_WIDTH   : 0);
 localparam USER_OFFSET = DEST_OFFSET + (DEST_ENABLE ? DEST_WIDTH : 0);
 localparam WIDTH       = USER_OFFSET + (USER_ENABLE ? USER_WIDTH : 0);
 
+parameter PORTS = "";
+
 reg [ADDR_WIDTH:0] wr_ptr_reg;
 reg [ADDR_WIDTH:0] wr_ptr_cur_reg;
 reg [ADDR_WIDTH:0] wr_ptr_gray_reg_n;
@@ -193,13 +195,53 @@ wire s_rst_sync3_reg;
 //reg m_rst_sync2_reg;
 wire m_rst_sync3_reg;
 
-reg [WIDTH-1:0] mem[(2**ADDR_WIDTH)-1:0];
-reg [WIDTH-1:0] mem_read_data_reg;
-
 wire [WIDTH-1:0] s_axis;
 
-reg [WIDTH-1:0] m_axis_pipe_reg[PIPELINE_OUTPUT-1:0];
+//reg [WIDTH-1:0] m_axis_pipe_reg[PIPELINE_OUTPUT-1:0];
 reg [PIPELINE_OUTPUT-1:0] m_axis_tvalid_pipe_reg;
+
+reg                   mem_w_v_li;
+wire [ADDR_WIDTH-1:0] mem_w_addr_li = wr_ptr_cur_reg[ADDR_WIDTH-1:0];
+wire [WIDTH-1:0]      mem_w_data_li = s_axis;
+reg                   mem_r_v_li;
+wire [ADDR_WIDTH-1:0] mem_r_addr_li = rd_ptr_reg[ADDR_WIDTH-1:0];
+wire [WIDTH-1:0]      mem_r_data_lo;
+
+
+//reg [WIDTH-1:0] mem[(2**ADDR_WIDTH)-1:0];
+if (PORTS == "gf_14") begin: gf_14
+mem_1r1w_sync #(
+   .width_p(WIDTH)
+  ,.els_p(2**ADDR_WIDTH)
+) mem (
+   .w_clk_i(s_clk)
+  ,.w_v_i(mem_w_v_li)
+  ,.w_addr_i(mem_w_addr_li)
+  ,.w_data_i(mem_w_data_li)
+  ,.r_clk_i(m_clk)
+  ,.r_v_i(mem_r_v_li)
+  ,.r_addr_i(mem_r_addr_li)
+  ,.r_data_o(mem_r_data_lo)
+);
+end else begin: xilinx
+
+mem_1r1w_sync_fpga #(
+   .width_p(WIDTH)
+  ,.els_p(2**ADDR_WIDTH)
+  ,.pipeline_output_p(PIPELINE_OUTPUT)
+) mem (
+   .w_clk_i(s_clk)
+  ,.w_v_i(mem_w_v_li)
+  ,.w_addr_i(mem_w_addr_li)
+  ,.w_data_i(mem_w_data_li)
+  ,.r_clk_i(m_clk)
+  ,.r_v_i(mem_r_v_li)
+  ,.r_addr_i(mem_r_addr_li)
+  ,.r_data_o(mem_r_data_lo)
+  ,.output_ready_i(m_axis_tready)
+  ,.valid_pipe_reg_i(m_axis_tvalid_pipe_reg)
+);
+end
 
 // full when first TWO MSBs do NOT match, but rest matches
 // (gray code equivalent of first MSB different but rest same)
@@ -253,12 +295,12 @@ endgenerate
 
 wire                   m_axis_tvalid_pipe = m_axis_tvalid_pipe_reg[PIPELINE_OUTPUT-1];
 
-wire [DATA_WIDTH-1:0]  m_axis_tdata_pipe  = m_axis_pipe_reg[PIPELINE_OUTPUT-1][DATA_WIDTH-1:0];
-wire [KEEP_WIDTH-1:0]  m_axis_tkeep_pipe  = KEEP_ENABLE ? m_axis_pipe_reg[PIPELINE_OUTPUT-1][KEEP_OFFSET +: KEEP_WIDTH] : {KEEP_WIDTH{1'b1}};
-wire                   m_axis_tlast_pipe  = LAST_ENABLE ? m_axis_pipe_reg[PIPELINE_OUTPUT-1][LAST_OFFSET] : 1'b1;
-wire [ID_WIDTH-1:0]    m_axis_tid_pipe    = ID_ENABLE   ? m_axis_pipe_reg[PIPELINE_OUTPUT-1][ID_OFFSET +: ID_WIDTH] : {ID_WIDTH{1'b0}};
-wire [DEST_WIDTH-1:0]  m_axis_tdest_pipe  = DEST_ENABLE ? m_axis_pipe_reg[PIPELINE_OUTPUT-1][DEST_OFFSET +: DEST_WIDTH] : {DEST_WIDTH{1'b0}};
-wire [USER_WIDTH-1:0]  m_axis_tuser_pipe  = USER_ENABLE ? m_axis_pipe_reg[PIPELINE_OUTPUT-1][USER_OFFSET +: USER_WIDTH] : {USER_WIDTH{1'b0}};
+wire [DATA_WIDTH-1:0]  m_axis_tdata_pipe  = mem_r_data_lo[DATA_WIDTH-1:0];
+wire [KEEP_WIDTH-1:0]  m_axis_tkeep_pipe  = KEEP_ENABLE ? mem_r_data_lo[KEEP_OFFSET +: KEEP_WIDTH] : {KEEP_WIDTH{1'b1}};
+wire                   m_axis_tlast_pipe  = LAST_ENABLE ? mem_r_data_lo[LAST_OFFSET] : 1'b1;
+wire [ID_WIDTH-1:0]    m_axis_tid_pipe    = ID_ENABLE   ? mem_r_data_lo[ID_OFFSET +: ID_WIDTH] : {ID_WIDTH{1'b0}};
+wire [DEST_WIDTH-1:0]  m_axis_tdest_pipe  = DEST_ENABLE ? mem_r_data_lo[DEST_OFFSET +: DEST_WIDTH] : {DEST_WIDTH{1'b0}};
+wire [USER_WIDTH-1:0]  m_axis_tuser_pipe  = USER_ENABLE ? mem_r_data_lo[USER_OFFSET +: USER_WIDTH] : {USER_WIDTH{1'b0}};
 
 assign m_axis_tvalid = m_axis_tvalid_pipe;
 
@@ -371,7 +413,7 @@ always @(posedge s_clk) begin
         // transfer in
         if (!FRAME_FIFO) begin
             // normal FIFO mode
-            mem[wr_ptr_reg[ADDR_WIDTH-1:0]] <= s_axis;
+//            mem[wr_ptr_reg[ADDR_WIDTH-1:0]] <= s_axis;
             if (drop_frame_reg && LAST_ENABLE) begin
                 // currently dropping frame
                 // (only for frame transfers interrupted by sink reset)
@@ -398,7 +440,7 @@ always @(posedge s_clk) begin
                 overflow_reg <= 1'b1;
             end
         end else begin
-            mem[wr_ptr_cur_reg[ADDR_WIDTH-1:0]] <= s_axis;
+//            mem[wr_ptr_cur_reg[ADDR_WIDTH-1:0]] <= s_axis;
             wr_ptr_temp = wr_ptr_cur_reg + 1;
             wr_ptr_cur_reg <= wr_ptr_temp;
             wr_ptr_cur_gray_reg <= wr_ptr_temp ^ (wr_ptr_temp >> 1);
@@ -680,7 +722,7 @@ always @(posedge m_clk) begin
         if (m_axis_tready || ((~m_axis_tvalid_pipe_reg) >> j)) begin
             // output ready or bubble in pipeline; transfer down pipeline
             m_axis_tvalid_pipe_reg[j] <= m_axis_tvalid_pipe_reg[j-1];
-            m_axis_pipe_reg[j] <= m_axis_pipe_reg[j-1];
+//            m_axis_pipe_reg[j] <= m_axis_pipe_reg[j-1];
             m_axis_tvalid_pipe_reg[j-1] <= 1'b0;
         end
     end
@@ -688,7 +730,7 @@ always @(posedge m_clk) begin
     if (m_axis_tready || ~m_axis_tvalid_pipe_reg) begin
         // output ready or bubble in pipeline; read new data from FIFO
         m_axis_tvalid_pipe_reg[0] <= 1'b0;
-        m_axis_pipe_reg[0] <= mem[rd_ptr_reg[ADDR_WIDTH-1:0]];
+//        m_axis_pipe_reg[0] <= mem[rd_ptr_reg[ADDR_WIDTH-1:0]];
         if (!empty && !m_rst_sync3_reg && !m_drop_frame_reg) begin
             // not empty, increment pointer
             m_axis_tvalid_pipe_reg[0] <= 1'b1;
@@ -741,13 +783,15 @@ always @(posedge m_clk) begin
     end
 end
 
-// Comb logic for rd_ptr_gray_reg (w_clk)
+// Comb logic for rd_ptr_gray_reg (m_clk)
 always @(*) begin
     rd_ptr_gray_reg_n = rd_ptr_gray_reg;
+    mem_r_v_li = 1'b0;
     if(m_rst_sync3_reg) begin
         rd_ptr_gray_reg_n = {ADDR_WIDTH+1{1'b0}};
     end else if (m_axis_tready || ~m_axis_tvalid_pipe_reg) begin
         // output ready or bubble in pipeline; read new data from FIFO
+        mem_r_v_li = 1'b1;
         if (!empty && !m_rst_sync3_reg && !m_drop_frame_reg) begin
             // not empty, increment pointer
             rd_ptr_gray_reg_n = rd_ptr_inc ^ ((rd_ptr_inc) >> 1);
@@ -758,6 +802,7 @@ end
 always @(*) begin
     wr_ptr_update_reg_n = wr_ptr_update_reg;
     wr_ptr_gray_reg_n = wr_ptr_gray_reg;
+    mem_w_v_li = 1'b0;
     if (FRAME_FIFO && wr_ptr_update_valid_reg) begin
         // have updated pointer to sync
         if (wr_ptr_update_reg == wr_ptr_update_ack_sync2_reg) begin
@@ -770,6 +815,7 @@ always @(*) begin
         // transfer in
         if (!FRAME_FIFO) begin
             // normal FIFO mode
+            mem_w_v_li = 1'b1;
             if (drop_frame_reg && LAST_ENABLE) begin
             end else begin
                 // update pointers
@@ -777,7 +823,10 @@ always @(*) begin
             end
 
         end else if ((full_cur && DROP_WHEN_FULL) || (full_wr && DROP_OVERSIZE_FRAME) || drop_frame_reg) begin
+            // full, packet overflow, or currently dropping frame
+            // drop frame
         end else begin
+            mem_w_v_li = 1'b1;
             if (s_axis_tlast || (!DROP_OVERSIZE_FRAME && (full_wr || send_frame_reg))) begin
                 // end of frame or send frame
                 if (s_axis_tlast && DROP_BAD_FRAME && USER_BAD_FRAME_MASK & ~(s_axis_tuser ^ USER_BAD_FRAME_VALUE)) begin
