@@ -1,7 +1,7 @@
 
 module iodelay_control(
       input  logic clk_i
-    , input  logic reset_r_i
+    , input  logic reset_i
     , input  logic iodelay_ref_clk_i
     , input  logic [3:0] rgmii_rxd_i
     , input  logic       rgmii_rx_ctl_i
@@ -14,8 +14,6 @@ module iodelay_control(
   assign rgmii_rx_ctl_delayed_o = rgmii_rx_ctl_i;
 `else
 
-  (* ASYNC_REG = "TRUE", SHREG_EXTRACT = "NO" *)
-  logic [3:0] reset_iodelay_sync_r;
 
   BUFG iodelay_ref_clk_bufg(
     .I(iodelay_ref_clk_i)
@@ -25,6 +23,8 @@ module iodelay_control(
   logic reset_iodelay_li;
 
   // reset sync logic for iodelay control
+/*
+  logic [3:0] reset_iodelay_sync_r;
   always @(posedge iodelay_ref_clk_lo or posedge reset_r_i) begin
     if(reset_r_i)
       reset_iodelay_sync_r <= '1;
@@ -32,6 +32,12 @@ module iodelay_control(
       reset_iodelay_sync_r <= {1'b0, reset_iodelay_sync_r[3:1]};
   end
   assign reset_iodelay_li = reset_iodelay_sync_r[0];
+*/
+  arst_sync reset_iodelay_sync (
+     .async_reset_i(reset_i)
+    ,.clk_i(iodelay_ref_clk_lo)
+    ,.sync_reset_o(reset_iodelay_li)
+  );
 
   logic reset_iodelay_hold_r;
   logic [3:0] reset_iodelay_hold_cnt_r;

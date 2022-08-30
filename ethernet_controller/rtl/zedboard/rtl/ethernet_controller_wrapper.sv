@@ -37,15 +37,9 @@ module ethernet_controller_wrapper #
   logic [3:0] rgmii_rxd_delayed_lo;
   logic       rgmii_rx_ctl_delayed_lo;
 
-  bsg_dff #(.width_p(1))
-    reset_reg (
-      .clk_i(clk_i)
-      ,.data_i(reset_i)
-      ,.data_o(reset_r_lo)
-      );
-  iodelay_control iodelay_control(
+  iodelay_control iodelay_control (
     .clk_i(clk_i)
-    ,.reset_r_i(reset_r_lo)
+    ,.reset_i(reset_i)
     ,.iodelay_ref_clk_i(iodelay_ref_clk_i)
     ,.rgmii_rxd_i(rgmii_rxd_i)
     ,.rgmii_rx_ctl_i(rgmii_rx_ctl_i)
@@ -53,10 +47,17 @@ module ethernet_controller_wrapper #
     ,.rgmii_rx_ctl_delayed_o(rgmii_rx_ctl_delayed_lo)
   );
 
-  (* ASYNC_REG = "TRUE", SHREG_EXTRACT = "NO" *)
-  logic [3:0] reset_clk250_sync_r;
 
   // reset sync logic for clk250
+/*
+  logic [3:0] reset_clk250_sync_r;
+  bsg_dff #(.width_p(1))
+    reset_reg (
+      .clk_i(clk_i)
+      ,.data_i(reset_i)
+      ,.data_o(reset_r_lo)
+      );
+
   always @(posedge clk250_i or posedge reset_r_lo) begin
     if(reset_r_lo)
       reset_clk250_sync_r <= '1;
@@ -64,6 +65,12 @@ module ethernet_controller_wrapper #
       reset_clk250_sync_r <= {1'b0, reset_clk250_sync_r[3:1]};
   end
   wire reset_clk250_li  = reset_clk250_sync_r[0];
+*/
+  arst_sync reset_clk250_sync (
+     .async_reset_i(reset_i)
+    ,.clk_i(clk250_i)
+    ,.sync_reset_o(reset_clk250_li)
+  );
 
   ethernet_controller #(
      .data_width_p(data_width_p))

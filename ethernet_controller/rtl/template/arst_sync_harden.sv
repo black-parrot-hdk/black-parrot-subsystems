@@ -1,4 +1,3 @@
-`default_nettype none
 
 module arst_sync_harden (
     input        async_reset_i

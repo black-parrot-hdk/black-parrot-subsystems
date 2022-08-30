@@ -308,7 +308,7 @@ assign m_status_overflow = overflow_sync3_reg ^ overflow_sync4_reg;
 assign m_status_bad_frame = bad_frame_sync3_reg ^ bad_frame_sync4_reg;
 assign m_status_good_frame = good_frame_sync3_reg ^ good_frame_sync4_reg;
 
-
+/*
 wire s_rst_sync_oclk_data_lo;
 bsg_launch_sync_sync #(
    .width_p(1)
@@ -323,7 +323,13 @@ bsg_launch_sync_sync #(
   ,.oclk_data_o(s_rst_sync_oclk_data_lo)
 );
 assign s_rst_sync3_reg = ~s_rst_sync_oclk_data_lo;
-
+*/
+arst_sync s_rst_sync (
+   .async_reset_i(m_rst)
+  ,.clk_i(s_clk)
+  ,.sync_reset_o(s_rst_sync3_reg)
+);
+/*
 wire m_rst_sync_oclk_data_lo;
 bsg_launch_sync_sync #(
    .width_p(1)
@@ -338,6 +344,13 @@ bsg_launch_sync_sync #(
   ,.oclk_data_o(m_rst_sync_oclk_data_lo)
 );
 assign m_rst_sync3_reg = ~m_rst_sync_oclk_data_lo;
+*/
+
+arst_sync m_rst_sync (
+   .async_reset_i(s_rst)
+  ,.clk_i(m_clk)
+  ,.sync_reset_o(m_rst_sync3_reg)
+);
 
 // Write logic
 always_ff @(posedge s_clk) begin
