@@ -97,6 +97,9 @@ wire        mac_gmii_tx_er;
 reg [1:0] speed_reg;
 reg mii_select_reg;
 
+wire tx_mii_select_sync;
+wire rx_mii_select_sync;
+/*
 reg [1:0] tx_mii_select_sync;
 
 always @(posedge tx_clk) begin
@@ -108,8 +111,36 @@ reg [1:0] rx_mii_select_sync;
 always @(posedge rx_clk) begin
     rx_mii_select_sync <= {rx_mii_select_sync[0], mii_select_reg};
 end
+*/
+bsg_launch_sync_sync #(
+   .width_p(1)
+  ,.use_negedge_for_launch_p(0)
+  ,.use_async_reset_p(0)
+) tx_mii_select_reg_sync (
+   .iclk_i(gtx_clk)
+  ,.iclk_reset_i(gtx_rst)
+  ,.oclk_i(tx_clk)
+  ,.iclk_data_i(mii_select_reg)
+  ,.iclk_data_o() // UNUSED
+  ,.oclk_data_o(tx_mii_select_sync)
+);
+
+bsg_launch_sync_sync #(
+   .width_p(1)
+  ,.use_negedge_for_launch_p(0)
+  ,.use_async_reset_p(0)
+) rx_mii_select_reg_sync (
+   .iclk_i(gtx_clk)
+  ,.iclk_reset_i(gtx_rst)
+  ,.oclk_i(rx_clk)
+  ,.iclk_data_i(mii_select_reg)
+  ,.iclk_data_o() // UNUSED
+  ,.oclk_data_o(rx_mii_select_sync)
+);
 
 // PHY speed detection
+
+
 reg [2:0] rx_prescale;
 
 always @(posedge rx_clk) begin
@@ -119,11 +150,32 @@ always @(posedge rx_clk) begin
         rx_prescale <= rx_prescale + 3'd1;
 end
 
+reg rx_prescale_sync_2;
+reg rx_prescale_sync_3;
+/*
 reg [2:0] rx_prescale_sync;
 
 always @(posedge gtx_clk) begin
     rx_prescale_sync <= {rx_prescale_sync[1:0], rx_prescale[2]};
 end
+*/
+
+always @(posedge gtx_clk) begin
+    rx_prescale_sync_3 <= rx_prescale_sync_2;
+end
+bsg_launch_sync_sync #(
+   .width_p(1)
+  ,.use_negedge_for_launch_p(0)
+  ,.use_async_reset_p(0)
+) rx_prescale_sync (
+   .iclk_i(rx_clk)
+  ,.iclk_reset_i(rx_rst)
+  ,.oclk_i(gtx_clk)
+  ,.iclk_data_i(rx_prescale[2])
+  ,.iclk_data_o() // UNUSED
+  ,.oclk_data_o(rx_prescale_sync_2)
+);
+
 
 reg [6:0] rx_speed_count_1;
 reg [1:0] rx_speed_count_2;
@@ -137,7 +189,7 @@ always @(posedge gtx_clk) begin
     end else begin
         rx_speed_count_1 <= rx_speed_count_1 + 1;
 
-        if (rx_prescale_sync[1] ^ rx_prescale_sync[2]) begin
+        if (rx_prescale_sync_2 ^ rx_prescale_sync_3) begin
             rx_speed_count_2 <= rx_speed_count_2 + 1;
         end
 
@@ -222,8 +274,8 @@ eth_mac_1g_inst (
     .gmii_tx_er(mac_gmii_tx_er),
     .rx_clk_enable(1'b1),
     .tx_clk_enable(mac_gmii_tx_clk_en),
-    .rx_mii_select(rx_mii_select_sync[1]),
-    .tx_mii_select(tx_mii_select_sync[1]),
+    .rx_mii_select(rx_mii_select_sync),
+    .tx_mii_select(tx_mii_select_sync),
     .tx_error_underflow(tx_error_underflow),
     .rx_error_bad_frame(rx_error_bad_frame),
     .rx_error_bad_fcs(rx_error_bad_fcs),
