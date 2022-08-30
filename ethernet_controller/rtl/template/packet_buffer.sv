@@ -107,12 +107,12 @@ module packet_buffer # (
           write_mask = 8'b11 << {packet_waddr_i[2:1], 1'b0};
         end
         2'b10: begin // 4
-          if(packet_waddr_i[1:0])
+          if(packet_waddr_i[1:0] != '0)
             misaligned_access = 1'b1;
           write_mask = 8'b1111 << {packet_waddr_i[2], 2'b00};
         end
         2'b11: begin // 8
-          if(packet_waddr_i[2:0])
+          if(packet_waddr_i[2:0] != '0)
             misaligned_access = 1'b1;
           write_mask = 8'b1111_1111;
         end
@@ -122,11 +122,11 @@ module packet_buffer # (
     // read
     if(packet_rvalid_i) begin
       if(data_width_p == 64) begin
-        if(packet_raddr_i[2:0])
+        if(packet_raddr_i[2:0] != '0)
           misaligned_access = 1'b1;
       end
       else if(data_width_p == 32) begin
-        if(packet_raddr_i[1:0])
+        if(packet_raddr_i[1:0] != '0)
           misaligned_access = 1'b1;
       end
     end

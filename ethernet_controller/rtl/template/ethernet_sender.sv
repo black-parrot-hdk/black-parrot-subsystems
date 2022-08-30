@@ -47,10 +47,7 @@ module ethernet_sender #
   localparam send_ptr_width_lp        = $clog2(eth_mtu_p/(data_width_p/8));
   localparam send_ptr_offset_width_lp = $clog2(data_width_p/8);
 
-  logic [eth_mtu_p/(data_width_p/8) - 1:0][data_width_p-1:0] buffer_r;
-
   logic [send_ptr_width_lp - 1:0]    send_ptr_r;
-  logic [packet_size_width_lp - 1:0] packet_size_r;
 
   logic [data_width_p/8-1:0]       tx_axis_tkeep_li;
   logic                            tx_axis_tlast_li;

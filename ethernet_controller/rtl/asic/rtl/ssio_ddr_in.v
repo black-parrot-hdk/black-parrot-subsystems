@@ -45,8 +45,6 @@ module ssio_ddr_in #
     output wire [WIDTH-1:0] output_q2
 );
 
-wire clk_int;
-reg [WIDTH-1:0] delayed_d;
 genvar n;
 generate
 for (n = 0; n < WIDTH; n = n + 1) begin : iddr

@@ -133,7 +133,7 @@ reg rgmii_tx_clk_2;
 reg rgmii_tx_clk_rise;
 reg rgmii_tx_clk_fall;
 
-reg [5:0] count_reg, count_next;
+reg [5:0] count_reg;
 
 always @(posedge gtx_clk) begin
     if (gtx_rst) begin
