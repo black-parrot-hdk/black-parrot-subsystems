@@ -125,13 +125,14 @@ wire        rx_fifo_axis_tuser;
 // synchronize MAC status signals into logic clock domain
 wire tx_error_underflow_int;
 
+wire [0:0] tx_sync_reg_1_n;
 reg [0:0] tx_sync_reg_1;
 reg [0:0] tx_sync_reg_2;
 reg [0:0] tx_sync_reg_3;
 reg [0:0] tx_sync_reg_4;
 
 assign tx_error_underflow = tx_sync_reg_3[0] ^ tx_sync_reg_4[0];
-
+/*
 always @(posedge tx_clk or posedge tx_rst) begin
     if (tx_rst) begin
         tx_sync_reg_1 <= 1'b0;
@@ -151,10 +152,32 @@ always @(posedge logic_clk or posedge logic_rst) begin
         tx_sync_reg_4 <= tx_sync_reg_3;
     end
 end
+*/
+always @(posedge logic_clk) begin
+    if(logic_rst)
+        tx_sync_reg_4 <= '0;
+    else
+        tx_sync_reg_4 <= tx_sync_reg_3;
+end
+
+assign tx_sync_reg_1_n[0] = tx_sync_reg_1[0] ^ {tx_error_underflow_int};
+bsg_launch_sync_sync #(
+   .width_p(1)
+  ,.use_negedge_for_launch_p(0)
+  ,.use_async_reset_p(0)
+) tx_error_sync (
+   .iclk_i(tx_clk)
+  ,.iclk_reset_i(tx_rst)
+  ,.oclk_i(logic_clk)
+  ,.iclk_data_i(tx_sync_reg_1_n[0])
+  ,.iclk_data_o(tx_sync_reg_1[0])
+  ,.oclk_data_o(tx_sync_reg_3[0])
+);
 
 wire rx_error_bad_frame_int;
 wire rx_error_bad_fcs_int;
 
+wire [1:0] rx_sync_reg_1_n;
 reg [1:0] rx_sync_reg_1;
 reg [1:0] rx_sync_reg_2;
 reg [1:0] rx_sync_reg_3;
@@ -163,6 +186,8 @@ reg [1:0] rx_sync_reg_4;
 assign rx_error_bad_frame = rx_sync_reg_3[0] ^ rx_sync_reg_4[0];
 assign rx_error_bad_fcs = rx_sync_reg_3[1] ^ rx_sync_reg_4[1];
 
+assign rx_sync_reg_1_n = rx_sync_reg_1 ^ {rx_error_bad_fcs_int, rx_error_bad_frame_int};
+/*
 always @(posedge rx_clk or posedge rx_rst) begin
     if (rx_rst) begin
         rx_sync_reg_1 <= 2'd0;
@@ -182,6 +207,27 @@ always @(posedge logic_clk or posedge logic_rst) begin
         rx_sync_reg_4 <= rx_sync_reg_3;
     end
 end
+*/
+
+always @(posedge logic_clk) begin
+    if(logic_rst)
+        rx_sync_reg_4 <= '0;
+    else
+        rx_sync_reg_4 <= rx_sync_reg_3;
+end
+
+bsg_launch_sync_sync #(
+   .width_p(2)
+  ,.use_negedge_for_launch_p(0)
+  ,.use_async_reset_p(0)
+) rx_error_sync (
+   .iclk_i(rx_clk)
+  ,.iclk_reset_i(rx_rst)
+  ,.oclk_i(logic_clk)
+  ,.iclk_data_i(rx_sync_reg_1_n)
+  ,.iclk_data_o(rx_sync_reg_1)
+  ,.oclk_data_o(rx_sync_reg_3)
+);
 
 wire [1:0] speed_int;
 
@@ -190,10 +236,26 @@ reg [1:0] speed_sync_reg_2;
 
 assign speed = speed_sync_reg_2;
 
+/*
 always @(posedge logic_clk) begin
     speed_sync_reg_1 <= speed_int;
     speed_sync_reg_2 <= speed_sync_reg_1;
 end
+*/
+
+bsg_launch_sync_sync #(
+   .width_p(2)
+  ,.use_negedge_for_launch_p(0)
+  ,.use_async_reset_p(0)
+) speed_sync (
+   .iclk_i(tx_clk) // TODO: use gtx_clk instead
+  ,.iclk_reset_i(tx_rst)
+  ,.oclk_i(logic_clk)
+  ,.iclk_data_i(speed_int)
+  ,.iclk_data_o() // UNUSED
+  ,.oclk_data_o(speed_sync_reg_2)
+);
+
 
 eth_mac_1g_rgmii #(
     .ENABLE_PADDING(ENABLE_PADDING),
