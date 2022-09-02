@@ -26,7 +26,7 @@ module arst_sync (
     ,.data_o(sync_reset_o)
   );
 */
-  logic bsg_SYNC_1_r, bsg_SYNC_2_r;
+  logic [0:0] bsg_SYNC_1_r, bsg_SYNC_2_r;
   always @(posedge clk_i or posedge async_reset_i) begin
     if(async_reset_i)
       bsg_SYNC_1_r <= 1'b1;
@@ -35,9 +35,9 @@ module arst_sync (
   end
   always @(posedge clk_i or posedge async_reset_i) begin
     if(async_reset_i)
-      bsg_SYNC_1_r <= 1'b1;
+      bsg_SYNC_2_r <= 1'b1;
     else
       bsg_SYNC_2_r <= bsg_SYNC_1_r;
   end
-  assign sync_reset_o = bsg_SYNC_2_r;
+  assign sync_reset_o = bsg_SYNC_2_r[0];
 endmodule

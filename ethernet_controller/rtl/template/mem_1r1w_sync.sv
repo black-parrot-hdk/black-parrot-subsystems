@@ -23,6 +23,7 @@ module mem_1r1w_sync #(
       mem[w_addr_i] <= w_data_i;
   end
 
+  // TODO: should latch the last read
   always @(posedge r_clk_i) begin
     if(r_v_i)
       r_data_o <= mem[r_addr_i];
