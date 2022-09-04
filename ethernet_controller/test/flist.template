@@ -1,31 +1,31 @@
 
 +incdir+$BASEJUMP_STL_DIR/bsg_misc
-+incdir+$SRC_DIR
 
 $TEST_DIR/testbench.sv
 $TEST_DIR/phy_nonsynth.sv
 
-$SRC_DIR/ethernet_receiver.sv
-$SRC_DIR/ethernet_sender.sv
-$SRC_DIR/packet_buffer.sv
-$SRC_DIR/ethernet_controller.sv
-$SRC_DIR/ethernet_control_unit.sv
-$SRC_DIR/interrupt_control_unit.sv
-$SRC_DIR/eth_mac_1g_rgmii_fifo.v
-$SRC_DIR/eth_mac_1g_rgmii.v
-$SRC_DIR/eth_mac_1g.v
-$SRC_DIR/axis_adapter.v
-$SRC_DIR/axis_async_fifo_adapter.v
-$SRC_DIR/axis_async_fifo.v
-$SRC_DIR/axis_gmii_rx.v
-$SRC_DIR/axis_gmii_tx.v
-$SRC_DIR/lfsr.v
-$SRC_DIR/ssio_ddr_in.v
-$SRC_DIR/gtx_clk_and_phy_tx_clk_generator.sv
-$SRC_DIR/oddr_clock_downsample_and_right_shift.sv
-$SRC_DIR/rgmii_phy_if.v
-$SRC_DIR/arst_sync.sv
-$SRC_DIR/mem_1r1w_sync_fpga.sv
+$ETH_SRC_DIR/template/ethernet_receiver.sv
+$ETH_SRC_DIR/template/ethernet_sender.sv
+$ETH_SRC_DIR/template/packet_buffer.sv
+$ETH_SRC_DIR/template/ethernet_controller.sv
+$ETH_SRC_DIR/template/ethernet_control_unit.sv
+$ETH_SRC_DIR/template/interrupt_control_unit.sv
+$ETH_SRC_DIR/template/eth_mac_1g_rgmii_fifo.v
+$ETH_SRC_DIR/template/eth_mac_1g_rgmii.v
+$ETH_SRC_DIR/template/eth_mac_1g.v
+$ETH_SRC_DIR/template/axis_adapter.v
+$ETH_SRC_DIR/template/axis_async_fifo_adapter.v
+$ETH_SRC_DIR/template/axis_async_fifo.v
+$ETH_SRC_DIR/template/axis_fifo.v
+$ETH_SRC_DIR/template/axis_gmii_rx.v
+$ETH_SRC_DIR/template/axis_gmii_tx.v
+$ETH_SRC_DIR/template/lfsr.v
+$ETH_SRC_DIR/template/gtx_clk_and_phy_tx_clk_generator.sv
+$ETH_SRC_DIR/template/oddr_clock_downsample_and_right_shift.sv
+$ETH_SRC_DIR/template/rgmii_phy_if.v
+$ETH_SRC_DIR/template/arst_sync.sv
+$ETH_SRC_DIR/template/mem_1r1w_sync_fpga.sv
+$ETH_SRC_DIR/asic/rtl/ssio_ddr_in.v
 
 $BASEJUMP_STL_DIR/bsg_link/bsg_link_oddr_phy.v
 $BASEJUMP_STL_DIR/bsg_link/bsg_link_iddr_phy.v
@@ -57,6 +57,10 @@ $BASEJUMP_STL_DIR/bsg_mem/bsg_mem_1rw_sync_mask_write_byte.v
 $BASEJUMP_STL_DIR/bsg_mem/bsg_mem_1rw_sync_mask_write_byte_synth.v
 $BASEJUMP_STL_DIR/bsg_mem/bsg_mem_1rw_sync.v
 $BASEJUMP_STL_DIR/bsg_mem/bsg_mem_1rw_sync_synth.v
+$BASEJUMP_STL_DIR/bsg_mem/bsg_mem_1r1w.v
+$BASEJUMP_STL_DIR/bsg_mem/bsg_mem_1r1w_synth.v
+$BASEJUMP_STL_DIR/bsg_mem/bsg_mem_1r1w_sync.v
+$BASEJUMP_STL_DIR/bsg_mem/bsg_mem_1r1w_sync_synth.v
 $BASEJUMP_STL_DIR/bsg_async/bsg_async_fifo.v
 $BASEJUMP_STL_DIR/bsg_async/bsg_launch_sync_sync.v
 $BASEJUMP_STL_DIR/bsg_async/bsg_async_ptr_gray.v

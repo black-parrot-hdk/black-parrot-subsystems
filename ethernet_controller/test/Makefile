@@ -3,7 +3,7 @@
 
 TOP := $(shell git rev-parse --show-toplevel)
 export TEST_DIR     := $(TOP)/ethernet_controller/test
-export SRC_DIR      := $(TOP)/ethernet_controller/rtl/asic/work
+export ETH_SRC_DIR      := $(TOP)/ethernet_controller/rtl/
 export BASEJUMP_STL_DIR := $(TOP)/ethernet_controller/import/basejump_stl
 
 TOP_MODULE := wrapper
