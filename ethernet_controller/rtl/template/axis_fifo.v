@@ -157,17 +157,23 @@ localparam DEST_OFFSET = ID_OFFSET   + (ID_ENABLE   ? ID_WIDTH   : 0);
 localparam USER_OFFSET = DEST_OFFSET + (DEST_ENABLE ? DEST_WIDTH : 0);
 localparam WIDTH       = USER_OFFSET + (USER_ENABLE ? USER_WIDTH : 0);
 
+
 reg [ADDR_WIDTH:0] wr_ptr_reg;
 reg [ADDR_WIDTH:0] wr_ptr_cur_reg;
 reg [ADDR_WIDTH:0] rd_ptr_reg;
 
 (* ramstyle = "no_rw_check" *)
-reg [WIDTH-1:0] mem[(2**ADDR_WIDTH)-1:0];
 reg [WIDTH-1:0] mem_read_data_reg;
 
 wire [WIDTH-1:0] s_axis;
 
-reg [WIDTH-1:0] m_axis_pipe_reg[PIPELINE_OUTPUT-1:0];
+logic                  mem_w_v_li;
+logic [ADDR_WIDTH-1:0] mem_w_addr_li;
+wire [WIDTH-1:0]       mem_w_data_li = s_axis;
+logic                  mem_r_v_li;
+wire [ADDR_WIDTH-1:0]  mem_r_addr_li = rd_ptr_reg[ADDR_WIDTH-1:0];
+logic [WIDTH-1:0]      mem_r_data_lo;
+
 reg [PIPELINE_OUTPUT-1:0] m_axis_tvalid_pipe_reg;
 
 // full when first MSB different but rest same
@@ -197,12 +203,12 @@ endgenerate
 
 assign m_axis_tvalid = m_axis_tvalid_pipe_reg[PIPELINE_OUTPUT-1];
 
-assign m_axis_tdata = m_axis_pipe_reg[PIPELINE_OUTPUT-1][DATA_WIDTH-1:0];
-assign m_axis_tkeep = KEEP_ENABLE ? m_axis_pipe_reg[PIPELINE_OUTPUT-1][KEEP_OFFSET +: KEEP_WIDTH] : {KEEP_WIDTH{1'b1}};
-assign m_axis_tlast = LAST_ENABLE ? m_axis_pipe_reg[PIPELINE_OUTPUT-1][LAST_OFFSET]               : 1'b1;
-assign m_axis_tid   = ID_ENABLE   ? m_axis_pipe_reg[PIPELINE_OUTPUT-1][ID_OFFSET   +: ID_WIDTH]   : {ID_WIDTH{1'b0}};
-assign m_axis_tdest = DEST_ENABLE ? m_axis_pipe_reg[PIPELINE_OUTPUT-1][DEST_OFFSET +: DEST_WIDTH] : {DEST_WIDTH{1'b0}};
-assign m_axis_tuser = USER_ENABLE ? m_axis_pipe_reg[PIPELINE_OUTPUT-1][USER_OFFSET +: USER_WIDTH] : {USER_WIDTH{1'b0}};
+assign m_axis_tdata = mem_r_data_lo[DATA_WIDTH-1:0];
+assign m_axis_tkeep = KEEP_ENABLE ? mem_r_data_lo[KEEP_OFFSET +: KEEP_WIDTH] : {KEEP_WIDTH{1'b1}};
+assign m_axis_tlast = LAST_ENABLE ? mem_r_data_lo[LAST_OFFSET]               : 1'b1;
+assign m_axis_tid   = ID_ENABLE   ? mem_r_data_lo[ID_OFFSET   +: ID_WIDTH]   : {ID_WIDTH{1'b0}};
+assign m_axis_tdest = DEST_ENABLE ? mem_r_data_lo[DEST_OFFSET +: DEST_WIDTH] : {DEST_WIDTH{1'b0}};
+assign m_axis_tuser = USER_ENABLE ? mem_r_data_lo[USER_OFFSET +: USER_WIDTH] : {USER_WIDTH{1'b0}};
 
 assign status_overflow = overflow_reg;
 assign status_bad_frame = bad_frame_reg;
@@ -218,7 +224,6 @@ always @(posedge clk) begin
         // transfer in
         if (!FRAME_FIFO) begin
             // normal FIFO mode
-            mem[wr_ptr_reg[ADDR_WIDTH-1:0]] <= s_axis;
             wr_ptr_reg <= wr_ptr_reg + 1;
         end else if ((full_cur && DROP_WHEN_FULL) || (full_wr && DROP_OVERSIZE_FRAME) || drop_frame_reg) begin
             // full, packet overflow, or currently dropping frame
@@ -232,7 +237,6 @@ always @(posedge clk) begin
             end
         end else begin
             // store it
-            mem[wr_ptr_cur_reg[ADDR_WIDTH-1:0]] <= s_axis;
             wr_ptr_cur_reg <= wr_ptr_cur_reg + 1;
             if (s_axis_tlast || (!DROP_OVERSIZE_FRAME && (full_wr || send_frame_reg))) begin
                 // end of frame or send frame
@@ -280,7 +284,6 @@ always @(posedge clk) begin
         if (m_axis_tready || ((~m_axis_tvalid_pipe_reg) >> j)) begin
             // output ready or bubble in pipeline; transfer down pipeline
             m_axis_tvalid_pipe_reg[j] <= m_axis_tvalid_pipe_reg[j-1];
-            m_axis_pipe_reg[j] <= m_axis_pipe_reg[j-1];
             m_axis_tvalid_pipe_reg[j-1] <= 1'b0;
         end
     end
@@ -288,7 +291,6 @@ always @(posedge clk) begin
     if (m_axis_tready || ~m_axis_tvalid_pipe_reg) begin
         // output ready or bubble in pipeline; read new data from FIFO
         m_axis_tvalid_pipe_reg[0] <= 1'b0;
-        m_axis_pipe_reg[0] <= mem[rd_ptr_reg[ADDR_WIDTH-1:0]];
         if (!empty) begin
             // not empty, increment pointer
             m_axis_tvalid_pipe_reg[0] <= 1'b1;
@@ -301,6 +303,53 @@ always @(posedge clk) begin
         m_axis_tvalid_pipe_reg <= {PIPELINE_OUTPUT{1'b0}};
     end
 end
+
+//Write logic
+always @(*) begin
+    mem_w_addr_li = '0;
+    mem_w_v_li = 1'b0;
+    if (s_axis_tready && s_axis_tvalid) begin
+        // transfer in
+        if (!FRAME_FIFO) begin
+            // normal FIFO mode
+            mem_w_addr_li = wr_ptr_reg[ADDR_WIDTH-1:0];
+            mem_w_v_li = 1'b1;
+        end else if ((full_cur && DROP_WHEN_FULL) || (full_wr && DROP_OVERSIZE_FRAME) || drop_frame_reg) begin
+        end else begin
+            // store it
+            mem_w_addr_li = wr_ptr_cur_reg[ADDR_WIDTH-1:0];
+            mem_w_v_li = 1'b1;
+        end
+    end
+end
+
+// Read logic
+always @(*) begin
+    mem_r_v_li = 1'b0;
+    if (m_axis_tready || ~m_axis_tvalid_pipe_reg) begin
+        // output ready or bubble in pipeline; read new data from FIFO
+        mem_r_v_li = 1'b1;
+    end
+end
+
+
+mem_1r1w_sync_fpga #(
+    .width_p(WIDTH)
+   ,.els_p(2**ADDR_WIDTH)
+   ,.pipeline_output_p(PIPELINE_OUTPUT)
+) mem (
+    .clk_i(clk)
+   ,.reset_i(rst)
+   ,.w_v_i   (mem_w_v_li)
+   ,.w_addr_i(mem_w_addr_li)
+   ,.w_data_i(mem_w_data_li)
+   ,.r_v_i   (mem_r_v_li)
+   ,.r_addr_i(mem_r_addr_li)
+   ,.r_data_o(mem_r_data_lo)
+
+   ,.output_ready_i(m_axis_tready)
+   ,.valid_pipe_reg_i(m_axis_tvalid_pipe_reg)
+);
 
 endmodule
 
