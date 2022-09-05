@@ -26,6 +26,7 @@ module arst_sync (
     ,.data_o(sync_reset_o)
   );
 */
+  (* ASYNC_REG = "TRUE" *)
   logic [0:0] bsg_SYNC_1_r, bsg_SYNC_2_r;
   always @(posedge clk_i or posedge async_reset_i) begin
     if(async_reset_i)

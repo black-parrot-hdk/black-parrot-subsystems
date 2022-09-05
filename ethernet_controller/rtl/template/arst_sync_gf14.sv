@@ -8,7 +8,7 @@ module arst_sync_harden (
   wire nreset_synced;
 
   SC7P5T_SYNC2SDFFRQX2_SSC14L hard_sync_int
-    (.D(1'b0)
+    (.D(1'b1)
     ,.CLK(clk_i)
     ,.RESET(nreset)
     ,.SI(1'b0)
