@@ -40,6 +40,9 @@ program user_signals #(
     reset_o = 1'b1;
     @(posedge clk_i)
     @(posedge clk_i)
+    @(posedge wrapper.dut.mac.rx_clk)
+    @(posedge clk_i)
+    @(posedge clk_i)
     reset_o = 1'b0;
   end
 
