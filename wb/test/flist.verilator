@@ -1,0 +1,33 @@
+## Includes
+# BASEJUMP_STL includes
++incdir+$BASEJUMP_STL_DIR/bsg_cache
++incdir+$BASEJUMP_STL_DIR/bsg_dataflow
++incdir+$BASEJUMP_STL_DIR/bsg_dmc
++incdir+$BASEJUMP_STL_DIR/bsg_mem
++incdir+$BASEJUMP_STL_DIR/bsg_misc
++incdir+$BASEJUMP_STL_DIR/bsg_test
++incdir+$BASEJUMP_STL_DIR/bsg_noc
+# HardFloat includes
++incdir+$HARDFLOAT_DIR/source
++incdir+$HARDFLOAT_DIR/source/RISCV
+# common includes
++incdir+$BP_COMMON_DIR/src/include
+# fe includes
++incdir+$BP_FE_DIR/src/include
+# be includes
++incdir+$BP_BE_DIR/src/include
+# me includes
++incdir+$BP_ME_DIR/src/include
+# top includes
++incdir+$BP_TOP_DIR/src/include
+
+# Packages
+$BP_COMMON_DIR/src/include/bp_common_pkg.sv
+$BP_ME_DIR/src/include/bp_me_pkg.sv
+
+# Common files
+$BP_COMMON_DIR/src/v/bsg_bus_pack.sv
+
+# Adapters
+$BP_LITEX_DIR/bp_me_wb_master.v
+$BP_LITEX_DIR/bp_me_wb_client.v
