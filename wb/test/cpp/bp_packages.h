@@ -1,3 +1,5 @@
+#pragma once
+
 #include "verilated.h"
 
 struct BP_cmd {
@@ -27,11 +29,6 @@ struct BP_resp {
         VL_SIGW(header, 66, 0, 3),
         VL_SIG64(data, 63, 0)
     ) : header{header}, data{data} {};
-
-    BP_resp(
-        const BP_cmd& cmd,
-        VL_SIG64(data, 63, 0)
-    ) : header{cmd.header}, data{data} {};
 
     bool operator==(const BP_resp other);
 };

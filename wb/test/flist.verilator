@@ -7,9 +7,6 @@
 +incdir+$BASEJUMP_STL_DIR/bsg_misc
 +incdir+$BASEJUMP_STL_DIR/bsg_test
 +incdir+$BASEJUMP_STL_DIR/bsg_noc
-# HardFloat includes
-+incdir+$HARDFLOAT_DIR/source
-+incdir+$HARDFLOAT_DIR/source/RISCV
 # common includes
 +incdir+$BP_COMMON_DIR/src/include
 # fe includes
@@ -29,5 +26,5 @@ $BP_ME_DIR/src/include/bp_me_pkg.sv
 $BP_COMMON_DIR/src/v/bsg_bus_pack.sv
 
 # Adapters
-$BP_LITEX_DIR/bp_me_wb_master.v
-$BP_LITEX_DIR/bp_me_wb_client.v
+$BP_ME_WB_DIR/bp_me_wb_master.sv
+$BP_ME_WB_DIR/bp_me_wb_client.sv

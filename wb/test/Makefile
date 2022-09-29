@@ -8,7 +8,7 @@ export BP_TOP_DIR       := $(TOP)/bp_top
 export BP_EXTERNAL_DIR  := $(TOP)/external
 export BASEJUMP_STL_DIR := $(BP_EXTERNAL_DIR)/basejump_stl
 export HARDFLOAT_DIR    := $(BP_EXTERNAL_DIR)/HardFloat
-export BP_LITEX_DIR     := ../v
+export BP_ME_WB_DIR     := ../v
 
 # If $VERILATOR_ROOT isn't in the environment, we assume it is part of a
 # package install, and verilator is in your path. Otherwise find the
@@ -42,7 +42,8 @@ VERILATOR_FLAGS += --top-module top
 
 # Input files for Verilator
 VERILATOR_INPUT = -f flist.verilator
-VERILATOR_INPUT += bp_me_wb_loopback.sv bp_packages.cpp sim_main.cpp
+VERILATOR_INPUT += sv/bp_me_wb_loopback.sv
+VERILATOR_INPUT += cpp/sim_main.cpp cpp/bp_packages.cpp cpp/bp_me_wb_master_ctrl.cpp cpp/bp_me_wb_client_ctrl.cpp
 
 
 default: run
@@ -52,8 +53,8 @@ ifeq ($(TOP),)
 	@echo "Error: Please specify path to BP top directory in Makefile"
 	@exit 1
 endif
-ifeq ($(BP_LITEX_DIR),)
-	@echo "Error: Please specify path to BP LiteX directory in Makefile"
+ifeq ($(BP_ME_WB_DIR),)
+	@echo "Error: Please specify path to BP adapters directory in Makefile"
 	@exit 1
 endif
 
