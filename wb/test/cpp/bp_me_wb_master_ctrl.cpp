@@ -5,6 +5,7 @@
 BP_me_WB_master_ctrl::BP_me_WB_master_ctrl(
     int test_size,
     unsigned long int seed,
+    VL_IN8  (&reset_i, 0, 0),
     // BP command in
     VL_INW  (&mem_cmd_header_i, 66, 0, 3),
     VL_IN64 (&mem_cmd_data_i, 63, 0),
@@ -18,6 +19,7 @@ BP_me_WB_master_ctrl::BP_me_WB_master_ctrl(
 ) : test_size{test_size},
     generator{seed},
     dice{std::bind(distribution, generator)},
+    reset_i{reset_i},
     mem_cmd_header_i{mem_cmd_header_i},
     mem_cmd_data_i{mem_cmd_data_i},
     mem_cmd_v_i{mem_cmd_v_i},
@@ -40,6 +42,10 @@ BP_me_WB_master_ctrl::BP_me_WB_master_ctrl(
         VL_SIG64(data, 63, 0) = replicate(dice(), size);
         commands.emplace_back(size, addr, msg_type, data);
     }
+
+    mem_cmd_v_i = 0;
+    mem_resp_yumi_i = 0;
+    yumi_cooldown = 5;
 };
 
 bool BP_me_WB_master_ctrl::sim_read() {
@@ -53,28 +59,33 @@ bool BP_me_WB_master_ctrl::sim_read() {
         // read and save the response
         responses.emplace_back(mem_resp_header_o, mem_resp_data_o);
 
-        yumi_cooldown = dice() % 8;
+        yumi_cooldown = dice() % 8 + 10;
     }
 
     return true;
 }
 
 bool BP_me_WB_master_ctrl::sim_write() {
-    mem_cmd_v_i = (cmd_it != commands.end() && (valid_cooldown == 0));
+    mem_cmd_v_i = (cmd_it != commands.end() && valid_cooldown == 0 && reset_i == 0);
     if (valid_cooldown > 0)
         valid_cooldown--;
 
-    mem_resp_yumi_i = (mem_resp_v_o == 1 && (yumi_cooldown == 0));
+    mem_resp_yumi_i = (mem_resp_v_o == 1 && yumi_cooldown == 0 && reset_i == 0);
     if (yumi_cooldown > 0)
         yumi_cooldown--;
 
     // send the next command if valid and the adapter is ready
-    if (mem_cmd_v_i == 1 && mem_cmd_ready_o == 1) {
+    if (mem_cmd_v_i == 1) {
         mem_cmd_header_i = cmd_it->header;
         mem_cmd_data_i = cmd_it->data;
-        cmd_it++;
 
-        valid_cooldown = dice() % 8;
+        if (mem_cmd_ready_o == 1) {
+            cmd_it++;
+            valid_cooldown = dice() % 8;
+        }
+    } else {
+        mem_cmd_header_i = {0, 0, 0};
+        mem_cmd_data_i = 0;
     }
 
     return true;

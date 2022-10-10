@@ -5,6 +5,7 @@
 BP_me_WB_client_ctrl::BP_me_WB_client_ctrl(
     int test_size,
     unsigned long int seed,
+    VL_IN8  (&reset_i, 0, 0),
     // BP command out
     VL_OUTW (&mem_cmd_header_o, 66, 0, 3),
     VL_OUT64(&mem_cmd_data_o, 63, 0),
@@ -14,10 +15,11 @@ BP_me_WB_client_ctrl::BP_me_WB_client_ctrl(
     VL_INW  (&mem_resp_header_i, 66, 0, 3),
     VL_IN64 (&mem_resp_data_i, 63, 0),
     VL_IN8  (&mem_resp_v_i, 0, 0),
-    VL_OUT8 (&mem_resp_yumi_o, 0, 0)
+    VL_OUT8 (&mem_resp_ready_o, 0, 0)
 ) : test_size{test_size},
     generator{seed},
     dice{std::bind(distribution, generator)},
+    reset_i{reset_i},
     mem_cmd_header_o{mem_cmd_header_o},
     mem_cmd_data_o{mem_cmd_data_o},
     mem_cmd_v_o{mem_cmd_v_o},
@@ -25,12 +27,15 @@ BP_me_WB_client_ctrl::BP_me_WB_client_ctrl(
     mem_resp_header_i{mem_resp_header_i},
     mem_resp_data_i{mem_resp_data_i},
     mem_resp_v_i{mem_resp_v_i},
-    mem_resp_yumi_o{mem_resp_yumi_o}
+    mem_resp_ready_o{mem_resp_ready_o}
 {
     commands.reserve(test_size);
     responses.reserve(test_size);
 
     resp_it = responses.begin();
+
+    mem_cmd_ready_i = 0;
+    mem_resp_v_i = 0;
 };
 
 bool BP_me_WB_client_ctrl::sim_read() {
@@ -59,15 +64,22 @@ bool BP_me_WB_client_ctrl::sim_write() {
     if (ready_cooldown > 0)
         ready_cooldown--;
 
-    mem_resp_v_i = (resp_it != responses.end() && valid_cooldown == 0);
+    mem_resp_v_i = (resp_it != responses.end() && valid_cooldown == 0 && reset_i == 0);
     if (valid_cooldown > 0)
         valid_cooldown--;
 
     // send the response if valid and the adapter is ready
-    if (mem_resp_v_i == 1 && mem_resp_yumi_o == 1) {
+    if (mem_resp_v_i == 1) {
         mem_resp_header_i = resp_it->header;
         mem_resp_data_i = resp_it->data;
-        resp_it++;
+
+        if (mem_resp_ready_o == 1) {
+            resp_it++;
+            valid_cooldown = dice() % 8;
+        }
+    } else {
+        mem_resp_header_i = {0, 0, 0};
+        mem_resp_data_i = 0;
     }
 
     return true;
