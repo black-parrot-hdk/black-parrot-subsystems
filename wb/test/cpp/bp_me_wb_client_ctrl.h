@@ -13,6 +13,7 @@ public:
     BP_me_WB_client_ctrl(
         int test_size,
         unsigned long int seed,
+        VL_IN8  (&reset_i, 0, 0),
         // BP command out
         VL_OUTW (&mem_cmd_header_o, 66, 0, 3),
         VL_OUT64(&mem_cmd_data_o, 63, 0),
@@ -22,7 +23,7 @@ public:
         VL_INW  (&mem_resp_header_i, 66, 0, 3),
         VL_IN64 (&mem_resp_data_i, 63, 0),
         VL_IN8  (&mem_resp_v_i, 0, 0),
-        VL_OUT8 (&mem_resp_yumi_o, 0, 0)
+        VL_OUT8 (&mem_resp_ready_o, 0, 0)
     );
 
     const std::vector<BP_cmd>& get_commands() {return commands;}
@@ -32,6 +33,7 @@ public:
     bool sim_write();
 
 private:
+    VL_IN8  (&reset_i, 0, 0);
     VL_OUTW (&mem_cmd_header_o, 66, 0, 3);
     VL_OUT64(&mem_cmd_data_o, 63, 0);
     VL_OUT8 (&mem_cmd_v_o, 0, 0);
@@ -39,7 +41,7 @@ private:
     VL_INW  (&mem_resp_header_i, 66, 0, 3);
     VL_IN64 (&mem_resp_data_i, 63, 0);
     VL_IN8  (&mem_resp_v_i, 0, 0);
-    VL_OUT8 (&mem_resp_yumi_o, 0, 0);
+    VL_OUT8 (&mem_resp_ready_o, 0, 0);
 
     int test_size;
     unsigned long int seed;

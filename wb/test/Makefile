@@ -39,11 +39,14 @@ VERILATOR_FLAGS += --build -j
 #VERILATOR_FLAGS += --gdbbt
 # Declare top module
 VERILATOR_FLAGS += --top-module top
+# Add the C++ files from the bsg_test directory
+VERILATOR_FLAGS += -CFLAGS -I$(realpath $(BASEJUMP_STL_DIR)/bsg_test/)
 
 # Input files for Verilator
 VERILATOR_INPUT = -f flist.verilator
 VERILATOR_INPUT += sv/bp_me_wb_loopback.sv
 VERILATOR_INPUT += cpp/sim_main.cpp cpp/bp_packages.cpp cpp/bp_me_wb_master_ctrl.cpp cpp/bp_me_wb_client_ctrl.cpp
+VERILATOR_INPUT += $(BASEJUMP_STL_DIR)/bsg_test/bsg_nonsynth_dpi_clock_gen.cpp
 
 
 default: run

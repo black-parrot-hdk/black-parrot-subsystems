@@ -8,11 +8,14 @@ module top
     `declare_bp_proc_params(bp_params_p)
     `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
 
-    , parameter data_width_p         = (cce_type_p == e_cce_uce) ? uce_fill_width_p : bedrock_data_width_p
+    , parameter data_width_p         = dword_width_gp
     , localparam wbone_addr_width_lp = paddr_width_p - `BSG_SAFE_CLOG2(data_width_p>>3)
+
+    , parameter cycle_time_p      = 4
+    , parameter reset_cycles_lo_p = 0
+    , parameter reset_cycles_hi_p = 1
   )
-  (   input  clk_i
-    , input  reset_i
+  (   output reset_o
 
     // master BP signals
     , input  [mem_header_width_lp-1:0] m_mem_cmd_header_i
@@ -37,7 +40,7 @@ module top
     , input  [mem_header_width_lp-1:0] c_mem_resp_header_i
     , input  [data_width_p-1:0]        c_mem_resp_data_i
     , input                            c_mem_resp_v_i
-    , output                           c_mem_resp_yumi_o
+    , output                           c_mem_resp_ready_o
   );
 
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
@@ -53,11 +56,29 @@ module top
   wire [data_width_p-1:0]        dat_miso;
   wire                           ack;
 
+  // generate clk and reset
+  wire clk;
+  bsg_nonsynth_dpi_clock_gen
+   #(.cycle_time_p(cycle_time_p))
+   clock_gen
+    (.o(clk));
+
+  wire reset;
+  assign reset_o = reset;
+  bsg_nonsynth_reset_gen
+   #( .reset_cycles_lo_p(reset_cycles_lo_p)
+     ,.reset_cycles_hi_p(reset_cycles_hi_p)
+    ) 
+    reset_gen
+     ( .clk_i(clk) 
+      ,.async_reset_o(reset)
+      );
+
   bp_me_wb_master
    #(.bp_params_p(bp_params_p))
    bp_me_wb_master
-    ( .clk_i(clk_i)
-     ,.reset_i(reset_i)
+    ( .clk_i(clk)
+     ,.reset_i(reset)
 
      ,.mem_cmd_header_i(m_mem_cmd_header_i)
      ,.mem_cmd_data_i(m_mem_cmd_data_i)
@@ -78,13 +99,13 @@ module top
 
      ,.dat_i(dat_miso)
      ,.ack_i(ack)
-    );
+     );
 
   bp_me_wb_client
    #(.bp_params_p(bp_params_p))
    bp_me_wb_client
-    ( .clk_i(clk_i)
-     ,.reset_i(reset_i)
+    ( .clk_i(clk)
+     ,.reset_i(reset)
 
      ,.lce_id_i(c_lce_id_i)
      ,.did_i(c_did_i)
@@ -97,7 +118,7 @@ module top
      ,.mem_resp_header_i(c_mem_resp_header_i)
      ,.mem_resp_data_i(c_mem_resp_data_i)
      ,.mem_resp_v_i(c_mem_resp_v_i)
-     ,.mem_resp_yumi_o(c_mem_resp_yumi_o)
+     ,.mem_resp_ready_o(c_mem_resp_ready_o)
 
      ,.adr_i(adr)
      ,.dat_i(dat_mosi)
@@ -108,5 +129,11 @@ module top
 
      ,.dat_o(dat_miso)
      ,.ack_o(ack)
-    );
+     );
+
+  // assertions
+  initial begin
+    assert(data_width_p == 64)
+      else $error("Testbench is to be used with 64 bit wide data");
+  end
 endmodule

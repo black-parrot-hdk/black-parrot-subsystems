@@ -13,6 +13,7 @@ public:
     BP_me_WB_master_ctrl(
         int test_size,
         unsigned long int seed,
+        VL_IN8  (&reset_i, 0, 0),
         // BP command in
         VL_INW  (&mem_cmd_header_i, 66, 0, 3),
         VL_IN64 (&mem_cmd_data_i, 63, 0),
@@ -35,6 +36,7 @@ public:
     bool done() {return responses.size() == test_size;}
 
 private:
+    VL_IN8  (&reset_i, 0, 0);
     VL_INW  (&mem_cmd_header_i, 66, 0, 3);
     VL_IN64 (&mem_cmd_data_i, 63, 0);
     VL_IN8  (&mem_cmd_v_i, 0, 0);
