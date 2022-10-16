@@ -1,29 +1,25 @@
 #pragma once
 
 #include "verilated.h"
+#include "bsg_nonsynth_dpi_fifo.hpp"
 #include "bp_packages.h"
 
 #include <vector>
 #include <iterator>
 #include <random>
 #include <functional>
+#include <memory>
+#include <cstdint>
+
+typedef unsigned __int128 uint128_t;
+
+using namespace bsg_nonsynth_dpi;
 
 class BP_me_WB_client_ctrl {
 public:
     BP_me_WB_client_ctrl(
         int test_size,
-        unsigned long int seed,
-        VL_IN8  (&reset_i, 0, 0),
-        // BP command out
-        VL_OUTW (&mem_cmd_header_o, 66, 0, 3),
-        VL_OUT64(&mem_cmd_data_o, 63, 0),
-        VL_OUT8 (&mem_cmd_v_o, 0, 0),
-        VL_IN8  (&mem_cmd_ready_i, 0, 0),
-        // BP response in
-        VL_INW  (&mem_resp_header_i, 66, 0, 3),
-        VL_IN64 (&mem_resp_data_i, 63, 0),
-        VL_IN8  (&mem_resp_v_i, 0, 0),
-        VL_OUT8 (&mem_resp_ready_o, 0, 0)
+        unsigned long int seed
     );
 
     const std::vector<BP_cmd>& get_commands() {return commands;}
@@ -33,15 +29,11 @@ public:
     bool sim_write();
 
 private:
-    VL_IN8  (&reset_i, 0, 0);
-    VL_OUTW (&mem_cmd_header_o, 66, 0, 3);
-    VL_OUT64(&mem_cmd_data_o, 63, 0);
-    VL_OUT8 (&mem_cmd_v_o, 0, 0);
-    VL_IN8  (&mem_cmd_ready_i, 0, 0);
-    VL_INW  (&mem_resp_header_i, 66, 0, 3);
-    VL_IN64 (&mem_resp_data_i, 63, 0);
-    VL_IN8  (&mem_resp_v_i, 0, 0);
-    VL_OUT8 (&mem_resp_ready_o, 0, 0);
+    std::unique_ptr<dpi_from_fifo<uint128_t>> f2d_cmd_header;
+    std::unique_ptr<dpi_from_fifo<uint64_t>> f2d_cmd_data;
+
+    std::unique_ptr<dpi_to_fifo<uint128_t>> d2f_resp_header;
+    std::unique_ptr<dpi_to_fifo<uint64_t>> d2f_resp_data;
 
     int test_size;
     unsigned long int seed;
@@ -57,5 +49,5 @@ private:
     std::uniform_int_distribution<uint64_t> distribution;
     std::function<uint64_t()> dice;
 
-    VL_SIG64(, 63, 0) replicate(VL_SIG64(data, 63, 0), VL_SIG8(size, 2, 0));
+    uint64_t replicate(uint64_t data, uint8_t size);
 };

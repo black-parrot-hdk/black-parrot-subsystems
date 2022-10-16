@@ -11,39 +11,36 @@ module top
     , parameter data_width_p         = dword_width_gp
     , localparam wbone_addr_width_lp = paddr_width_p - `BSG_SAFE_CLOG2(data_width_p>>3)
 
-    , parameter cycle_time_p      = 4
-    , parameter reset_cycles_lo_p = 0
-    , parameter reset_cycles_hi_p = 1
+    , localparam cycle_time_lp      = 4
+    , localparam reset_cycles_lo_lp = 0
+    , localparam reset_cycles_hi_lp = 1
+    , localparam debug_lp           = 0
   )
-  (   output reset_o
-
-    // master BP signals
-    , input  [mem_header_width_lp-1:0] m_mem_cmd_header_i
-    , input  [data_width_p-1:0]        m_mem_cmd_data_i
-    , input                            m_mem_cmd_v_i
-    , output                           m_mem_cmd_ready_o
-
-    , output [mem_header_width_lp-1:0] m_mem_resp_header_o
-    , output [data_width_p-1:0]        m_mem_resp_data_o
-    , output                           m_mem_resp_v_o
-    , input                            m_mem_resp_yumi_i
-
-    // client BP signals
-    , input  [lce_id_width_p-1:0]      c_lce_id_i
-    , input  [did_width_p-1:0]         c_did_i
-
-    , output [mem_header_width_lp-1:0] c_mem_cmd_header_o
-    , output [data_width_p-1:0]        c_mem_cmd_data_o
-    , output                           c_mem_cmd_v_o
-    , input                            c_mem_cmd_ready_i
-
-    , input  [mem_header_width_lp-1:0] c_mem_resp_header_i
-    , input  [data_width_p-1:0]        c_mem_resp_data_i
-    , input                            c_mem_resp_v_i
-    , output                           c_mem_resp_ready_o
-  );
+  ();
 
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
+
+  // BP master signals
+  wire [mem_header_width_lp-1:0] m_mem_cmd_header_i;
+  wire [data_width_p-1:0]        m_mem_cmd_data_i;
+  wire                           m_mem_cmd_v_i;
+  wire                           m_mem_cmd_ready_o;
+
+  wire [mem_header_width_lp-1:0] m_mem_resp_header_o;
+  wire [data_width_p-1:0]        m_mem_resp_data_o;
+  wire                           m_mem_resp_v_o;
+  wire                           m_mem_resp_yumi_i;
+
+  // BP client signals
+  wire [mem_header_width_lp-1:0] c_mem_cmd_header_o;
+  wire [data_width_p-1:0]        c_mem_cmd_data_o;
+  wire                           c_mem_cmd_v_o;
+  wire                           c_mem_cmd_ready_i;
+
+  wire [mem_header_width_lp-1:0] c_mem_resp_header_i;
+  wire [data_width_p-1:0]        c_mem_resp_data_i;
+  wire                           c_mem_resp_v_i;
+  wire                           c_mem_resp_ready_o;
 
   // WB signals
   wire [wbone_addr_width_lp-1:0] adr;
@@ -59,21 +56,153 @@ module top
   // generate clk and reset
   wire clk;
   bsg_nonsynth_dpi_clock_gen
-   #(.cycle_time_p(cycle_time_p))
-   clock_gen
-    (.o(clk));
+    #(
+      .cycle_time_p(cycle_time_lp)
+    )
+    clock_gen(
+      .o(clk)
+    );
 
   wire reset;
-  assign reset_o = reset;
   bsg_nonsynth_reset_gen
-   #( .reset_cycles_lo_p(reset_cycles_lo_p)
-     ,.reset_cycles_hi_p(reset_cycles_hi_p)
+    #(
+      .reset_cycles_lo_p(reset_cycles_lo_lp)
+     ,.reset_cycles_hi_p(reset_cycles_hi_lp)
     ) 
-    reset_gen
-     ( .clk_i(clk) 
-      ,.async_reset_o(reset)
-      );
+    reset_gen(
+      .clk_i(clk) 
+     ,.async_reset_o(reset)
+    );
+  
+  // bsg_nonsynth_dpi_from_fifo and bsg_nonsynth_dpi_to_fifo can only handle up
+  // to 128 bits of data, so we need two of each type per adapter
+  // here, we just chose to split header and data, since it makes sense
 
+  // modules for sending a command to the master adapter
+  bsg_nonsynth_dpi_to_fifo
+    #(
+      .width_p(2 ** `BSG_SAFE_CLOG2(mem_header_width_lp))
+     ,.debug_p(debug_lp)
+    )
+    m_d2f_cmd_header(
+      .clk_i(clk)
+     ,.reset_i(reset)
+     ,.debug_o() 
+
+     ,.v_o(m_mem_cmd_v_i)
+     ,.ready_i(m_mem_cmd_ready_o)
+     ,.data_o(m_mem_cmd_header_i)
+    );
+  bsg_nonsynth_dpi_to_fifo
+    #(
+      .width_p(data_width_p)
+     ,.debug_p(debug_lp)
+    )
+    m_d2f_cmd_data(
+      .clk_i(clk)
+     ,.reset_i(reset)
+     ,.debug_o()
+
+      // m_d2f_cmd_header's v_o is used to interface the adapter
+     ,.v_o()
+     ,.ready_i(m_mem_cmd_ready_o)
+     ,.data_o(m_mem_cmd_data_i)
+    );
+
+  // modules for receiving a command from the client adapter
+  bsg_nonsynth_dpi_from_fifo
+    #(
+      .width_p(2 ** `BSG_SAFE_CLOG2(mem_header_width_lp))
+     ,.debug_p(debug_lp)
+    )
+    c_f2d_cmd_header(
+      .clk_i(clk)
+     ,.reset_i(reset)
+     ,.debug_o()
+
+     ,.v_i(c_mem_cmd_v_o)
+     ,.yumi_o(c_mem_cmd_ready_i)
+     ,.data_i(c_mem_cmd_header_o)
+    );
+  bsg_nonsynth_dpi_from_fifo
+    #(
+      .width_p(data_width_p)
+     ,.debug_p(debug_lp)
+    )
+    c_f2d_cmd_data(
+      .clk_i(clk)
+     ,.reset_i(reset)
+     ,.debug_o()
+
+     ,.v_i(c_mem_cmd_v_o)
+      // c_f2d_cmd_header's yumi_o is used to interface the adapter
+     ,.yumi_o()
+     ,.data_i(c_mem_cmd_data_o)
+    );
+
+  // modules for sending a response to the client adapter
+  bsg_nonsynth_dpi_to_fifo
+    #(
+      .width_p(2 ** `BSG_SAFE_CLOG2(mem_header_width_lp))
+     ,.debug_p(debug_lp)
+    )
+    c_d2f_resp_header(
+      .clk_i(clk)
+     ,.reset_i(reset)
+     ,.debug_o() 
+
+     ,.v_o(c_mem_resp_v_i)
+     ,.ready_i(c_mem_resp_ready_o)
+     ,.data_o(c_mem_resp_header_i)
+    );
+  bsg_nonsynth_dpi_to_fifo
+    #(
+      .width_p(data_width_p)
+     ,.debug_p(debug_lp)
+    )
+    c_d2f_resp_data(
+      .clk_i(clk)
+     ,.reset_i(reset)
+     ,.debug_o()
+
+      // c_d2f_resp_header's v_o is used to interface the adapter
+     ,.v_o()
+     ,.ready_i(c_mem_resp_ready_o)
+     ,.data_o(c_mem_resp_data_i)
+    );
+
+  // modules for receiving a response from the master adapter
+  bsg_nonsynth_dpi_from_fifo
+    #(
+      .width_p(2 ** `BSG_SAFE_CLOG2(mem_header_width_lp))
+     ,.debug_p(debug_lp)
+    )
+    m_f2d_resp_header(
+      .clk_i(clk)
+     ,.reset_i(reset)
+     ,.debug_o()
+
+     ,.v_i(m_mem_resp_v_o)
+     ,.yumi_o(m_mem_resp_yumi_i)
+     ,.data_i(m_mem_resp_header_o)
+    );
+  bsg_nonsynth_dpi_from_fifo
+    #(
+      .width_p(data_width_p)
+     ,.debug_p(debug_lp)
+    )
+    m_f2d_resp_data(
+      .clk_i(clk)
+     ,.reset_i(reset)
+     ,.debug_o()
+
+     ,.v_i(m_mem_resp_v_o)
+      // m_f2d_resp_header's yumi_o is used to interface the adapter
+     ,.yumi_o()
+     ,.data_i(m_mem_resp_data_o)
+    );
+
+  // adapters
   bp_me_wb_master
    #(.bp_params_p(bp_params_p))
    bp_me_wb_master
@@ -107,8 +236,8 @@ module top
     ( .clk_i(clk)
      ,.reset_i(reset)
 
-     ,.lce_id_i(c_lce_id_i)
-     ,.did_i(c_did_i)
+     ,.lce_id_i('0)
+     ,.did_i('0)
 
      ,.mem_cmd_header_o(c_mem_cmd_header_o)
      ,.mem_cmd_data_o(c_mem_cmd_data_o)

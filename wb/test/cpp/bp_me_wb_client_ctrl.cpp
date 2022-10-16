@@ -2,90 +2,77 @@
 
 #include <iostream>
 
+using namespace bsg_nonsynth_dpi;
+
 BP_me_WB_client_ctrl::BP_me_WB_client_ctrl(
     int test_size,
-    unsigned long int seed,
-    VL_IN8  (&reset_i, 0, 0),
-    // BP command out
-    VL_OUTW (&mem_cmd_header_o, 66, 0, 3),
-    VL_OUT64(&mem_cmd_data_o, 63, 0),
-    VL_OUT8 (&mem_cmd_v_o, 0, 0),
-    VL_IN8  (&mem_cmd_ready_i, 0, 0),
-    // BP response in
-    VL_INW  (&mem_resp_header_i, 66, 0, 3),
-    VL_IN64 (&mem_resp_data_i, 63, 0),
-    VL_IN8  (&mem_resp_v_i, 0, 0),
-    VL_OUT8 (&mem_resp_ready_o, 0, 0)
+    unsigned long int seed
 ) : test_size{test_size},
     generator{seed},
-    dice{std::bind(distribution, generator)},
-    reset_i{reset_i},
-    mem_cmd_header_o{mem_cmd_header_o},
-    mem_cmd_data_o{mem_cmd_data_o},
-    mem_cmd_v_o{mem_cmd_v_o},
-    mem_cmd_ready_i{mem_cmd_ready_i},
-    mem_resp_header_i{mem_resp_header_i},
-    mem_resp_data_i{mem_resp_data_i},
-    mem_resp_v_i{mem_resp_v_i},
-    mem_resp_ready_o{mem_resp_ready_o}
+    dice{std::bind(distribution, generator)}
 {
     commands.reserve(test_size);
     responses.reserve(test_size);
 
     resp_it = responses.begin();
 
-    mem_cmd_ready_i = 0;
-    mem_resp_v_i = 0;
+    // create dpi_to_fifo and dpi_from_fifo objects
+    f2d_cmd_header =
+        std::make_unique<dpi_from_fifo<unsigned __int128>>("TOP.top.c_f2d_cmd_header");
+    f2d_cmd_data =
+        std::make_unique<dpi_from_fifo<uint64_t>>("TOP.top.c_f2d_cmd_data");
+    d2f_resp_header =
+        std::make_unique<dpi_to_fifo<unsigned __int128>>("TOP.top.c_d2f_resp_header");
+    d2f_resp_data =
+        std::make_unique<dpi_to_fifo<uint64_t>>("TOP.top.c_d2f_resp_data");
 };
 
 bool BP_me_WB_client_ctrl::sim_read() {
-    // check if command is ready
-    if (mem_cmd_ready_i == 1 && mem_cmd_v_o == 1) {
-        if (commands.size() == test_size) {
-            std::cout << "\nError: Client adapter received too many commands\n";
-            return false;
+    unsigned __int128 header;
+    uint64_t data;
+
+    // check for correct clock state
+    if (f2d_cmd_header->is_window()) {
+
+        // check if adapter command is valid
+        if (f2d_cmd_header->rx(header)) {
+            // also read the data
+            f2d_cmd_data->rx(data);
+            
+            if (commands.size() == test_size) {
+                std::cout << "\nError: Client adapter received too many commands\n";
+                return false;
+            }
+            commands.emplace_back(header, data);
+
+            // construct the response
+            uint64_t data_resp = replicate(dice(), 0);
+            responses.emplace_back(commands.back().header, data_resp);
         }
-
-        // read and save the incoming command
-        commands.emplace_back(mem_cmd_header_o, mem_cmd_data_o);
-
-        // construct the response
-        VL_SIG64(data, 63, 0) = replicate(dice(), 0);
-        responses.emplace_back(commands.back().header, data);
-
-        ready_cooldown = dice() % 8;
     }
 
     return true;
 }
 
 bool BP_me_WB_client_ctrl::sim_write() {
-    mem_cmd_ready_i = (ready_cooldown == 0);
-    if (ready_cooldown > 0)
-        ready_cooldown--;
+    // check for correct clock state
+    if (d2f_resp_header->is_window() && resp_it != responses.end()) {
+        unsigned __int128 header = resp_it->header;
+        uint64_t data = resp_it->data;
 
-    mem_resp_v_i = (resp_it != responses.end() && valid_cooldown == 0 && reset_i == 0);
-    if (valid_cooldown > 0)
-        valid_cooldown--;
-
-    // send the response if valid and the adapter is ready
-    if (mem_resp_v_i == 1) {
-        mem_resp_header_i = resp_it->header;
-        mem_resp_data_i = resp_it->data;
-
-        if (mem_resp_ready_o == 1) {
+        // check if adapter is ready
+        if (d2f_resp_header->tx(header)) {
+            // also send the data
+            d2f_resp_data->tx(data);
+            
             resp_it++;
-            valid_cooldown = dice() % 8;
         }
-    } else {
-        mem_resp_header_i = {0, 0, 0};
-        mem_resp_data_i = 0;
     }
 
     return true;
 }
 
-VL_SIG64(, 63, 0) BP_me_WB_client_ctrl::replicate(VL_SIG64(data, 63, 0), VL_SIG8(size, 2, 0)) {
+uint64_t BP_me_WB_client_ctrl::replicate(uint64_t data, uint8_t size) {
     // for BP, less than bus width data must be replicated
     switch (size) {
         case 0: return (data & 0xFF)

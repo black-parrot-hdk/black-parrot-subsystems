@@ -2,96 +2,82 @@
 
 #include <iostream>
 
+using namespace bsg_nonsynth_dpi;
+
 BP_me_WB_master_ctrl::BP_me_WB_master_ctrl(
     int test_size,
-    unsigned long int seed,
-    VL_IN8  (&reset_i, 0, 0),
-    // BP command in
-    VL_INW  (&mem_cmd_header_i, 66, 0, 3),
-    VL_IN64 (&mem_cmd_data_i, 63, 0),
-    VL_IN8  (&mem_cmd_v_i, 0, 0),
-    VL_OUT8 (&mem_cmd_ready_o, 0, 0),
-    // BP response out
-    VL_OUTW (&mem_resp_header_o, 66, 0, 3),
-    VL_OUT64(&mem_resp_data_o, 63, 0),
-    VL_OUT8 (&mem_resp_v_o, 0, 0),
-    VL_IN8  (&mem_resp_yumi_i, 0, 0)
+    unsigned long int seed
 ) : test_size{test_size},
     generator{seed},
-    dice{std::bind(distribution, generator)},
-    reset_i{reset_i},
-    mem_cmd_header_i{mem_cmd_header_i},
-    mem_cmd_data_i{mem_cmd_data_i},
-    mem_cmd_v_i{mem_cmd_v_i},
-    mem_cmd_ready_o{mem_cmd_ready_o},
-    mem_resp_header_o{mem_resp_header_o},
-    mem_resp_data_o{mem_resp_data_o},
-    mem_resp_v_o{mem_resp_v_o},
-    mem_resp_yumi_i{mem_resp_yumi_i}
+    dice{std::bind(distribution, generator)}
 {
     commands.reserve(test_size);
     responses.reserve(test_size);
-
     cmd_it = commands.begin();
 
     // generate commands
     for (int i = 0; i < test_size; i++) {
-        VL_SIG8(size, 2, 0) = dice() & 0x3;
-        VL_SIG64(addr, 39, 0) = dice() & 0xFFFFFFFFF8;
-        VL_SIG8(msg_type, 3, 0) = 2 + (dice() & 0x1);
-        VL_SIG64(data, 63, 0) = replicate(dice(), size);
+        uint8_t size = dice() & 0x3;
+        uint64_t addr = dice() & 0xFFFFFFFFF8;
+        uint8_t msg_type = 2 + (dice() & 0x1);
+        uint64_t data = replicate(dice(), size);
         commands.emplace_back(size, addr, msg_type, data);
     }
 
-    mem_cmd_v_i = 0;
-    mem_resp_yumi_i = 0;
-    yumi_cooldown = 5;
+    // create dpi_to_fifo and dpi_from_fifo objects
+    d2f_cmd_header =
+        std::make_unique<dpi_to_fifo<unsigned __int128>>("TOP.top.m_d2f_cmd_header");
+    d2f_cmd_data =
+        std::make_unique<dpi_to_fifo<uint64_t>>("TOP.top.m_d2f_cmd_data");
+    f2d_resp_header =
+        std::make_unique<dpi_from_fifo<unsigned __int128>>("TOP.top.m_f2d_resp_header");
+    f2d_resp_data =
+        std::make_unique<dpi_from_fifo<uint64_t>>("TOP.top.m_f2d_resp_data");
 };
 
 bool BP_me_WB_master_ctrl::sim_read() {
-    // check if response is ready
-    if (mem_resp_v_o == 1 && mem_resp_yumi_i == 1) {
-        if (responses.size() == test_size) {
-            std::cout << "\nError: Master adapter received too many responses\n";
-            return false;
+    unsigned __int128 header;
+    uint64_t data;
+
+    // check for correct clock state
+    if (f2d_resp_header->is_window()) {
+
+        // check if adapter response is valid
+        if (f2d_resp_header->rx(header)) {
+            // also read the data
+            f2d_resp_data->rx(data);
+            
+            if (responses.size() == test_size) {
+                std::cout << "\nError: Master adapter received too many responses\n";
+                return false;
+            }
+            responses.emplace_back(header, data);
         }
-
-        // read and save the response
-        responses.emplace_back(mem_resp_header_o, mem_resp_data_o);
-
-        yumi_cooldown = dice() % 8 + 10;
     }
 
     return true;
 }
 
 bool BP_me_WB_master_ctrl::sim_write() {
-    mem_cmd_v_i = (cmd_it != commands.end() && valid_cooldown == 0 && reset_i == 0);
-    if (valid_cooldown > 0)
-        valid_cooldown--;
+    unsigned __int128 header = cmd_it->header;
+    uint64_t data = cmd_it->data;
 
-    mem_resp_yumi_i = (mem_resp_v_o == 1 && yumi_cooldown == 0 && reset_i == 0);
-    if (yumi_cooldown > 0)
-        yumi_cooldown--;
-
-    // send the next command if valid and the adapter is ready
-    if (mem_cmd_v_i == 1) {
-        mem_cmd_header_i = cmd_it->header;
-        mem_cmd_data_i = cmd_it->data;
-
-        if (mem_cmd_ready_o == 1) {
+    // check for correct clock state
+    if (d2f_cmd_header->is_window()) {
+        
+        // check if adapter is ready
+        if (d2f_cmd_header->tx(header)) {
+            // also send the data
+            d2f_cmd_data->tx(data);
+            
             cmd_it++;
-            valid_cooldown = dice() % 8;
         }
-    } else {
-        mem_cmd_header_i = {0, 0, 0};
-        mem_cmd_data_i = 0;
     }
 
     return true;
 }
 
-VL_SIG64(, 63, 0) BP_me_WB_master_ctrl::replicate(VL_SIG64(data, 63, 0), VL_SIG8(size, 2, 0)) {
+uint64_t BP_me_WB_master_ctrl::replicate(uint64_t data, uint8_t size) {
     // for BP, less than bus width data must be replicated
     switch (size) {
         case 0: return (data & 0xFF)
