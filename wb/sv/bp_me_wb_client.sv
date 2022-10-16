@@ -58,13 +58,15 @@ module bp_me_wb_client
   localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p>>3));
   wire [size_width_lp-1:0] cmd_size_li = msg_size;
   bsg_bus_pack
-   #(.in_width_p(data_width_p))
-   bus_pack
-    ( .data_i(dat_i)
+    #(
+      .in_width_p(data_width_p)
+    )
+    bus_pack(
+      .data_i(dat_i)
      ,.sel_i('0)
      ,.size_i(cmd_size_li)
      ,.data_o(mem_cmd_data_o)
-     );
+    );
 
   // state machine for handling BP and WB handshakes
   typedef enum logic [1:0] {

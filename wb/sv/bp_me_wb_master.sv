@@ -56,9 +56,11 @@ module bp_me_wb_master
   wire [data_width_p-1:0] mem_cmd_data_lo;
   wire mem_cmd_v_li;
   bsg_one_fifo
-   #(.width_p(mem_header_width_lp + data_width_p))
-   cmd_buffer
-    ( .clk_i(clk_i)
+    #(
+      .width_p(mem_header_width_lp + data_width_p)
+    )
+    cmd_buffer(
+      .clk_i(clk_i)
      ,.reset_i(reset_i)
 
      ,.data_i({mem_cmd_header_i, mem_cmd_data_i})
@@ -68,14 +70,16 @@ module bp_me_wb_master
      ,.data_o({mem_cmd_header_lo, mem_cmd_data_lo})
      ,.v_o(mem_cmd_v_li)
      ,.yumi_i(mem_resp_yumi_i)
-     );
+    );
 
   // response data buffer
   wire mem_resp_ready_lo;
   bsg_one_fifo
-   #(.width_p(data_width_p))
-   resp_data_buffer
-    ( .clk_i(clk_i)
+    #(
+      .width_p(data_width_p)
+    )
+    resp_data_buffer(
+      .clk_i(clk_i)
      ,.reset_i(reset_i)
 
      ,.data_i(dat_i)
@@ -85,19 +89,21 @@ module bp_me_wb_master
      ,.data_o(mem_resp_data_o)
      ,.v_o(mem_resp_v_o)
      ,.yumi_i(mem_resp_yumi_i)
-     );
+    );
 
   // for BP, less than bus width data must be replicated
   localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p>>3));
   wire [size_width_lp-1:0] resp_size_li = mem_cmd_header_lo.size;
   bsg_bus_pack
-   #(.in_width_p(data_width_p))
-   bus_pack
-    ( .data_i(dat_i)
+    #(
+      .in_width_p(data_width_p)
+    )
+    bus_pack(
+      .data_i(dat_i)
      ,.sel_i('0)
      ,.size_i(resp_size_li)
      ,.data_o(mem_resp_data_o)
-     );
+    );
 
   // state machine for handling WB handshake
   // BP handshake is handled by the command and response data buffers
