@@ -7,9 +7,9 @@ BP_cmd::BP_cmd(
     uint64_t data
 ) : data{data} {
     header = 0;
-    header += msg_type & 0x3;
-    header += (static_cast<uint128_t>(addr) & 0xFFFFFFFFF8) << 8;
-    header += (static_cast<uint128_t>(size) & 0x3) << 48;
+    header |= msg_type & 0x3;
+    header |= (addr & 0xFFFFFFFFF8) << 8;
+    header |= (static_cast<uint64_t>(size) & 0x3) << 48;
 }
 
 bool BP_cmd::operator==(const BP_cmd other) {

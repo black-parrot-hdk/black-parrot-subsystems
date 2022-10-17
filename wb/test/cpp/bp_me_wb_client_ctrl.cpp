@@ -17,37 +17,29 @@ BP_me_WB_client_ctrl::BP_me_WB_client_ctrl(
     resp_it = responses.begin();
 
     // create dpi_to_fifo and dpi_from_fifo objects
-    f2d_cmd_header =
-        std::make_unique<dpi_from_fifo<unsigned __int128>>("TOP.top.c_f2d_cmd_header");
-    f2d_cmd_data =
-        std::make_unique<dpi_from_fifo<uint64_t>>("TOP.top.c_f2d_cmd_data");
-    d2f_resp_header =
-        std::make_unique<dpi_to_fifo<unsigned __int128>>("TOP.top.c_d2f_resp_header");
-    d2f_resp_data =
-        std::make_unique<dpi_to_fifo<uint64_t>>("TOP.top.c_d2f_resp_data");
+    f2d_cmd = std::make_unique<dpi_from_fifo<uint128_t>>("TOP.top.c_f2d_cmd");
+    d2f_resp = std::make_unique<dpi_to_fifo<uint128_t>>("TOP.top.c_d2f_resp");
 };
 
 bool BP_me_WB_client_ctrl::sim_read() {
-    unsigned __int128 header;
-    uint64_t data;
-
     // check for correct clock state
-    if (f2d_cmd_header->is_window()) {
-
+    if (f2d_cmd->is_window()) {
         // check if adapter command is valid
-        if (f2d_cmd_header->rx(header)) {
-            // also read the data
-            f2d_cmd_data->rx(data);
+        uint128_t command;
+        if (f2d_cmd->rx(command)) {
             
             if (commands.size() == test_size) {
                 std::cout << "\nError: Client adapter received too many commands\n";
                 return false;
             }
+
+            uint64_t header = (command >> 64) & 0xFFFFFFFFFFFFFFFF;
+            uint64_t data = command & 0xFFFFFFFFFFFFFFFF;
             commands.emplace_back(header, data);
 
-            // construct the response
+            // construct a response with the same header
             uint64_t data_resp = replicate(dice(), 0);
-            responses.emplace_back(commands.back().header, data_resp);
+            responses.emplace_back(header, data_resp);
         }
     }
 
@@ -56,17 +48,12 @@ bool BP_me_WB_client_ctrl::sim_read() {
 
 bool BP_me_WB_client_ctrl::sim_write() {
     // check for correct clock state
-    if (d2f_resp_header->is_window() && resp_it != responses.end()) {
-        unsigned __int128 header = resp_it->header;
-        uint64_t data = resp_it->data;
+    if (d2f_resp->is_window() && resp_it != responses.end()) {
+        uint128_t response = (static_cast<uint128_t>(resp_it->header) << 64) | resp_it->data;
 
-        // check if adapter is ready
-        if (d2f_resp_header->tx(header)) {
-            // also send the data
-            d2f_resp_data->tx(data);
-            
+        // try to send the response
+        if (d2f_resp->tx(response))
             resp_it++;
-        }
     }
 
     return true;

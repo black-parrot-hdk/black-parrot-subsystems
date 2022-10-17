@@ -14,7 +14,7 @@ module top
     , localparam cycle_time_lp      = 4
     , localparam reset_cycles_lo_lp = 0
     , localparam reset_cycles_hi_lp = 1
-    , localparam debug_lp           = 0
+    , localparam debug_lp           = 1
   )
   ();
 
@@ -73,133 +73,89 @@ module top
       .clk_i(clk) 
      ,.async_reset_o(reset)
     );
-  
-  // bsg_nonsynth_dpi_from_fifo and bsg_nonsynth_dpi_to_fifo can only handle up
-  // to 128 bits of data, so we need two of each type per adapter
-  // here, we just chose to split header and data, since it makes sense
 
-  // modules for sending a command to the master adapter
+  // send commands to the master adapter
+  wire [63:0] m_d2f_cmd_header_o;
+  wire [63:0] m_d2f_cmd_data_o;
+  assign m_mem_cmd_header_i = {'0, m_d2f_cmd_header_o};
+  assign m_mem_cmd_data_i   = m_d2f_cmd_data_o;
+
   bsg_nonsynth_dpi_to_fifo
     #(
-      .width_p(2 ** `BSG_SAFE_CLOG2(mem_header_width_lp))
+      .width_p(128)
      ,.debug_p(debug_lp)
     )
-    m_d2f_cmd_header(
+    m_d2f_cmd(
       .clk_i(clk)
      ,.reset_i(reset)
      ,.debug_o() 
 
      ,.v_o(m_mem_cmd_v_i)
      ,.ready_i(m_mem_cmd_ready_o)
-     ,.data_o(m_mem_cmd_header_i)
-    );
-  bsg_nonsynth_dpi_to_fifo
-    #(
-      .width_p(data_width_p)
-     ,.debug_p(debug_lp)
-    )
-    m_d2f_cmd_data(
-      .clk_i(clk)
-     ,.reset_i(reset)
-     ,.debug_o()
-
-      // m_d2f_cmd_header's v_o is used to interface the adapter
-     ,.v_o()
-     ,.ready_i(m_mem_cmd_ready_o)
-     ,.data_o(m_mem_cmd_data_i)
+     ,.data_o({m_d2f_cmd_header_o, m_d2f_cmd_data_o})
     );
 
-  // modules for receiving a command from the client adapter
+  // receive commands from the client adapter
+  wire [63:0] c_f2d_cmd_header_i;
+  wire [63:0] c_f2d_cmd_data_i;
+  assign c_f2d_cmd_header_i = c_mem_cmd_header_o[0+:64];
+  assign c_f2d_cmd_data_i   = c_mem_cmd_data_o;
+
   bsg_nonsynth_dpi_from_fifo
     #(
-      .width_p(2 ** `BSG_SAFE_CLOG2(mem_header_width_lp))
+      .width_p(128)
      ,.debug_p(debug_lp)
     )
-    c_f2d_cmd_header(
+    c_f2d_cmd(
       .clk_i(clk)
      ,.reset_i(reset)
      ,.debug_o()
 
      ,.v_i(c_mem_cmd_v_o)
      ,.yumi_o(c_mem_cmd_ready_i)
-     ,.data_i(c_mem_cmd_header_o)
-    );
-  bsg_nonsynth_dpi_from_fifo
-    #(
-      .width_p(data_width_p)
-     ,.debug_p(debug_lp)
-    )
-    c_f2d_cmd_data(
-      .clk_i(clk)
-     ,.reset_i(reset)
-     ,.debug_o()
-
-     ,.v_i(c_mem_cmd_v_o)
-      // c_f2d_cmd_header's yumi_o is used to interface the adapter
-     ,.yumi_o()
-     ,.data_i(c_mem_cmd_data_o)
+     ,.data_i({c_f2d_cmd_header_i, c_f2d_cmd_data_i})
     );
 
-  // modules for sending a response to the client adapter
+  // send responses to the client adapter
+  wire [63:0] c_d2f_resp_header_o;
+  wire [63:0] c_d2f_resp_data_o;
+  assign c_mem_resp_header_i = {'0, c_d2f_resp_header_o};
+  assign c_mem_resp_data_i   = c_d2f_resp_data_o;
+
   bsg_nonsynth_dpi_to_fifo
     #(
-      .width_p(2 ** `BSG_SAFE_CLOG2(mem_header_width_lp))
+      .width_p(128)
      ,.debug_p(debug_lp)
     )
-    c_d2f_resp_header(
+    c_d2f_resp(
       .clk_i(clk)
      ,.reset_i(reset)
      ,.debug_o() 
 
      ,.v_o(c_mem_resp_v_i)
      ,.ready_i(c_mem_resp_ready_o)
-     ,.data_o(c_mem_resp_header_i)
-    );
-  bsg_nonsynth_dpi_to_fifo
-    #(
-      .width_p(data_width_p)
-     ,.debug_p(debug_lp)
-    )
-    c_d2f_resp_data(
-      .clk_i(clk)
-     ,.reset_i(reset)
-     ,.debug_o()
-
-      // c_d2f_resp_header's v_o is used to interface the adapter
-     ,.v_o()
-     ,.ready_i(c_mem_resp_ready_o)
-     ,.data_o(c_mem_resp_data_i)
+     ,.data_o({c_d2f_resp_header_o, c_d2f_resp_data_o})
     );
 
-  // modules for receiving a response from the master adapter
+  // receive responses from the master adapter
+  wire [63:0] m_f2d_resp_header_i;
+  wire [63:0] m_f2d_resp_data_i;
+  assign m_f2d_resp_header_i = m_mem_resp_header_o[0+:64];
+  assign m_f2d_resp_data_i   = m_mem_resp_data_o;
+
   bsg_nonsynth_dpi_from_fifo
     #(
-      .width_p(2 ** `BSG_SAFE_CLOG2(mem_header_width_lp))
+      .width_p(128)
      ,.debug_p(debug_lp)
     )
-    m_f2d_resp_header(
+    m_f2d_resp(
       .clk_i(clk)
      ,.reset_i(reset)
      ,.debug_o()
 
      ,.v_i(m_mem_resp_v_o)
      ,.yumi_o(m_mem_resp_yumi_i)
-     ,.data_i(m_mem_resp_header_o)
-    );
-  bsg_nonsynth_dpi_from_fifo
-    #(
-      .width_p(data_width_p)
-     ,.debug_p(debug_lp)
-    )
-    m_f2d_resp_data(
-      .clk_i(clk)
-     ,.reset_i(reset)
-     ,.debug_o()
-
-     ,.v_i(m_mem_resp_v_o)
-      // m_f2d_resp_header's yumi_o is used to interface the adapter
-     ,.yumi_o()
-     ,.data_i(m_mem_resp_data_o)
+     ,.data_i({m_f2d_resp_header_i, m_f2d_resp_data_i})
     );
 
   // adapters

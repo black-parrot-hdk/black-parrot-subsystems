@@ -25,32 +25,24 @@ BP_me_WB_master_ctrl::BP_me_WB_master_ctrl(
     }
 
     // create dpi_to_fifo and dpi_from_fifo objects
-    d2f_cmd_header =
-        std::make_unique<dpi_to_fifo<unsigned __int128>>("TOP.top.m_d2f_cmd_header");
-    d2f_cmd_data =
-        std::make_unique<dpi_to_fifo<uint64_t>>("TOP.top.m_d2f_cmd_data");
-    f2d_resp_header =
-        std::make_unique<dpi_from_fifo<unsigned __int128>>("TOP.top.m_f2d_resp_header");
-    f2d_resp_data =
-        std::make_unique<dpi_from_fifo<uint64_t>>("TOP.top.m_f2d_resp_data");
+    d2f_cmd = std::make_unique<dpi_to_fifo<uint128_t>>("TOP.top.m_d2f_cmd");
+    f2d_resp = std::make_unique<dpi_from_fifo<uint128_t>>("TOP.top.m_f2d_resp");
 };
 
 bool BP_me_WB_master_ctrl::sim_read() {
-    unsigned __int128 header;
-    uint64_t data;
-
     // check for correct clock state
-    if (f2d_resp_header->is_window()) {
-
+    if (f2d_resp->is_window()) {
         // check if adapter response is valid
-        if (f2d_resp_header->rx(header)) {
-            // also read the data
-            f2d_resp_data->rx(data);
+        uint128_t command;
+        if (f2d_resp->rx(command)) {
             
             if (responses.size() == test_size) {
                 std::cout << "\nError: Master adapter received too many responses\n";
                 return false;
             }
+
+            uint64_t header = (command >> 64) & 0xFFFFFFFFFFFFFFFF;
+            uint64_t data = command & 0xFFFFFFFFFFFFFFFF;
             responses.emplace_back(header, data);
         }
     }
@@ -59,19 +51,13 @@ bool BP_me_WB_master_ctrl::sim_read() {
 }
 
 bool BP_me_WB_master_ctrl::sim_write() {
-    unsigned __int128 header = cmd_it->header;
-    uint64_t data = cmd_it->data;
-
     // check for correct clock state
-    if (d2f_cmd_header->is_window()) {
+    if (d2f_cmd->is_window()) {
+        uint128_t command = (static_cast<uint128_t>(cmd_it->header) << 64) | cmd_it->data;
         
-        // check if adapter is ready
-        if (d2f_cmd_header->tx(header)) {
-            // also send the data
-            d2f_cmd_data->tx(data);
-            
+        // try to send the command
+        if (d2f_cmd->tx(command))
             cmd_it++;
-        }
     }
 
     return true;

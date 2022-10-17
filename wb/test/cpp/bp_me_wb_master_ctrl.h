@@ -32,11 +32,8 @@ public:
     bool done() {return responses.size() == test_size;}
 
 private:
-    std::unique_ptr<dpi_to_fifo<uint128_t>> d2f_cmd_header;
-    std::unique_ptr<dpi_to_fifo<uint64_t>> d2f_cmd_data;
-
-    std::unique_ptr<dpi_from_fifo<uint128_t>> f2d_resp_header;
-    std::unique_ptr<dpi_from_fifo<uint64_t>> f2d_resp_data;
+    std::unique_ptr<dpi_to_fifo<uint128_t>> d2f_cmd;
+    std::unique_ptr<dpi_from_fifo<uint128_t>> f2d_resp;
 
     int test_size;
     unsigned long int seed;

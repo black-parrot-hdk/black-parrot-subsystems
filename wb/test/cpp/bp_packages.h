@@ -2,14 +2,12 @@
 
 #include <cstdint>
 
-typedef unsigned __int128 uint128_t;
-
 struct BP_cmd {
-    uint128_t header;
+    uint64_t header;
     uint64_t data;
 
     BP_cmd(
-        uint128_t header,
+        uint64_t header,
         uint64_t data
     ) : header{header}, data{data} {};
 
@@ -24,11 +22,11 @@ struct BP_cmd {
 };
 
 struct BP_resp {
-    uint128_t header;
+    uint64_t header;
     uint64_t data;
 
     BP_resp(
-        uint128_t header,
+        uint64_t header,
         uint64_t data
     ) : header{header}, data{data} {};
 

@@ -1,4 +1,5 @@
 #include "verilated.h"
+#include "svdpi.h"
 #include "verilated_fst_c.h"
 #include "Vtop.h"
 #include "bsg_nonsynth_dpi_clock_gen.hpp"
@@ -71,6 +72,7 @@ int main(int argc, char* argv[]) {
     std::vector<BP_resp> responses_in = client_ctrl.get_responses();
     std::vector<BP_resp> responses_out = master_ctrl.get_responses();
 
+    // check the amount of packages sent and received
     if (commands_out.size() != test_size) {
         std::cout << "\nError: Client adapter did not receive "
             << "the correct amount of commands: "
@@ -90,32 +92,34 @@ int main(int argc, char* argv[]) {
         errors = 3;
     }
 
+    // check if there were errors in the transmitted commands
     for (int i = 0; errors < 3 && i < test_size; i++) {
         if (!(commands_in[i] == commands_out[i])) {
             std::cout << "\nError: cmd_in != cmd_out\n";
-            std::cout << "Header in:  'h" << std::hex
-                << (unsigned long long) commands_in[i].header << "\n";
-            std::cout << "Header out: 'h" << std::hex
-                << (unsigned long long) commands_out[i].header << "\n";
-            std::cout << "Data in:    'h" << std::hex
-                << commands_in[i].data << "\n";
-            std::cout << "Data out:   'h" << std::hex
-                << commands_out[i].data << "\n";
+            std::cout << "Header in:  "
+                << VL_TO_STRING(commands_in[i].header) << "\n";
+            std::cout << "Header out: "
+                << VL_TO_STRING(commands_out[i].header) << "\n";
+            std::cout << "Data in:    "
+                << VL_TO_STRING(commands_in[i].data) << "\n";
+            std::cout << "Data out:   "
+                << VL_TO_STRING(commands_out[i].data) << "\n";
             errors++;
         }
     }
 
+    // check if there were errors in the transmitted responses
     for (int i = 0; errors < 3 && i < test_size; i++) {
         if (!(responses_in[i] == responses_out[i])) {
             std::cout << "\nError: resp_in != resp_out\n";
-            std::cout << "Header in:  'h" << std::hex
-                << (unsigned long long) responses_in[i].header << "\n";
-            std::cout << "Header out: 'h" << std::hex
-                << (unsigned long long) responses_out[i].header << "\n";
-            std::cout << "Data in:    'h" << std::hex
-                << responses_in[i].data << "\n";
-            std::cout << "Data out:   'h" << std::hex
-                << responses_out[i].data << "\n";
+            std::cout << "Header in:  "
+                << VL_TO_STRING(responses_in[i].header) << "\n";
+            std::cout << "Header out: "
+                << VL_TO_STRING(responses_out[i].header) << "\n";
+            std::cout << "Data in:    "
+                << VL_TO_STRING(responses_in[i].data) << "\n";
+            std::cout << "Data out:   "
+                << VL_TO_STRING(responses_out[i].data) << "\n";
             errors++;
         }
     }
