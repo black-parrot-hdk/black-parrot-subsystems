@@ -22,7 +22,7 @@ module bsg_axil_store_packer
     //====================== AXI-4 LITE =========================
     // WRITE ADDRESS CHANNEL SIGNALS
     , input [axil_addr_width_p-1:0]              s_axil_awaddr_i
-    , input axi_prot_type_e                      s_axil_awprot_i
+    , input [2:0]                                s_axil_awprot_i
     , input                                      s_axil_awvalid_i
     , output logic                               s_axil_awready_o
 
@@ -39,7 +39,7 @@ module bsg_axil_store_packer
 
     // READ ADDRESS CHANNEL SIGNALS
     , input [axil_addr_width_p-1:0]              s_axil_araddr_i
-    , input axi_prot_type_e                      s_axil_arprot_i
+    , input [2:0]                                s_axil_arprot_i
     , input                                      s_axil_arvalid_i
     , output logic                               s_axil_arready_o
 
