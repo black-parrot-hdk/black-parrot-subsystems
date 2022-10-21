@@ -8,13 +8,13 @@ module top
     `declare_bp_proc_params(bp_params_p)
     `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
 
-    , parameter data_width_p         = dword_width_gp
+    , parameter  data_width_p        = dword_width_gp
     , localparam wbone_addr_width_lp = paddr_width_p - `BSG_SAFE_CLOG2(data_width_p>>3)
 
     , localparam cycle_time_lp      = 4
     , localparam reset_cycles_lo_lp = 0
     , localparam reset_cycles_hi_lp = 1
-    , localparam debug_lp           = 1
+    , localparam debug_lp           = 0
   )
   ();
 
@@ -70,7 +70,7 @@ module top
      ,.reset_cycles_hi_p(reset_cycles_hi_lp)
     ) 
     reset_gen(
-      .clk_i(clk) 
+      .clk_i(clk)
      ,.async_reset_o(reset)
     );
 

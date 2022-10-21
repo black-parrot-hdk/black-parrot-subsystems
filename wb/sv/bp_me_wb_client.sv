@@ -18,7 +18,7 @@ module bp_me_wb_client
     `declare_bp_proc_params(bp_params_p)
     `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
 
-    , parameter data_width_p         = dword_width_gp
+    , parameter  data_width_p        = dword_width_gp
     , localparam wbone_addr_width_lp = paddr_width_p - `BSG_SAFE_CLOG2(data_width_p>>3)
   )
   (   input                                  clk_i
