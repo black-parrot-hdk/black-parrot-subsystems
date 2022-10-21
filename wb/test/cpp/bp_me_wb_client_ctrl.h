@@ -30,13 +30,15 @@ public:
 
 private:
     std::unique_ptr<dpi_from_fifo<uint128_t>> f2d_cmd;
+    bool f2d_cmd_init = false;
     std::unique_ptr<dpi_to_fifo<uint128_t>> d2f_resp;
+    bool d2f_resp_init = false;
 
     int test_size;
     unsigned long int seed;
 
-    int ready_cooldown = 0;
-    int valid_cooldown = 0;
+    int rx_cooldown;
+    int tx_cooldown;
 
     std::vector<BP_cmd> commands;
     std::vector<BP_resp> responses;

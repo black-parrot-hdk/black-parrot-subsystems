@@ -24,26 +24,42 @@ BP_me_WB_master_ctrl::BP_me_WB_master_ctrl(
         commands.emplace_back(size, addr, msg_type, data);
     }
 
-    // create dpi_to_fifo and dpi_from_fifo objects
     d2f_cmd = std::make_unique<dpi_to_fifo<uint128_t>>("TOP.top.m_d2f_cmd");
     f2d_resp = std::make_unique<dpi_from_fifo<uint128_t>>("TOP.top.m_f2d_resp");
+
+    rx_cooldown = dice() % 16;
+    tx_cooldown = dice() % 16;
 };
 
 bool BP_me_WB_master_ctrl::sim_read() {
-    // check for correct clock state
     if (f2d_resp->is_window()) {
-        // check if adapter response is valid
-        uint128_t command;
-        if (f2d_resp->rx(command)) {
-            
-            if (responses.size() == test_size) {
-                std::cout << "\nError: Master adapter received too many responses\n";
-                return false;
-            }
 
-            uint64_t header = (command >> 64) & 0xFFFFFFFFFFFFFFFF;
-            uint64_t data = command & 0xFFFFFFFFFFFFFFFF;
-            responses.emplace_back(header, data);
+        // init the rx fifo
+        if (!f2d_resp_init) {
+            svScope prev = svSetScope(svGetScopeFromName("TOP.top.m_f2d_resp"));
+            bsg_dpi_init();
+            svSetScope(prev);
+            f2d_resp_init = true;
+        }
+        
+        if (rx_cooldown == 0) {
+            // check if adapter response is valid
+            uint128_t command;
+            if (f2d_resp->rx(command)) {
+                
+                if (responses.size() == test_size) {
+                    std::cout << "\nError: Master adapter received too many responses\n";
+                    return false;
+                }
+
+                uint64_t header = (command >> 64);
+                uint64_t data = command & 0xFFFFFFFFFFFFFFFF;
+                responses.emplace_back(header, data);
+
+                rx_cooldown = dice() % 16;
+            }
+        } else {
+            rx_cooldown--;
         }
     }
 
@@ -51,13 +67,26 @@ bool BP_me_WB_master_ctrl::sim_read() {
 }
 
 bool BP_me_WB_master_ctrl::sim_write() {
-    // check for correct clock state
-    if (d2f_cmd->is_window()) {
-        uint128_t command = (static_cast<uint128_t>(cmd_it->header) << 64) | cmd_it->data;
-        
-        // try to send the command
-        if (d2f_cmd->tx(command))
-            cmd_it++;
+    if (d2f_cmd->is_window() && cmd_it != commands.end()) {
+
+        // init the tx fifo
+        if (!d2f_cmd_init) {
+            svScope prev = svSetScope(svGetScopeFromName("TOP.top.m_d2f_cmd"));
+            bsg_dpi_init();
+            svSetScope(prev);
+            d2f_cmd_init = true;
+        }
+
+        if (tx_cooldown == 0) {
+            // try to send the command
+            uint128_t command = (static_cast<uint128_t>(cmd_it->header) << 64) | cmd_it->data;
+            if (d2f_cmd->tx(command)) {
+                cmd_it++;
+                tx_cooldown = dice() % 16;
+            }
+        } else {
+            tx_cooldown--;
+        }
     }
 
     return true;

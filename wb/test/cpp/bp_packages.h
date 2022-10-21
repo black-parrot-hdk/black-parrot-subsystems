@@ -3,6 +3,8 @@
 #include <cstdint>
 
 struct BP_cmd {
+    // header is actually larger than 64 bits, but the
+    // upper bits are not used by the adapter anyway
     uint64_t header;
     uint64_t data;
 
@@ -22,6 +24,8 @@ struct BP_cmd {
 };
 
 struct BP_resp {
+    // header is actually larger than 64 bits, but the
+    // upper bits are not used by the adapter anyway
     uint64_t header;
     uint64_t data;
 

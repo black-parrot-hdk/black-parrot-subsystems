@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include <functional>
+#include <memory>
 
 using namespace bsg_nonsynth_dpi;
 
@@ -31,7 +32,7 @@ int main(int argc, char* argv[]) {
     tfp->open("waveforms/wave.fst");
 
     // create controllers for the adapters
-    int test_size = 10000;
+    int test_size = 1000000;
     unsigned long int seed = time(0);
     BP_me_WB_master_ctrl master_ctrl{test_size, seed};
     BP_me_WB_client_ctrl client_ctrl{test_size, seed};
@@ -125,7 +126,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "\n-- SUMMARY ---------------------"
-        << "\nTotal simulation time: " << Verilated::time() << " cycles\n";
+        << "\nTotal simulation time: " << Verilated::time() << " ticks\n";
     if (errors == 0)
         std::cout << "Check succeeded\n";
     else
