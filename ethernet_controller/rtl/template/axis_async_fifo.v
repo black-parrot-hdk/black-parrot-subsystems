@@ -24,11 +24,9 @@ THE SOFTWARE.
 
 // Language: Verilog 2001
 
-`timescale 1ns / 1ps
-
-`include "bsg_defines.v"
-
 `default_nettype none
+
+`timescale 1ns / 1ps
 
 /*
  * AXI4-Stream asynchronous FIFO
@@ -45,7 +43,7 @@ module axis_async_fifo #
     // If disabled, tkeep assumed to be 1'b1
     parameter KEEP_ENABLE = (DATA_WIDTH>8),
     // tkeep signal width (words per cycle)
-    parameter KEEP_WIDTH = ((DATA_WIDTH+7)/8),
+    parameter KEEP_WIDTH = (DATA_WIDTH/8),
     // Propagate tlast signal
     parameter LAST_ENABLE = 1,
     // Propagate tid signal
@@ -79,9 +77,10 @@ module axis_async_fifo #
     // Drop incoming frames when full
     // When set, s_axis_tready is always asserted
     // Requires FRAME_FIFO and DROP_OVERSIZE_FRAME set
-    parameter DROP_WHEN_FULL = 0
-    // put an async FIFO either on upstream or downstream
-    parameter `BSG_INV_PARAM(upstream_not_downstream)
+    parameter DROP_WHEN_FULL = 0,
+    // If 1, put a bsg_async_fifo at input side
+    // If 0, put a bsg_async_fifo at output side
+    parameter upstream_async_fifo_p
 )
 (
     /*
@@ -121,65 +120,7 @@ module axis_async_fifo #
     output wire                   m_status_overflow,
     output wire                   m_status_bad_frame,
     output wire                   m_status_good_frame
-
 );
-
-// synopsys translate_off
-// check configuration
-initial begin
-    if (PIPELINE_OUTPUT < 1) begin
-        $error("Error: PIPELINE_OUTPUT must be at least 1 (instance %m)");
-        $finish;
-    end
-
-    if (FRAME_FIFO && !LAST_ENABLE) begin
-        $error("Error: FRAME_FIFO set requires LAST_ENABLE set (instance %m)");
-        $finish;
-    end
-
-    if (DROP_OVERSIZE_FRAME && !FRAME_FIFO) begin
-        $error("Error: DROP_OVERSIZE_FRAME set requires FRAME_FIFO set (instance %m)");
-        $finish;
-    end
-
-    if (DROP_BAD_FRAME && !(FRAME_FIFO && DROP_OVERSIZE_FRAME)) begin
-        $error("Error: DROP_BAD_FRAME set requires FRAME_FIFO and DROP_OVERSIZE_FRAME set (instance %m)");
-        $finish;
-    end
-
-    if (DROP_WHEN_FULL && !(FRAME_FIFO && DROP_OVERSIZE_FRAME)) begin
-        $error("Error: DROP_WHEN_FULL set requires FRAME_FIFO and DROP_OVERSIZE_FRAME set (instance %m)");
-        $finish;
-    end
-
-    if (DROP_BAD_FRAME && (USER_BAD_FRAME_MASK & {USER_WIDTH{1'b1}}) == 0) begin
-        $error("Error: Invalid USER_BAD_FRAME_MASK value (instance %m)");
-        $finish;
-    end
-end
-initial begin
-    if(FRAME_FIFO != 1) begin
-        $error("Error: only support FRAME_FIFO == 1 (instance %m)");
-        $finish;
-    end
-    if(LAST_ENABLE != 1) begin
-        $error("Error: only support LAST_ENABLE == 1 (instance %m)");
-        $finish;
-    end
-    if(DROP_OVERSIZE_FRAME != 1) begin
-        $error("Error: only support DROP_OVERSIZE_FRAME == 1 (instance %m)");
-        $finish;
-    end
-    if(DROP_BAD_FRAME != 1) begin
-        $error("Error: only support DROP_BAD_FRAME == 1 (instance %m)");
-        $finish;
-    end
-    if(DROP_WHEN_FULL != 0) begin
-        $error("Error: only support DROP_WHEN_FULL == 0 (instance %m)");
-        $finish;
-    end
-end
-// synopsys translate_on
 
 localparam KEEP_OFFSET = DATA_WIDTH;
 localparam LAST_OFFSET = KEEP_OFFSET + (KEEP_ENABLE ? KEEP_WIDTH : 0);
@@ -188,218 +129,276 @@ localparam DEST_OFFSET = ID_OFFSET   + (ID_ENABLE   ? ID_WIDTH   : 0);
 localparam USER_OFFSET = DEST_OFFSET + (DEST_ENABLE ? DEST_WIDTH : 0);
 localparam WIDTH       = USER_OFFSET + (USER_ENABLE ? USER_WIDTH : 0);
 
-logic [WIDTH-1:0] store_and_forward_data_li;
-logic [WIDTH-1:0] store_and_forward_data_lo;
-logic             store_and_forward_yumi_li;
-logic             store_and_forward_ready_li;
-logic             store_and_forward_v_li;
-logic             store_and_forward_last_li;
-logic             store_and_forward_ready_lo;
-logic             store_and_forward_v_lo;
-logic             store_and_forward_last_lo;
+// axis_fifo
+logic fifo_clk;
+logic fifo_rst;
+logic [DATA_WIDTH-1:0] fifo_m_axis_tdata;
+logic [KEEP_WIDTH-1:0] fifo_m_axis_tkeep;
+logic                  fifo_m_axis_tvalid;
+logic                  fifo_m_axis_tready;
+logic                  fifo_m_axis_tlast;
+logic [ID_WIDTH-1:0]   fifo_m_axis_tid;
+logic [DEST_WIDTH-1:0] fifo_m_axis_tdest;
+logic [USER_WIDTH-1:0] fifo_m_axis_tuser;
 
-//================== AXIS -> Rolly FIFO Interface ==================//
+logic [DATA_WIDTH-1:0] fifo_s_axis_tdata;
+logic [KEEP_WIDTH-1:0] fifo_s_axis_tkeep;
+logic                  fifo_s_axis_tvalid;
+logic                  fifo_s_axis_tready;
+logic                  fifo_s_axis_tlast;
+logic [ID_WIDTH-1:0]   fifo_s_axis_tid;
+logic [DEST_WIDTH-1:0] fifo_s_axis_tdest;
+logic [USER_WIDTH-1:0] fifo_s_axis_tuser;
 
-wire              rolly_fifo_in_v     = s_axis_tvalid;
-logic [WIDTH-1:0] rolly_fifo_in_data;
-wire              rolly_fifo_in_last  = s_axis_tlast;
-wire              rolly_fifo_in_error =
-        USER_BAD_FRAME_MASK & ~(s_axis_tuser ^ USER_BAD_FRAME_VALUE);
-logic             rolly_fifo_in_ready;
+// Status
+logic fifo_status_overflow;
+logic fifo_status_bad_frame;
+logic fifo_status_good_frame;
+logic fifo_status_overflow_synced;
+logic fifo_status_bad_frame_synced;
+logic fifo_status_good_frame_synced;
 
-assign                  rolly_fifo_in_data[DATA_WIDTH-1:0]            = s_axis_tdata;
-if (KEEP_ENABLE) assign rolly_fifo_in_data[KEEP_OFFSET +: KEEP_WIDTH] = s_axis_tkeep;
-if (LAST_ENABLE) assign rolly_fifo_in_data[LAST_OFFSET]               = s_axis_tlast;
-if (ID_ENABLE)   assign rolly_fifo_in_data[ID_OFFSET   +: ID_WIDTH]   = s_axis_tid;
-if (DEST_ENABLE) assign rolly_fifo_in_data[DEST_OFFSET +: DEST_WIDTH] = s_axis_tdest;
-if (USER_ENABLE) assign rolly_fifo_in_data[USER_OFFSET +: USER_WIDTH] = s_axis_tuser;
+// bsg_async_fifo
+logic             w_enq_li;
+logic [WIDTH-1:0] w_data_li;
+logic             w_full_lo;
+logic             r_deq_li;
+logic [WIDTH-1:0] r_data_lo;
+logic             r_valid_lo;
 
-assign            s_axis_tready = rolly_fifo_in_ready;
-//==================================================================//
+// bsg_launch_sync_sync
+logic iclk_li;
+logic iclk_reset_li;
+logic oclk_li;
+logic oclk_reset_li;
 
-if (upstream_not_downstream == 0) begin: down
-  assign store_and_forward_v_li     = rolly_fifo_in_v;
-  assign store_and_forward_data_li  = rolly_fifo_in_data;
-  assign store_and_forward_last_li  = rolly_fifo_in_last;
-  assign store_and_forward_error_li = rolly_fifo_in_error;
-  assign rolly_fifo_in_ready  = store_and_forward_ready_lo;
-end else begin: up
+if(upstream_async_fifo_p) begin: up
 
-  logic                  async_fifo_w_full_lo;
-  wire                   async_fifo_w_enq_li = rolly_fifo_in_ready & rolly_fifo_in_v;
-  // Store the data as well as the control signals (last, error)
-  wire  [WIDTH+2-1:0]    async_fifo_w_data_li =
-        {rolly_fifo_in_data, rolly_fifo_in_last, rolly_fifo_in_error};
+  // fifo clock, reset
+  assign fifo_clk = m_clk;
+  assign fifo_rst = m_rst;
+  // bsg_launch_sync_sync clock, reset
+  assign iclk_li = m_clk;
+  assign iclk_reset_li = m_rst;
+  assign oclk_li = s_clk;
+  assign oclk_reset_li = s_rst;
 
-  logic                  async_fifo_r_valid_lo;
-  wire                   async_fifo_r_deq_li = store_and_forward_v_li & store_and_forward_ready_lo;
-  logic [WIDTH+2-1:0]    async_fifo_r_data_lo;
-  bsg_async_fifo #(
-      .lg_size_p(3)
-     ,.width_p(WIDTH+2)
-  ) async_fifo (
-      .w_clk_i(s_clk)
-     ,.w_reset_i(s_rst)
-     ,.w_enq_i(async_fifo_w_enq_li)
-     ,.w_data_i(async_fifo_w_data_li)
-     ,.w_full_o(async_fifo_w_full_lo)
+  // AXIS input -> bsg_async_fifo
+  assign                  w_data_li[DATA_WIDTH-1:0]            = s_axis_tdata;
+  if (KEEP_ENABLE) assign w_data_li[KEEP_OFFSET +: KEEP_WIDTH] = s_axis_tkeep;
+  if (LAST_ENABLE) assign w_data_li[LAST_OFFSET]               = s_axis_tlast;
+  if (ID_ENABLE)   assign w_data_li[ID_OFFSET   +: ID_WIDTH]   = s_axis_tid;
+  if (DEST_ENABLE) assign w_data_li[DEST_OFFSET +: DEST_WIDTH] = s_axis_tdest;
+  if (USER_ENABLE) assign w_data_li[USER_OFFSET +: USER_WIDTH] = s_axis_tuser;
 
-     ,.r_clk_i(m_clk)
-     ,.r_reset_i(m_rst)
-     ,.r_deq_i(async_fifo_r_deq_li)
-     ,.r_data_o(async_fifo_r_data_lo)
-     ,.r_valid_o(async_fifo_r_valid_lo)
-  );
+  assign w_enq_li = s_axis_tvalid & s_axis_tready;
+  assign s_axis_tready = ~w_full_lo;
 
-  assign store_and_forward_v_li = async_fifo_r_valid_lo;
-  assign {store_and_forward_data_li, store_and_forward_last_li, store_and_forward_error_li} =
-          async_fifo_r_data_lo;
-  assign rolly_fifo_in_ready = ~async_fifo_w_full_lo;
+  // bsg_async_fifo -> axis_fifo
+  assign fifo_s_axis_tvalid = r_valid_lo;
+  assign r_deq_li = fifo_s_axis_tvalid & fifo_s_axis_tready;
+
+  assign   fifo_s_axis_tdata  = r_data_lo[DATA_WIDTH-1:0];
+  if(KEEP_ENABLE)
+    assign fifo_s_axis_tkeep = r_data_lo[KEEP_OFFSET +: KEEP_WIDTH];
+  else
+    assign fifo_s_axis_tkeep = {KEEP_WIDTH{1'b1}};
+  if(LAST_ENABLE)
+    assign fifo_s_axis_tlast = r_data_lo[LAST_OFFSET];
+  else
+    assign fifo_s_axis_tlast = 1'b1;
+  if(ID_ENABLE)
+    assign fifo_s_axis_tid = r_data_lo[ID_OFFSET +: ID_WIDTH];
+  else
+    assign fifo_s_axis_tid = {ID_WIDTH{1'b0}};
+  if(DEST_ENABLE)
+    assign fifo_s_axis_tdest = r_data_lo[DEST_OFFSET +: DEST_WIDTH];
+  else
+    assign fifo_s_axis_tdest = {DEST_WIDTH{1'b0}};
+  if(USER_ENABLE)
+    assign fifo_s_axis_tuser = r_data_lo[USER_OFFSET +: USER_WIDTH];
+  else
+    assign fifo_s_axis_tuser = {USER_WIDTH{1'b0}};
+
+  // axis_fifo -> AXIS output
+  assign m_axis_tdata  = fifo_m_axis_tdata;
+  assign m_axis_tkeep  = fifo_m_axis_tkeep;
+  assign m_axis_tvalid = fifo_m_axis_tvalid;
+  assign m_axis_tlast  = fifo_m_axis_tlast;
+  assign m_axis_tid    = fifo_m_axis_tid;
+  assign m_axis_tdest  = fifo_m_axis_tdest;
+  assign m_axis_tuser  = fifo_m_axis_tuser;
+  assign fifo_m_axis_tready = m_axis_tready;
+  // Status
+  assign s_status_overflow   = fifo_status_overflow_synced;
+  assign s_status_bad_frame  = fifo_status_bad_frame_synced;
+  assign s_status_good_frame = fifo_status_good_frame_synced;
+  assign m_status_overflow   = fifo_status_overflow;
+  assign m_status_bad_frame  = fifo_status_bad_frame;
+  assign m_status_good_frame = fifo_status_good_frame;
+
+end else begin: down
+
+  // fifo clock, reset
+  assign fifo_clk = s_clk;
+  assign fifo_rst = s_rst;
+  // bsg_launch_sync_sync clock, reset
+  assign iclk_li = s_clk;
+  assign iclk_reset_li = s_rst;
+  assign oclk_li = m_clk;
+  assign oclk_reset_li = m_rst;
+
+  // AXIS input -> axis_fifo
+
+  assign fifo_s_axis_tdata  = s_axis_tdata;
+  assign fifo_s_axis_tkeep  = s_axis_tkeep;
+  assign fifo_s_axis_tvalid = s_axis_tvalid;
+  assign fifo_s_axis_tlast  = s_axis_tlast;
+  assign fifo_s_axis_tid    = s_axis_tid;
+  assign fifo_s_axis_tdest  = s_axis_tdest;
+  assign fifo_s_axis_tuser  = s_axis_tuser;
+  assign s_axis_tready = fifo_s_axis_tready;
+
+  // axis_fifo -> bsg_async_fifo
+
+  assign                  w_data_li[DATA_WIDTH-1:0]            = fifo_m_axis_tdata;
+  if (KEEP_ENABLE) assign w_data_li[KEEP_OFFSET +: KEEP_WIDTH] = fifo_m_axis_tkeep;
+  if (LAST_ENABLE) assign w_data_li[LAST_OFFSET]               = fifo_m_axis_tlast;
+  if (ID_ENABLE)   assign w_data_li[ID_OFFSET   +: ID_WIDTH]   = fifo_m_axis_tid;
+  if (DEST_ENABLE) assign w_data_li[DEST_OFFSET +: DEST_WIDTH] = fifo_m_axis_tdest;
+  if (USER_ENABLE) assign w_data_li[USER_OFFSET +: USER_WIDTH] = fifo_m_axis_tuser;
+  assign w_enq_li = fifo_m_axis_tvalid & fifo_m_axis_tready;
+  assign fifo_m_axis_tready = ~w_full_lo;
+
+  // bsg_async_fifo -> AXIS output
+  assign r_deq_li = m_axis_tvalid & m_axis_tready;
+  assign m_axis_tvalid = r_valid_lo;
+
+  assign     m_axis_tdata = r_data_lo[DATA_WIDTH-1:0];
+  if(KEEP_ENABLE)
+    assign m_axis_tkeep = r_data_lo[KEEP_OFFSET +: KEEP_WIDTH];
+  else
+    assign m_axis_tkeep = {KEEP_WIDTH{1'b1}};
+  if(LAST_ENABLE)
+    assign m_axis_tlast = r_data_lo[LAST_OFFSET];
+  else
+    assign m_axis_tlast = 1'b1;
+  if(ID_ENABLE)
+    assign m_axis_tid   = r_data_lo[ID_OFFSET +: ID_WIDTH];
+  else
+    assign m_axis_tid   = {ID_WIDTH{1'b0}};
+  if(DEST_ENABLE)
+    assign m_axis_tdest = r_data_lo[DEST_OFFSET +: DEST_WIDTH];
+  else
+    assign m_axis_tdest = {DEST_WIDTH{1'b0}};
+  if(USER_ENABLE)
+    assign m_axis_tuser = r_data_lo[USER_OFFSET +: USER_WIDTH];
+  else
+    assign m_axis_tuser = {USER_WIDTH{1'b0}};
+
+  // Status
+  assign s_status_overflow   = fifo_status_overflow;
+  assign s_status_bad_frame  = fifo_status_bad_frame;
+  assign s_status_good_frame = fifo_status_good_frame;
+  assign m_status_overflow   = fifo_status_overflow_synced;
+  assign m_status_bad_frame  = fifo_status_bad_frame_synced;
+  assign m_status_good_frame = fifo_status_good_frame_synced;
+
 end
 
-logic store_and_forward_clk_li;
-logic store_and_forward_reset_li;
-logic good_packet_lo;
-logic overflow_packet_lo;
-logic erroneous_packet_lo;
-
-if (upstream_not_downstream == 0) begin: down
-  assign store_and_forward_clk_li   = s_clk;
-  assign store_and_forward_reset_li = s_rst;
-
-  assign s_status_overflow = good_packet_lo;
-  assign s_status_bad_frame = overflow_packet_lo;
-  assign s_status_good_frame = erroneous_packet_lo;
-
-  bsg_launch_sync_sync #(
-      .width_p(3)
-  ) status_synchronizer (
-      .iclk_i(s_clk)
-     ,.iclk_reset_i(s_rst)
-     ,.oclk_i(m_clk)
-     ,.iclk_data_i({s_status_overflow, s_status_bad_frame, s_status_good_frame})
-     ,.iclk_data_o() // UNUSED
-     ,.oclk_data_o({m_status_overflow, m_status_bad_frame, m_status_good_frame})
-  );
-
-
-end else begin: up
-  assign store_and_forward_clk_li   = m_clk;
-  assign store_and_forward_reset_li = m_rst;
-
-  assign m_status_overflow = good_packet_lo;
-  assign m_status_bad_frame = overflow_packet_lo;
-  assign m_status_good_frame = erroneous_packet_lo;
-
-  bsg_launch_sync_sync #(
-      .width_p(3)
-  ) status_synchronizer (
-      .iclk_i(m_clk)
-     ,.iclk_reset_i(m_rst)
-     ,.oclk_i(s_clk)
-     ,.iclk_data_i({m_status_overflow, m_status_bad_frame, m_status_good_frame})
-     ,.iclk_data_o() // UNUSED
-     ,.oclk_data_o({s_status_overflow, s_status_bad_frame, s_status_good_frame})
-  );
-end
-
-bsg_fifo_1r1w_rolly #(
-    .width_p(WIDTH)
-   ,.els_p(DEPTH)
-) store_and_forward (
-    .clk_i(store_and_forward_clk_li)
-   ,.reset_i(store_and_forward_reset_li)
-
-   ,.clr_v_i(1'b0)
-   ,.deq_v_i(store_and_forward_yumi_li)
-   ,.roll_v_i(1'b0)
-
-   ,.data_i(store_and_forward_data_li)
-   ,.v_i(store_and_forward_v_li)
-   ,.last_i(store_and_forward_last_li)
-   ,.error_i(store_and_forward_error_li)
-   ,.ready_o(store_and_forward_ready_lo)
-
-   ,.data_o(store_and_forward_data_lo)
-   ,.v_o(store_and_forward_v_lo)
-   ,.last_o(store_and_forward_last_lo)
-   ,.yumi_i(store_and_forward_yumi_li)
-
-   ,.good_packet_o(good_packet_lo)
-   ,.overflow_packet_o(overflow_packet_lo)
-   ,.erroneous_packet_o(erroneous_packet_lo)
+bsg_async_fifo #(
+   .lg_size_p(3)
+  ,.width_p(WIDTH)
+) cdc (
+   .w_clk_i(s_clk)
+  ,.w_reset_i(s_rst)
+  ,.w_enq_i(w_enq_li)
+  ,.w_data_i(w_data_li)
+  ,.w_full_o(w_full_lo)
+  ,.r_clk_i(m_clk)
+  ,.r_reset_i(m_rst)
+  ,.r_deq_i(r_deq_li)
+  ,.r_data_o(r_data_lo)
+  ,.r_valid_o(r_valid_lo)
 );
 
-assign store_and_forward_yumi_li = store_and_forward_v_lo & store_and_forward_ready_li;
+axis_fifo #(
+   .DEPTH(DEPTH)
+  ,.DATA_WIDTH(DATA_WIDTH)
+  ,.KEEP_ENABLE(KEEP_ENABLE)
+  ,.KEEP_WIDTH(KEEP_WIDTH)
+  ,.LAST_ENABLE(LAST_ENABLE)
+  ,.ID_ENABLE(ID_ENABLE)
+  ,.ID_WIDTH(ID_WIDTH)
+  ,.DEST_ENABLE(DEST_ENABLE)
+  ,.DEST_WIDTH(DEST_WIDTH)
+  ,.USER_ENABLE(USER_ENABLE)
+  ,.USER_WIDTH(USER_WIDTH)
+  ,.PIPELINE_OUTPUT(PIPELINE_OUTPUT)
+  ,.FRAME_FIFO(FRAME_FIFO)
+  ,.USER_BAD_FRAME_VALUE(USER_BAD_FRAME_VALUE)
+  ,.USER_BAD_FRAME_MASK(USER_BAD_FRAME_MASK)
+  ,.DROP_OVERSIZE_FRAME(DROP_OVERSIZE_FRAME)
+  ,.DROP_BAD_FRAME(DROP_BAD_FRAME)
+  ,.DROP_WHEN_FULL(DROP_WHEN_FULL)
+) fifo (
+   .clk(fifo_clk)
+  ,.rst(fifo_rst)
 
-//================== Rolly FIFO Interface -> AXIS ==================//
+  ,.s_axis_tdata (fifo_s_axis_tdata)
+  ,.s_axis_tkeep (fifo_s_axis_tkeep)
+  ,.s_axis_tvalid(fifo_s_axis_tvalid)
+  ,.s_axis_tready(fifo_s_axis_tready)
+  ,.s_axis_tlast (fifo_s_axis_tlast)
+  ,.s_axis_tid   (fifo_s_axis_tid)
+  ,.s_axis_tdest (fifo_s_axis_tdest)
+  ,.s_axis_tuser (fifo_s_axis_tuser)
 
-logic             rolly_fifo_out_v;
-logic [WIDTH-1:0] rolly_fifo_out_data;
-logic             rolly_fifo_out_last;
-logic             rolly_fifo_out_ready;
+  ,.m_axis_tdata (fifo_m_axis_tdata)
+  ,.m_axis_tkeep (fifo_m_axis_tkeep)
+  ,.m_axis_tvalid(fifo_m_axis_tvalid)
+  ,.m_axis_tready(fifo_m_axis_tready)
+  ,.m_axis_tlast (fifo_m_axis_tlast)
+  ,.m_axis_tid   (fifo_m_axis_tid)
+  ,.m_axis_tdest (fifo_m_axis_tdest)
+  ,.m_axis_tuser (fifo_m_axis_tuser)
 
-assign   m_axis_tdata = rolly_fifo_out_data[DATA_WIDTH-1:0];
-if(KEEP_ENABLE)
-  assign m_axis_tkeep = rolly_fifo_out_data[KEEP_OFFSET +: KEEP_WIDTH];
-else
-  assign m_axis_tkeep = {KEEP_WIDTH{1'b1}};
-if(LAST_ENABLE)
-  assign m_axis_tlast = rolly_fifo_out_data[LAST_OFFSET];
-else
-  assign m_axis_tlast = 1'b1;
-if(ID_ENABLE)
-  assign m_axis_tid   = rolly_fifo_out_data[ID_OFFSET +: ID_WIDTH];
-else
-  assign m_axis_tid   = {ID_WIDTH{1'b0}};
-if(DEST_ENABLE)
-  assign m_axis_tdest = rolly_fifo_out_data[DEST_OFFSET +: DEST_WIDTH];
-else
-  assign m_axis_tdest = {DEST_WIDTH{1'b0}};
-if(USER_ENABLE)
-  assign m_axis_tuser = rolly_fifo_out_data[USER_OFFSET +: USER_WIDTH];
-else
-  assign m_axis_tuser = {USER_WIDTH{1'b0}};
+  ,.status_overflow  (fifo_status_overflow)
+  ,.status_bad_frame (fifo_status_bad_frame)
+  ,.status_good_frame(fifo_status_good_frame)
+);
+logic overflow_sync1_reg, overflow_sync3_reg, overflow_sync4_reg;
+logic bad_frame_sync1_reg, bad_frame_sync3_reg, bad_frame_sync4_reg;
+logic good_frame_sync1_reg, good_frame_sync3_reg, good_frame_sync4_reg;
 
-assign m_axis_tvalid  = rolly_fifo_out_v;
-assign rolly_fifo_out_ready = m_axis_tready;
-//==================================================================//
-//
+wire  overflow_sync1_next   = overflow_sync1_reg   ^ fifo_status_overflow;
+wire  bad_frame_sync1_next  = bad_frame_sync1_reg  ^ fifo_status_bad_frame;
+wire  good_frame_sync1_next = good_frame_sync1_reg ^ fifo_status_good_frame;
 
-if(upstream_not_downstream == 0) begin: down
+assign fifo_status_overflow_synced   = overflow_sync3_reg ^ overflow_sync4_reg;
+assign fifo_status_bad_frame_synced  = bad_frame_sync3_reg ^ bad_frame_sync4_reg;
+assign fifo_status_good_frame_synced = good_frame_sync3_reg ^ good_frame_sync4_reg;
 
-  wire                   async_fifo_w_enq_li  = store_and_forward_yumi_li;
-  wire [WIDTH-1:0]       async_fifo_w_data_li = store_and_forward_data_lo;
-  logic                  async_fifo_w_full_lo;
-  logic                  async_fifo_r_deq_li;
-  logic [WIDTH-1:0]      async_fifo_r_data_lo;
-  logic                  async_fifo_r_valid_lo;
-  assign store_and_forward_ready_li = ~async_fifo_w_full_lo;
+bsg_dff_reset #(
+   .width_p(3)
+) status (
+   .clk_i(oclk_li)
+  ,.reset_i(oclk_reset_li)
+  ,.data_i({overflow_sync3_reg, bad_frame_sync3_reg, good_frame_sync3_reg})
+  ,.data_o({overflow_sync4_reg, bad_frame_sync4_reg, good_frame_sync4_reg})
+);
 
-  bsg_async_fifo #(
-      .lg_size_p(3)
-     ,.width_p(WIDTH)
-  ) async_fifo (
-      .w_clk_i(s_clk)
-     ,.w_reset_i(s_rst)
-     ,.w_enq_i(async_fifo_w_enq_li)
-     ,.w_data_i(async_fifo_w_data_li)
-     ,.w_full_o(async_fifo_w_full_lo)
-
-     ,.r_clk_i(m_clk)
-     ,.r_reset_i(m_rst)
-     ,.r_deq_i(async_fifo_r_deq_li)
-     ,.r_data_o(async_fifo_r_data_lo)
-     ,.r_valid_o(async_fifo_r_valid_lo)
-  );
-
-  assign rolly_fifo_out_v = async_fifo_r_valid_lo;
-  assign async_fifo_r_deq_li = rolly_fifo_out_ready & rolly_fifo_out_v;
-  assign rolly_fifo_out_data = async_fifo_r_data_lo;
-end else begin: up
-  assign rolly_fifo_out_v = store_and_forward_v_lo;
-  assign store_and_forward_ready_li = rolly_fifo_out_ready;
-  assign rolly_fifo_out_data = store_and_forward_data_lo;
-end
+bsg_launch_sync_sync #(
+  .width_p(3),
+  .use_negedge_for_launch_p(0),
+  .use_async_reset_p(0)
+) status_synchronizer (
+  .iclk_i(iclk_li),
+  .iclk_reset_i(iclk_reset_li),
+  .oclk_i(oclk_li),
+  .iclk_data_i({overflow_sync1_next, bad_frame_sync1_next, good_frame_sync1_next}),
+  .iclk_data_o({overflow_sync1_reg, bad_frame_sync1_reg, good_frame_sync1_reg}),
+  .oclk_data_o({overflow_sync3_reg, bad_frame_sync3_reg, good_frame_sync3_reg})
+);
 
 endmodule

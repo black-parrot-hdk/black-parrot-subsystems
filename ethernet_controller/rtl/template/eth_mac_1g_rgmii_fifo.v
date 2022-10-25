@@ -308,7 +308,8 @@ axis_async_fifo_adapter #(
     .USER_BAD_FRAME_MASK(1'b1),
     .DROP_OVERSIZE_FRAME(TX_DROP_OVERSIZE_FRAME),
     .DROP_BAD_FRAME(TX_DROP_BAD_FRAME),
-    .DROP_WHEN_FULL(TX_DROP_WHEN_FULL)
+    .DROP_WHEN_FULL(TX_DROP_WHEN_FULL),
+    .upstream_async_fifo_p(1)
 )
 tx_fifo (
     // AXI input
@@ -359,7 +360,8 @@ axis_async_fifo_adapter #(
     .USER_BAD_FRAME_MASK(1'b1),
     .DROP_OVERSIZE_FRAME(RX_DROP_OVERSIZE_FRAME),
     .DROP_BAD_FRAME(RX_DROP_BAD_FRAME),
-    .DROP_WHEN_FULL(RX_DROP_WHEN_FULL)
+    .DROP_WHEN_FULL(RX_DROP_WHEN_FULL),
+    .upstream_async_fifo_p(0)
 )
 rx_fifo (
     // AXI input

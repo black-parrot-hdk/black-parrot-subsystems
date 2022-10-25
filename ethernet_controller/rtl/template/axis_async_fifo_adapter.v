@@ -24,6 +24,8 @@ THE SOFTWARE.
 
 // Language: Verilog 2001
 
+`include "bsg_defines.v"
+
 `timescale 1ns / 1ps
 
 /*
@@ -80,7 +82,9 @@ module axis_async_fifo_adapter #
     // Drop incoming frames when full
     // When set, s_axis_tready is always asserted
     // Requires FRAME_FIFO and DROP_OVERSIZE_FRAME set
-    parameter DROP_WHEN_FULL = 0
+    parameter DROP_WHEN_FULL = 0,
+    // put an async FIFO either on upstream or downstream
+    parameter `BSG_INV_PARAM(upstream_async_fifo_p)
 )
 (
     /*
@@ -318,7 +322,8 @@ axis_async_fifo #(
     .USER_BAD_FRAME_MASK(USER_BAD_FRAME_MASK),
     .DROP_OVERSIZE_FRAME(DROP_OVERSIZE_FRAME),
     .DROP_BAD_FRAME(DROP_BAD_FRAME),
-    .DROP_WHEN_FULL(DROP_WHEN_FULL)
+    .DROP_WHEN_FULL(DROP_WHEN_FULL),
+    .upstream_async_fifo_p(upstream_async_fifo_p)
 )
 fifo_inst (
     // AXI input

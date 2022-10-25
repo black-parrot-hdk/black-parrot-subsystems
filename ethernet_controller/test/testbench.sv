@@ -168,8 +168,10 @@ module wrapper();
   localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p/8));
   localparam addr_width_lp = 14;
   initial begin
-    $dumpfile("dump.vcd");
-    $dumpvars;
+//    $dumpfile("dump.vcd");
+//    $dumpvars;
+    $vcdplusfile("dump.vpd");
+    $vcdpluson();
   end
   bit clk_i;
   bit reset_i;

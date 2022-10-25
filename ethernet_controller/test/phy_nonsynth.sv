@@ -2,6 +2,7 @@
 
 `timescale 1ns/1ps
 
+// Change the PHY speed here
 `define SPEED_1000 // MHZ
 
 //         MAC dest + SRC dest + EtherType + Payload:
