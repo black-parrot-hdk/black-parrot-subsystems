@@ -44,7 +44,7 @@ phy_rgmii_tx_clk:
     +--------------------------------------------+       +-------+       +-------+
 
 
-gtx_clk:
+mac_gmii_tx_clk:
                      +-------+       +-------+       +-------+       +-------+
                      |       |       |       |       |       |       |       |
     +----------------+       +-------+       +-------+       +-------+       +-------+
@@ -72,19 +72,17 @@ rgmii_txd, rgmii_tx_ctl:
 module rgmii_phy_if (
     input  wire        clk250,
     input  wire        clk250_rst,
-    output wire        gtx_clk,
-    output wire        gtx_rst,
 
     /*
      * GMII interface to MAC
      */
     output wire        mac_gmii_rx_clk,
-    output wire        mac_gmii_rx_rst,
+    input  wire        mac_gmii_rx_rst,
     output wire [7:0]  mac_gmii_rxd,
     output wire        mac_gmii_rx_dv,
     output wire        mac_gmii_rx_er,
     output wire        mac_gmii_tx_clk,
-    output wire        mac_gmii_tx_rst,
+    input  wire        mac_gmii_tx_rst,
     output wire        mac_gmii_tx_clk_en,
     input  wire [7:0]  mac_gmii_txd,
     input  wire        mac_gmii_tx_en,
@@ -135,8 +133,8 @@ reg rgmii_tx_clk_fall;
 
 reg [5:0] count_reg;
 
-always @(posedge gtx_clk) begin
-    if (gtx_rst) begin
+always @(posedge mac_gmii_tx_clk) begin
+    if (mac_gmii_tx_rst) begin
         rgmii_tx_clk_1 <= 1'b1;
         rgmii_tx_clk_2 <= 1'b0;
         rgmii_tx_clk_rise <= 1'b1;
@@ -226,16 +224,14 @@ always @* begin
     end
 end
 
-gtx_clk_and_phy_tx_clk_generator
- gtx_clk_and_phy_tx_clk_gen
+tx_clks_generator
+ tx_clks_gen
   (.clk250_i(clk250)
    ,.clk250_rst_i(clk250_rst)
 
    ,.phy_rgmii_tx_clk_setting_i({rgmii_tx_clk_2, rgmii_tx_clk_1})
    ,.phy_rgmii_tx_clk_o(phy_rgmii_tx_clk)
-
-   ,.gtx_clk_r_o(gtx_clk)
-   ,.gtx_rst_r_o(gtx_rst));
+   ,.mac_gmii_tx_clk_o(mac_gmii_tx_clk));
 
 bsg_link_oddr_phy #(.width_p(5))
  data_oddr_inst
@@ -248,29 +244,6 @@ bsg_link_oddr_phy #(.width_p(5))
    ,.clk_r_o(/* UNUSED */)
   );
 
-assign mac_gmii_tx_clk = gtx_clk;
-
 assign mac_gmii_tx_clk_en = gmii_clk_en;
 
-// reset sync
-assign mac_gmii_tx_rst = gtx_rst;
-
-/*
-reg [3:0] rx_rst_reg;
-assign mac_gmii_rx_rst = rx_rst_reg[0];
-
-
-always @(posedge mac_gmii_rx_clk or posedge gtx_rst) begin
-    if (gtx_rst) begin
-        rx_rst_reg <= 4'hf;
-    end else begin
-        rx_rst_reg <= {1'b0, rx_rst_reg[3:1]};
-    end
-end
-*/
-  arst_sync rx_arst_sync (
-     .async_reset_i(gtx_rst)
-    ,.clk_i(mac_gmii_rx_clk)
-    ,.sync_reset_o(mac_gmii_rx_rst)
-  );
 endmodule

@@ -28,8 +28,6 @@ module ethernet_receiver
     , output logic                            packet_avail_o
     , input logic                             packet_rvalid_i
     , input logic  [addr_width_lp-1:0]        packet_raddr_i
-      // read data size other than data_width_p is not supported
-    , input logic  [size_width_lp-1:0]        packet_rdata_size_i
       // sync read
     , output logic [data_width_p-1:0]         packet_rdata_o
     , output logic [packet_size_width_lp-1:0] packet_rsize_o
@@ -171,20 +169,6 @@ end
     end
   end
 
-  // synopsys translate_off
-  always_ff @(posedge clk_i) begin
-    if(~reset_i) begin
-      assert(~(~packet_avail_lo & packet_rvalid_i))
-        else $error("reading data when rx not ready");
-      assert(~(~packet_avail_lo & packet_ack_i))
-        else $error("receiving packet when rx not ready");
-      assert((packet_rvalid_li != 1'b1) ||
-        (packet_rdata_size_i == $clog2(data_width_p/8)))
-          else $error("ethernet_receiver: unsupported read size");
-    end
-  end
-  // synopsys translate_on
-
   always_comb begin
     rx_axis_tready_o = 1'b0;
     recv_ptr_unwind = 1'b0;
@@ -218,5 +202,16 @@ end
       end
     end
   end
+
+  // synopsys translate_off
+  always_ff @(posedge clk_i) begin
+    if(~reset_i) begin
+      assert(~(~packet_avail_lo & packet_rvalid_i))
+        else $error("reading data when rx not ready");
+      assert(~(~packet_avail_lo & packet_ack_i))
+        else $error("receiving packet when rx not ready");
+    end
+  end
+  // synopsys translate_on
 
 endmodule

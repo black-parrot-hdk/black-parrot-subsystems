@@ -4,15 +4,23 @@
 module ethernet_controller #
 (
       parameter  data_width_p  = 32
+    , parameter  ifg_delay_p   = 12
     , localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p/8))
     , localparam addr_width_lp = 14
 )
 (
-      input  bit                                clk_i
+    // For user logic
+      input  logic                              clk_i
     , input  logic                              reset_i
-    , input  bit                                clk250_i
-    , input  logic                              reset_clk250_i
-    , output logic                              reset_clk125_o
+    // For 2X clock for generating RGMII signals (DDR)
+    , input  logic                              clk250_i
+    , input  logic                              clk250_reset_i
+    // MAC TX clock downsampled from clk250_i
+    , output logic                              tx_clk_o
+    , input  logic                              tx_reset_i
+    // MAC RX clock from rgmii_rx_clk_i
+    , output logic                              rx_clk_o
+    , input  logic                              rx_reset_i
 
     , input  logic [addr_width_lp-1:0]          addr_i
     , input  logic                              write_en_i
@@ -24,10 +32,10 @@ module ethernet_controller #
     , output logic                              rx_interrupt_pending_o
     , output logic                              tx_interrupt_pending_o
 
-    , input  bit                                rgmii_rx_clk_i
+    , input  logic                              rgmii_rx_clk_i
     , input  logic [3:0]                        rgmii_rxd_i
     , input  logic                              rgmii_rx_ctl_i
-    , output bit                                rgmii_tx_clk_o
+    , output logic                              rgmii_tx_clk_o
     , output logic [3:0]                        rgmii_txd_o
     , output logic                              rgmii_tx_ctl_o
 );
@@ -50,7 +58,6 @@ module ethernet_controller #
   logic                             packet_wvalid_lo;
 
   logic [packet_addr_width_lp-1:0]  packet_raddr_lo;
-  logic [size_width_lp-1:0]         packet_rdata_size_lo;
   logic [data_width_p-1:0]          packet_rdata_lo;
   logic                             packet_rvalid_lo;
 
@@ -101,8 +108,6 @@ module ethernet_controller #
    ,speed_lo
    };
 
-  logic io_decode_error_lo;
-
   ethernet_control_unit #(
     .eth_mtu_p(eth_mtu_lp)
    ,.data_width_p(data_width_p)
@@ -132,7 +137,6 @@ module ethernet_controller #
    ,.packet_avail_i(packet_avail_lo)
    ,.packet_rvalid_o(packet_rvalid_lo)
    ,.packet_raddr_o(packet_raddr_lo)
-   ,.packet_rdata_size_o(packet_rdata_size_lo)
    ,.packet_rdata_i(packet_rdata_lo)
    ,.packet_rsize_i(packet_rsize_lo)
 
@@ -144,8 +148,6 @@ module ethernet_controller #
    ,.rx_interrupt_enable_v_o(rx_interrupt_enable_v_lo)
    ,.tx_interrupt_enable_o(tx_interrupt_enable_lo)
    ,.tx_interrupt_enable_v_o(tx_interrupt_enable_v_lo)
-
-   ,.io_decode_error_o(io_decode_error_lo)
   );
 
 
@@ -186,7 +188,6 @@ module ethernet_controller #
      ,.packet_avail_o(packet_avail_lo)
      ,.packet_rvalid_i(packet_rvalid_lo)
      ,.packet_raddr_i(packet_raddr_lo)
-     ,.packet_rdata_size_i(packet_rdata_size_lo)
      ,.packet_rdata_o(packet_rdata_lo)
      ,.packet_rsize_o(packet_rsize_lo)
 
@@ -202,11 +203,14 @@ module ethernet_controller #
 
   eth_mac_1g_rgmii_fifo #(.AXIS_DATA_WIDTH(data_width_p))
       mac (
-      .clk250(clk250_i)
-     ,.clk250_rst(reset_clk250_i)
-     ,.gtx_rst(reset_clk125_o)
-     ,.logic_clk(clk_i)
+      .logic_clk(clk_i)
      ,.logic_rst(reset_i)
+     ,.clk250(clk250_i)
+     ,.clk250_rst(clk250_reset_i)
+     ,.tx_clk(tx_clk_o)
+     ,.tx_rst(tx_reset_i)
+     ,.rx_clk(rx_clk_o)
+     ,.rx_rst(rx_reset_i)
 
      ,.tx_axis_tdata(tx_axis_tdata_lo)
      ,.tx_axis_tkeep(tx_axis_tkeep_lo)
@@ -240,7 +244,7 @@ module ethernet_controller #
      ,.rx_fifo_good_frame(rx_fifo_good_frame_lo)
      ,.speed(speed_lo)
 
-     ,.ifg_delay(8'd12)
+     ,.ifg_delay(ifg_delay_p)
   );
   wire rx_interrupt_lo;
   wire tx_interrupt_lo;
@@ -265,15 +269,5 @@ module ethernet_controller #
 
   assign rx_interrupt_pending_o = rx_interrupt_lo;
   assign tx_interrupt_pending_o = tx_interrupt_lo;
-
-  // synopsys translate_off
-  always_ff @(negedge clk_i) begin
-    if(~reset_i) begin
-      assert(io_decode_error_lo == 1'b0) else
-        $error("ethernet_controller.sv: io decode error\n");
-    end
-  end
-  // synopsys translate_on
-
 
 endmodule

@@ -70,7 +70,6 @@ module ethernet_control_unit #
     , input  logic                              packet_avail_i
     , output logic                              packet_rvalid_o
     , output logic [packet_addr_width_lp-1:0]   packet_raddr_o
-    , output logic [size_width_lp-1:0]          packet_rdata_size_o
     , input  logic [data_width_p-1:0]           packet_rdata_i
     , input  logic [packet_size_width_lp-1:0]   packet_rsize_i
 
@@ -82,8 +81,6 @@ module ethernet_control_unit #
     , output logic                              rx_interrupt_enable_v_o
     , output logic                              tx_interrupt_enable_o
     , output logic                              tx_interrupt_enable_v_o
-
-    , output logic                              io_decode_error_o
 );
 
   logic buffer_read_v_r;
@@ -91,6 +88,7 @@ module ethernet_control_unit #
   logic rx_interrupt_clear, tx_interrupt_clear;
   // Not used in this Ethernet controller, always points to 0
   logic tx_idx_r, tx_idx_n;
+  logic io_decode_error;
 
   bsg_dff_reset_en
    #(.width_p(data_width_p + 2))
@@ -103,12 +101,11 @@ module ethernet_control_unit #
       );
 
   always_comb begin
-    io_decode_error_o = 1'b0;
+    io_decode_error = 1'b0;
     packet_raddr_o = '0;
     packet_rvalid_o = 1'b0;
 
     packet_waddr_o = '0;
-    packet_rdata_size_o = '0;
     packet_wdata_size_o = '0;
     packet_wdata_o = '0;
     packet_wvalid_o = 1'b0;
@@ -133,15 +130,15 @@ module ethernet_control_unit #
           if(read_en_i) begin
             packet_raddr_o = addr_i[packet_addr_width_lp-1:0];
             packet_rvalid_o = 1'b1;
-            packet_rdata_size_o = op_size_i;
+            io_decode_error = (op_size_i != $clog2(data_width_p/8));
           end
           if(write_en_i)
-            io_decode_error_o = 1'b1;
+            io_decode_error = 1'b1;
         end
         else begin
           // TX buffer; W
           if(read_en_i)
-            io_decode_error_o = 1'b1;
+            io_decode_error = 1'b1;
           if(write_en_i) begin
             packet_waddr_o = addr_i[packet_addr_width_lp-1:0];
             packet_wdata_size_o = op_size_i;
@@ -155,7 +152,7 @@ module ethernet_control_unit #
         if(read_en_i)
           readable_reg_n  = '0; // always 0
         if(write_en_i)
-          io_decode_error_o = 1'b1;
+          io_decode_error = 1'b1;
       end
       16'h1004: begin
         // RX received size; R
@@ -164,7 +161,7 @@ module ethernet_control_unit #
             readable_reg_n  = packet_rsize_i;
         end
         if(write_en_i)
-          io_decode_error_o = 1'b1;
+          io_decode_error = 1'b1;
       end
       16'h1010: begin
         // RX EV Pending; RW
@@ -179,7 +176,7 @@ module ethernet_control_unit #
       16'h1014: begin
         // RX EV Enable; W
         if(read_en_i)
-          io_decode_error_o = 1'b1;
+          io_decode_error = 1'b1;
         if(write_en_i) begin
           rx_interrupt_enable_o = write_data_i[0];
           rx_interrupt_enable_v_o = 1'b1;
@@ -188,7 +185,7 @@ module ethernet_control_unit #
       16'h1018: begin
         // TX Send Bit; W
         if(read_en_i)
-          io_decode_error_o = 1'b1;
+          io_decode_error = 1'b1;
         if(write_en_i)
           packet_send_o = 1'b1;
       end
@@ -197,19 +194,19 @@ module ethernet_control_unit #
         if(read_en_i)
           readable_reg_n = packet_req_i;
         if(write_en_i)
-          io_decode_error_o = 1'b1;
+          io_decode_error = 1'b1;
       end
       16'h1024: begin
         // TX current slot index; W
         if(read_en_i)
-          io_decode_error_o = 1'b1;
+          io_decode_error = 1'b1;
         if(write_en_i)
           tx_idx_n = write_data_i[0];
       end
       16'h1028: begin
         // TX size; W
         if(read_en_i)
-          io_decode_error_o = 1'b1;
+          io_decode_error = 1'b1;
         if(write_en_i) begin
           packet_wsize_o = write_data_i;
           packet_wsize_valid_o = 1'b1;
@@ -229,7 +226,7 @@ module ethernet_control_unit #
       16'h1034: begin
         // TX Enable Bit; W
         if(read_en_i)
-          io_decode_error_o = 1'b1;
+          io_decode_error = 1'b1;
         if(write_en_i) begin
           tx_interrupt_enable_o = write_data_i[0];
           tx_interrupt_enable_v_o = 1'b1;
@@ -240,17 +237,17 @@ module ethernet_control_unit #
         if(read_en_i)
           readable_reg_n = debug_info_i;
         if(write_en_i)
-          io_decode_error_o = 1'b1;
+          io_decode_error = 1'b1;
       end
 
       default: begin
         // Unsupported MMIO
         if(read_en_i || write_en_i)
-          io_decode_error_o = 1'b1;
+          io_decode_error = 1'b1;
       end
     endcase
     if(read_en_i & write_en_i)
-      io_decode_error_o = 1'b1;
+      io_decode_error = 1'b1;
   end
 
   // Output can either come from RX buffer or registers
@@ -260,7 +257,13 @@ module ethernet_control_unit #
   assign tx_interrupt_clear_o = tx_interrupt_clear;
 
   // synopsys translate_off
-  always_ff @(negedge clk_i) begin
+  always_ff @(posedge clk_i) begin
+    assert(reset_i !== 1'b0 || io_decode_error === 1'b0) else begin
+      $error("%m: decode error at %t\n", $time);
+      $finish;
+    end
+  end
+  initial begin
     assert(eth_mtu_p <= 2048)
       else $error("ethernet_control_unit: eth_mtu_p should be <= 2048\n");
     assert(data_width_p == 32)

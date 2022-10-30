@@ -37,11 +37,10 @@ module eth_mac_1g_rgmii #
 (
     input  wire        clk250,
     input  wire        clk250_rst,
-    output wire        gtx_rst,
     output wire        rx_clk,
-    output wire        rx_rst,
+    input  wire        rx_rst,
     output wire        tx_clk,
-    output wire        tx_rst,
+    input  wire        tx_rst,
 
     /*
      * AXI input
@@ -84,8 +83,6 @@ module eth_mac_1g_rgmii #
     input  wire [7:0]  ifg_delay
 );
 
-wire gtx_clk;
-
 wire [7:0]  mac_gmii_rxd;
 wire        mac_gmii_rx_dv;
 wire        mac_gmii_rx_er;
@@ -112,6 +109,8 @@ always @(posedge rx_clk) begin
     rx_mii_select_sync <= {rx_mii_select_sync[0], mii_select_reg};
 end
 */
+/*
+// UNUSED as gtx_clk == tx_clk
 bsg_launch_sync_sync #(
    .width_p(1)
   ,.use_negedge_for_launch_p(0)
@@ -123,15 +122,16 @@ bsg_launch_sync_sync #(
   ,.iclk_data_i(mii_select_reg)
   ,.iclk_data_o() // UNUSED
   ,.oclk_data_o(tx_mii_select_sync)
-);
+);*/
+assign tx_mii_select_sync = mii_select_reg;
 
 bsg_launch_sync_sync #(
    .width_p(1)
   ,.use_negedge_for_launch_p(0)
   ,.use_async_reset_p(0)
 ) rx_mii_select_reg_sync (
-   .iclk_i(gtx_clk)
-  ,.iclk_reset_i(gtx_rst)
+   .iclk_i(tx_clk)
+  ,.iclk_reset_i(tx_rst)
   ,.oclk_i(rx_clk)
   ,.iclk_data_i(mii_select_reg)
   ,.iclk_data_o() // UNUSED
@@ -160,7 +160,7 @@ always @(posedge gtx_clk) begin
 end
 */
 
-always @(posedge gtx_clk) begin
+always @(posedge tx_clk) begin
     rx_prescale_sync_3 <= rx_prescale_sync_2;
 end
 bsg_launch_sync_sync #(
@@ -170,7 +170,7 @@ bsg_launch_sync_sync #(
 ) rx_prescale_sync (
    .iclk_i(rx_clk)
   ,.iclk_reset_i(rx_rst)
-  ,.oclk_i(gtx_clk)
+  ,.oclk_i(tx_clk)
   ,.iclk_data_i(rx_prescale[2])
   ,.iclk_data_o() // UNUSED
   ,.oclk_data_o(rx_prescale_sync_2)
@@ -180,8 +180,8 @@ bsg_launch_sync_sync #(
 reg [6:0] rx_speed_count_1;
 reg [1:0] rx_speed_count_2;
 
-always @(posedge gtx_clk) begin
-    if (gtx_rst) begin
+always @(posedge tx_clk) begin
+    if (tx_rst) begin
         rx_speed_count_1 <= 0;
         rx_speed_count_2 <= 0;
         speed_reg <= 2'b10;
@@ -223,8 +223,6 @@ assign speed = speed_reg;
 rgmii_phy_if rgmii_phy_if_inst (
     .clk250(clk250),
     .clk250_rst(clk250_rst),
-    .gtx_clk(gtx_clk),
-    .gtx_rst(gtx_rst),
 
     .mac_gmii_rx_clk(rx_clk),
     .mac_gmii_rx_rst(rx_rst),

@@ -2,21 +2,24 @@
 
 `timescale 1ns/1ps
 
-// Change the PHY speed here
+
+
+// Change the PHY speed here: SPEED_10/100/1000
 `define SPEED_1000 // MHZ
 
 //         MAC dest + SRC dest + EtherType + Payload:
 // 7 + 1 + 6        + 6        + 2         + 1500 + 4
 `define PACKET_MAX_SIZE 1526
 
+// Currently phy_nonsynth only sends 1 RGMII packet
 module phy_nonsynth (
       output bit                         rgmii_rx_clk_o
+    , input  bit                         rgmii_rx_rst_i
     , output logic [3:0]                 rgmii_rxd_o
     , output logic                       rgmii_rx_ctl_o
     , input  bit                         rgmii_tx_clk_i
     , input  logic [3:0]                 rgmii_txd_i
     , input  logic                       rgmii_tx_ctl_i
-    , input  bit                         reset_clk125_i
     , input  logic [1:0]                 speed_i
 );
   int unsigned crctable[256] = {
@@ -180,25 +183,27 @@ module phy_nonsynth (
 
   endtask
 
+  // Send procedure
   initial begin
     byte unsigned next_char = 0;
+    // Change the RGMII packet size here:
     int unsigned packet_size = 64;
     byte unsigned packet [`PACKET_MAX_SIZE - 1:0];
     int unsigned crc;
     assert(packet_size <= 1514);
     rgmii_rx_ctl_o = 1'b0;
 
-    @(negedge reset_clk125_i);
+    @(negedge rgmii_rx_rst_i);
     // Start sending
-    // Preamble & SFD
+    // Sending preamble & SFD
     for(int i = 0;i < 7;i++) begin
       packet[i] = 8'h55;
     end
     packet[7] = 8'hd5;
-    // packet content
+    // Sending packet content
     for(int i = 0;i < packet_size;i++)
       packet[i + 8] = next_char++;
-    // FCS
+    // Sending FCS
     crc = CalcCRC32(packet[`PACKET_MAX_SIZE - 5:8], packet_size);
     for(int i = 0;i < 4;i++)
       packet[packet_size + 8 + i] = (crc >> (i * 8)) & 32'hff;
@@ -217,6 +222,7 @@ module phy_nonsynth (
     rx_clk_generator();
   end
 
+  // Recv procedure
   initial begin
     int receiving_flag = 0;
     bit second_half = 1'b0;
@@ -269,7 +275,7 @@ module phy_nonsynth (
           // Check FCS
           crc = CalcCRC32(packet[`PACKET_MAX_SIZE - 5:8], packet_idx - 12);
           assert(crc == crc_dut);
-          $display("RGMII TX received a packet with size %x", packet_idx);
+          $display("PHY received a packet with size %x", packet_idx);
           for(int i = 0;i < packet_idx;i++)
             $display("%x", packet[i]);
           second_half = 1'b0;

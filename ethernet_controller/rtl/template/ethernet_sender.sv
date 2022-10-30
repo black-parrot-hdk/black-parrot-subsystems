@@ -235,7 +235,7 @@ end
 
   // synopsys translate_off
   always_ff @(posedge clk_i) begin
-    if(~reset_i) begin
+    if(reset_i == 1'b0) begin
       assert(~(~packet_req_lo & packet_wsize_valid_i))
         else $error("writing size when tx not ready");
       assert(~(~packet_req_lo & packet_wvalid_i))
@@ -245,6 +245,7 @@ end
       assert(data_width_p == 32 || data_width_p == 64)
         else $error("unsupported data_width_p");
     end
+
   end
   // synopsys translate_on
 

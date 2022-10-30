@@ -8,6 +8,12 @@ export BASEJUMP_STL_DIR := $(TOP)/ethernet_controller/import/basejump_stl
 
 TOP_MODULE := wrapper
 
+DVE ?= dve
+VCS ?= vcs
+
+DVE_OPTS := -full64
+DVE_OPTS += -vpd dump.vpd
+
 VCS_OPTS := -full64
 VCS_OPTS += -f flist.vcs
 VCS_OPTS += -sverilog
@@ -24,6 +30,6 @@ all: flist.vcs
 flist.vcs: flist.template
 	cat $^ | envsubst > $@
 view:
-	vcd2fst dump.vcd
+	$(DVE) $(DVE_OPTS)
 clean:
 	rm -rf csrc simv simv.daidir dump.vcd dump.fst flist.vcs ucli.key tx.txt rx.txt vc_hdrs.h

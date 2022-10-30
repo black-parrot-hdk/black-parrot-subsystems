@@ -280,13 +280,16 @@ endgenerate
     );
 
   // synopsys translate_off
-  always_ff @(negedge clk_i) begin
-    if(~reset_i) begin
-      assert(misaligned_access == 0)
-          else $error("packet_buffer: misaligned access");
-      assert(data_width_p == 32 || data_width_p == 64)
-          else $error("packet_buffer: unsupported data width");
-    end
+  always_ff @(posedge clk_i) begin
+    assert(reset_i !== 1'b0 || (misaligned_access === 1'b0))
+      else $error("packet_buffer: misaligned access");
+  end
+  initial begin
+    assert(data_width_p == 32 || data_width_p == 64)
+      else begin
+        $error("packet_buffer: unsupported data width");
+        $finish;
+      end
   end
   // synopsys translate_on
 

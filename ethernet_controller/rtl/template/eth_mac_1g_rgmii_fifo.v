@@ -50,11 +50,17 @@ module eth_mac_1g_rgmii_fifo #
     parameter RX_DROP_WHEN_FULL = RX_DROP_OVERSIZE_FRAME
 )
 (
-    input  wire                       clk250,
-    input  wire                       clk250_rst,
-    output wire                       gtx_rst,
     input  wire                       logic_clk,
     input  wire                       logic_rst,
+
+    input  wire                       clk250,
+    input  wire                       clk250_rst,
+
+    output wire                       tx_clk,
+    input  wire                       tx_rst,
+
+    output wire                       rx_clk,
+    input  wire                       rx_rst,
 
     /*
      * AXI input
@@ -105,11 +111,6 @@ module eth_mac_1g_rgmii_fifo #
      */
     input  wire [7:0]                 ifg_delay
 );
-
-wire tx_clk;
-wire rx_clk;
-wire tx_rst;
-wire rx_rst;
 
 wire [7:0]  tx_fifo_axis_tdata;
 wire        tx_fifo_axis_tvalid;
@@ -248,7 +249,7 @@ bsg_launch_sync_sync #(
   ,.use_negedge_for_launch_p(0)
   ,.use_async_reset_p(0)
 ) speed_sync (
-   .iclk_i(tx_clk) // TODO: use gtx_clk instead
+   .iclk_i(tx_clk)
   ,.iclk_reset_i(tx_rst)
   ,.oclk_i(logic_clk)
   ,.iclk_data_i(speed_int)
@@ -264,7 +265,6 @@ eth_mac_1g_rgmii #(
 eth_mac_1g_rgmii_inst (
     .clk250(clk250),
     .clk250_rst(clk250_rst),
-    .gtx_rst(gtx_rst),
     .tx_clk(tx_clk),
     .tx_rst(tx_rst),
     .rx_clk(rx_clk),
