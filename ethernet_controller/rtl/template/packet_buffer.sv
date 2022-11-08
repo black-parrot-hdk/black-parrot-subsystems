@@ -40,13 +40,12 @@
 
 `include "bsg_defines.v"
 
+// TODO: Some parameters should have illegal default values
 module packet_buffer # (
       parameter  slot_p        = 2
     , parameter  data_width_p  = 64
-    , localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p/8))
     , parameter  els_p         = 2048
     , localparam addr_width_lp = $clog2(els_p)
-    , localparam write_mask_width_lp = (data_width_p >> 3)
     , localparam packet_size_width_lp = $clog2(els_p+1)
 )
 (
@@ -76,45 +75,37 @@ module packet_buffer # (
     , input  logic                            packet_wsize_valid_i
     , input  logic [packet_size_width_lp-1:0] packet_wsize_i
 
-    , input  logic                     packet_wvalid_i
-    , input  logic [addr_width_lp-1:0] packet_waddr_i
-    , input  logic [data_width_p-1:0]  packet_wdata_i
-    , input  logic [size_width_lp-1:0] packet_wdata_size_i
+    , input  logic                        packet_wvalid_i
+    , input  logic [addr_width_lp-1:0]    packet_waddr_i
+    , input  logic [data_width_p-1:0]     packet_wdata_i
+    , input  logic [(data_width_p/8)-1:0] packet_wmask_i
 );
 
   logic misaligned_access;
   logic full_o;
   logic empty_o;
 
-  logic [7:0]                      write_mask;
-  logic [write_mask_width_lp-1:0]  write_mask_li;
+  logic [7:0]                   write_mask;
 
   localparam lsb_lp = $clog2(data_width_p >> 3);
 
   always_comb begin
     write_mask = '0;
     misaligned_access = 1'b0;
-
     // write
     if(packet_wvalid_i) begin
-      case(packet_wdata_size_i)
-        2'b00: begin // 1
-          write_mask = 8'b1 << packet_waddr_i[2:0];
-        end
-        2'b01: begin // 2
+      case(packet_wmask_i) // TODO: check wmask cases
+        (data_width_p/8)'('h3): begin // 2
           if(packet_waddr_i[0])
             misaligned_access = 1'b1;
-          write_mask = 8'b11 << {packet_waddr_i[2:1], 1'b0};
         end
-        2'b10: begin // 4
+        (data_width_p/8)'('hF): begin // 4
           if(packet_waddr_i[1:0] != '0)
             misaligned_access = 1'b1;
-          write_mask = 8'b1111 << {packet_waddr_i[2], 2'b00};
         end
-        2'b11: begin // 8
+        (data_width_p/8)'('hFF): begin // 8
           if(packet_waddr_i[2:0] != '0)
             misaligned_access = 1'b1;
-          write_mask = 8'b1111_1111;
         end
       endcase
     end
@@ -131,13 +122,6 @@ module packet_buffer # (
       end
     end
   end
-
-if (data_width_p == 64) begin
-  assign write_mask_li = write_mask;
-end else if (data_width_p == 32) begin
-  assign write_mask_li = write_mask[7:4] | write_mask[3:0];
-end
-
 
   wire readable = ~empty_o;
   wire writable = ~full_o;
@@ -229,7 +213,7 @@ generate
        ,.w_i(w_li)
        ,.addr_i(selected_addr_lo)
        ,.data_i(packet_wdata_i)
-       ,.write_mask_i(write_mask_li)
+       ,.write_mask_i(packet_wmask_i)
        ,.data_o(data_out)
       );
 
@@ -282,13 +266,12 @@ endgenerate
   // synopsys translate_off
   always_ff @(posedge clk_i) begin
     assert(reset_i !== 1'b0 || (misaligned_access === 1'b0))
-      else $error("packet_buffer: misaligned access");
+      else $error("%m: packet_buffer: misaligned access");
   end
   initial begin
     assert(data_width_p == 32 || data_width_p == 64)
       else begin
-        $error("packet_buffer: unsupported data width");
-        $finish;
+        $error("%m: packet_buffer: unsupported data width");
       end
   end
   // synopsys translate_on

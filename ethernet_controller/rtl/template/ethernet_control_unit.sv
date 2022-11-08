@@ -39,7 +39,6 @@ module ethernet_control_unit #
 (
       parameter  eth_mtu_p            = 2048 // byte
     , parameter  data_width_p         = 32
-    , localparam size_width_lp        = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p/8))
     , localparam packet_size_width_lp = $clog2(eth_mtu_p+1)
     , localparam packet_addr_width_lp = $clog2(eth_mtu_p)
     , localparam addr_width_lp        = 14
@@ -51,7 +50,7 @@ module ethernet_control_unit #
     , input  logic [addr_width_lp-1:0]          addr_i
     , input  logic                              write_en_i
     , input  logic                              read_en_i
-    , input  logic [size_width_lp-1:0]          op_size_i
+    , input  logic [(data_width_p/8)-1:0]       write_mask_i
     , input  logic [data_width_p-1:0]           write_data_i
     , output logic [data_width_p-1:0]           read_data_o // sync read
 
@@ -64,7 +63,7 @@ module ethernet_control_unit #
     , output logic                              packet_wvalid_o
     , output logic [packet_addr_width_lp-1:0]   packet_waddr_o
     , output logic [data_width_p-1:0]           packet_wdata_o
-    , output logic [size_width_lp-1:0]          packet_wdata_size_o
+    , output logic [(data_width_p/8)-1:0]       packet_wmask_o
 
     , output logic                              packet_ack_o
     , input  logic                              packet_avail_i
@@ -106,7 +105,7 @@ module ethernet_control_unit #
     packet_rvalid_o = 1'b0;
 
     packet_waddr_o = '0;
-    packet_wdata_size_o = '0;
+    packet_wmask_o = '0;
     packet_wdata_o = '0;
     packet_wvalid_o = 1'b0;
 
@@ -130,7 +129,7 @@ module ethernet_control_unit #
           if(read_en_i) begin
             packet_raddr_o = addr_i[packet_addr_width_lp-1:0];
             packet_rvalid_o = 1'b1;
-            io_decode_error = (op_size_i != $clog2(data_width_p/8));
+            io_decode_error = (write_mask_i != (data_width_p/8)'('1));
           end
           if(write_en_i)
             io_decode_error = 1'b1;
@@ -141,7 +140,7 @@ module ethernet_control_unit #
             io_decode_error = 1'b1;
           if(write_en_i) begin
             packet_waddr_o = addr_i[packet_addr_width_lp-1:0];
-            packet_wdata_size_o = op_size_i;
+            packet_wmask_o = write_mask_i;
             packet_wdata_o = write_data_i;
             packet_wvalid_o = 1'b1;
           end
@@ -265,9 +264,9 @@ module ethernet_control_unit #
   end
   initial begin
     assert(eth_mtu_p <= 2048)
-      else $error("ethernet_control_unit: eth_mtu_p should be <= 2048\n");
+      else $error("%m: eth_mtu_p should be <= 2048");
     assert(data_width_p == 32)
-      else $error("ethernet_control_unit: unsupported data_width_p\n");
+      else $error("%m: unsupported data_width_p");
   end
   // synopsys translate_on
 

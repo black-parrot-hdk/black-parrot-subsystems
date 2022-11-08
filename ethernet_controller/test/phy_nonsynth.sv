@@ -275,7 +275,8 @@ module phy_nonsynth (
           // Check FCS
           crc = CalcCRC32(packet[`PACKET_MAX_SIZE - 5:8], packet_idx - 12);
           assert(crc == crc_dut);
-          $display("PHY received a packet with size %x", packet_idx);
+          $display("PHY received a packet without corruption:");
+          $display("size(including preamble and CRC): 0x%x", packet_idx);
           for(int i = 0;i < packet_idx;i++)
             $display("%x", packet[i]);
           second_half = 1'b0;

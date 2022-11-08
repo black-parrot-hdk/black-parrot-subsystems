@@ -47,10 +47,12 @@ module ethernet_controller_wrapper #
     ,.rgmii_rx_ctl_delayed_o(rgmii_rx_ctl_delayed_lo)
   );
 
+  // TODO: should use bsg_tag_trace_replay instead
+  reset_generator #()
 
   // reset sync logic for clk250
 /*
-  logic [3:0] reset_clk250_sync_r;
+  logic [3:0] clk250_reset_sync_r;
   bsg_dff #(.width_p(1))
     reset_reg (
       .clk_i(clk_i)
@@ -60,16 +62,16 @@ module ethernet_controller_wrapper #
 
   always @(posedge clk250_i or posedge reset_r_lo) begin
     if(reset_r_lo)
-      reset_clk250_sync_r <= '1;
+      clk250_reset_sync_r <= '1;
     else
-      reset_clk250_sync_r <= {1'b0, reset_clk250_sync_r[3:1]};
+      clk250_reset_sync_r <= {1'b0, clk250_reset_sync_r[3:1]};
   end
-  wire reset_clk250_li  = reset_clk250_sync_r[0];
+  wire clk250_reset_li  = clk250_reset_sync_r[0];
 */
-  arst_sync reset_clk250_sync (
+  arst_sync clk250_reset_sync (
      .async_reset_i(reset_i)
     ,.clk_i(clk250_i)
-    ,.sync_reset_o(reset_clk250_li)
+    ,.sync_reset_o(clk250_reset_li)
   );
 
   ethernet_controller #(
@@ -78,13 +80,17 @@ module ethernet_controller_wrapper #
     .clk_i
     ,.reset_i
     ,.clk250_i
-    ,.reset_clk250_i(reset_clk250_li)
-    ,.reset_clk125_o(reset_clk125_o)
+    ,.clk250_reset_i(clk250_reset_li)
+    ,.tx_clk_o()
+    ,.tx_reset_i()
+    ,.rx_clk_o()
+    ,.rx_reset_i()
 
     ,.addr_i
     ,.write_en_i
     ,.read_en_i
-    ,.op_size_i
+//    ,.op_size_i
+    ,.write_mask_i
     ,.write_data_i
     ,.read_data_o // sync read
 

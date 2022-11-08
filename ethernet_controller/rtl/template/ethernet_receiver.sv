@@ -153,7 +153,7 @@ end
      ,.packet_wvalid_i(packet_wvalid_li)
      ,.packet_waddr_i(packet_waddr_li)
      ,.packet_wdata_i(packet_wdata_li)
-     ,.packet_wdata_size_i($clog2(data_width_p >> 3))
+     ,.packet_wmask_i((data_width_p/8)'('1))
     );
 
   always_comb begin
@@ -207,9 +207,9 @@ end
   always_ff @(posedge clk_i) begin
     if(~reset_i) begin
       assert(~(~packet_avail_lo & packet_rvalid_i))
-        else $error("reading data when rx not ready");
+        else $error("%m: reading data when rx not ready at time %t", $time);
       assert(~(~packet_avail_lo & packet_ack_i))
-        else $error("receiving packet when rx not ready");
+        else $error("%m: receiving packet when rx not ready at time %t", $time);
     end
   end
   // synopsys translate_on

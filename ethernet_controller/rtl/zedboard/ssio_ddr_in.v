@@ -47,9 +47,6 @@ module ssio_ddr_in #
 
 wire clk_int;
 
-`ifdef SIM_MP
-assign clk_int = input_clk;
-`else
 // pass through RX clock to logic
 BUFR #(
     .BUFR_DIVIDE("BYPASS")
@@ -60,7 +57,6 @@ clk_bufr (
     .CE(1'b1),
     .CLR(1'b0)
 );
-`endif
 genvar n;
 generate
 for (n = 0; n < WIDTH; n = n + 1) begin : iddr

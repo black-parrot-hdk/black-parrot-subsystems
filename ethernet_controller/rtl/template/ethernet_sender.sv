@@ -13,7 +13,6 @@ module ethernet_sender #
       // maximum size of an Ethernet packet
     , parameter  eth_mtu_p     = 2048 // byte
     , parameter  send_count_p  = (32'b1 << 16 - 1)
-    , localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p/8))
     , localparam addr_width_lp = $clog2(eth_mtu_p)
     , localparam packet_size_width_lp = $clog2(eth_mtu_p+1)
 )
@@ -32,7 +31,7 @@ module ethernet_sender #
     , input  logic                                 packet_wvalid_i
     , input  logic [addr_width_lp-1:0]             packet_waddr_i
     , input  logic [data_width_p-1:0]              packet_wdata_i
-    , input  logic [size_width_lp-1:0]             packet_wdata_size_i
+    , input  logic [(data_width_p/8)-1:0]          packet_wmask_i
 
     /* Packet -> AXIS */
     , output logic [data_width_p-1:0]              tx_axis_tdata_o
@@ -105,7 +104,7 @@ module ethernet_sender #
      ,.packet_wvalid_i(packet_wvalid_li)
      ,.packet_waddr_i(packet_waddr_i)
      ,.packet_wdata_i(packet_wdata_i)
-     ,.packet_wdata_size_i(packet_wdata_size_i)
+     ,.packet_wmask_i(packet_wmask_i)
     );
 
 
@@ -237,14 +236,16 @@ end
   always_ff @(posedge clk_i) begin
     if(reset_i == 1'b0) begin
       assert(~(~packet_req_lo & packet_wsize_valid_i))
-        else $error("writing size when tx not ready");
+        else $error("%m: writing size when tx not ready at time %t", $time);
       assert(~(~packet_req_lo & packet_wvalid_i))
-        else $error("writing data when tx not ready");
+        else $error("%m: writing data when tx not ready at time %t", $time);
       assert(~(~packet_req_lo & packet_send_i))
-        else $error("sending packet when tx not ready");
-      assert(data_width_p == 32 || data_width_p == 64)
-        else $error("unsupported data_width_p");
+        else $error("%m: sending packet when tx not ready at time %t", $time);
     end
+  end
+  initial begin
+    assert(data_width_p == 32 || data_width_p == 64)
+      else $error("%m: unsupported data_width_p");
 
   end
   // synopsys translate_on

@@ -9,10 +9,15 @@
 // sends and receives packets at RGMII level.
 
 //   Currently user_signals sends only one packet.
+// Therefore the expected output should be that both
+// MAC and PHY side receive a packet with payload
+// 00, 01, ...
+
 // The write op size can be set to different value
+// 2'b00: 1 byte, 2'b01: 2 bytes, 2'b10: 4 bytes
+`define WRITE_OP_SIZE 2'b10
 program user_signals #(
     parameter data_width_p
-  , localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p/8))
   , localparam addr_width_lp = 14
 )
 (
@@ -28,7 +33,7 @@ program user_signals #(
     , output logic [addr_width_lp-1:0]   addr_o
     , output logic                       write_en_o
     , output logic                       read_en_o
-    , output logic [size_width_lp-1:0]   op_size_o
+    , output logic [data_width_p/8-1:0]  write_mask_o
     , output logic [data_width_p-1:0]    write_data_o
     , input  logic [data_width_p-1:0]    read_data_i
 
@@ -36,12 +41,29 @@ program user_signals #(
     , input  logic                       tx_interrupt_pending_i
 );
 
+  int unsigned op_size_lo;
+
+  function automatic int unsigned op_size_to_mask(
+       int unsigned op_size_i);
+    int unsigned mask_o;
+    case(op_size_i)
+      'b00:    mask_o = 'h1;
+      'b01:    mask_o = 'h3;
+      'b10:    mask_o = 'hF;
+      'b11:    mask_o = 'hFF;
+      default: begin mask_o = 'x; $display("%m: invalid op_size"); end
+    endcase
+    return mask_o;
+  endfunction
+
+
   task automatic write_addr (
        input int unsigned address
       ,input int unsigned data
       ,input int unsigned op_size);
     assert((address % ('b1 << op_size)) == 0);
-    op_size_o    = op_size;
+//    op_size_o    = op_size;
+    write_mask_o = op_size_to_mask(op_size);
     addr_o       = address;
     write_data_o = data;
     write_en_o   = 1'b1;
@@ -54,7 +76,8 @@ program user_signals #(
       ,output int unsigned read_data
       ,input int unsigned op_size);
     assert((address % ('b1 << op_size)) == 0);
-    op_size_o = op_size;
+//    op_size_o = op_size;
+    write_mask_o = op_size_to_mask(op_size);
     addr_o    = address;
     read_en_o = 1'b1;
     @(posedge clk_i)
@@ -71,7 +94,7 @@ program user_signals #(
     assert((size % ('b1 << op_size)) == 0);
     assert((data_width_p / 8) >= ('b1 << op_size));
     word = size / ('b1 << op_size);
-    $display("Sending packet with size 0x%x:", size);
+    // Sending packet with size 'size'
     // wait until TX is ready
     wait_cnt = 0;
     forever begin
@@ -117,8 +140,9 @@ program user_signals #(
     end
     read_addr(32'h1004, size, 32'b10);
     assert((size % ('b1 << op_size)) == 0);
-    $display("MAC received packet size: 0x%x", size);
-    $display("MAC recieved packet:");
+    $display("MAC received a packet:");
+    $display("size: 0x%x", size);
+    $display("payload:");
 
     word = size / ('b1 << op_size);
     for(i = 0;i < word;i = i + 1) begin
@@ -149,7 +173,8 @@ program user_signals #(
     tx_reset_o    = 1'b1;
     // Assuming rx_clk can be the slowest clock
     // Wait for 3 * 2.5MHZ cycle starting from a rx_clk posedge clk
-    // This should allow valid values propagated through bsg_launch_sync_sync
+    // This should be long enough for flushing all the unknown values
+    // in bsg_launch_sync_sync
     @(posedge rx_clk_i);
     #1200; // ((1/2.5) * 1000) * 3
     // Reset Deassertion order:
@@ -168,8 +193,8 @@ program user_signals #(
     reset_o = 1'b0;
 
     // test starts
-    // change the write op size here:
-    write_op_size = 2'b10;
+    // Set the write op size here:
+    write_op_size = `WRITE_OP_SIZE;
     send_packet(32'd128, write_op_size);
     receive_packet();
     // Wait for some period of time
@@ -183,7 +208,6 @@ endprogram
 
 module wrapper();
   parameter data_width_p = 32;
-  localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p/8));
   localparam addr_width_lp = 14;
   initial begin
     $vcdplusfile("dump.vpd");
@@ -201,7 +225,7 @@ module wrapper();
   logic [addr_width_lp-1:0]   addr_li;
   logic                       write_en_li;
   logic                       read_en_li;
-  logic [size_width_lp-1:0]   op_size_li;
+  logic [data_width_p/8-1:0]  write_mask_li;
   logic [data_width_p-1:0]    write_data_li;
   logic [data_width_p-1:0]    read_data_lo;
 
@@ -229,17 +253,17 @@ module wrapper();
     ,.tx_reset_o(tx_reset_li)
     ,.rx_clk_i(rx_clk_lo)
     ,.rx_reset_o(rx_reset_li)
-                            
+
     ,.addr_o(addr_li)
     ,.write_en_o(write_en_li)
     ,.read_en_o(read_en_li)
-    ,.op_size_o(op_size_li)
+    ,.write_mask_o(write_mask_li)
     ,.write_data_o(write_data_li)
     ,.read_data_i(read_data_lo)
-                            
+
     ,.rx_interrupt_pending_i(rx_interrupt_pending_lo)
     ,.tx_interrupt_pending_i(tx_interrupt_pending_lo)
-                            
+
   );
 
   phy_nonsynth phy (
@@ -268,7 +292,7 @@ module wrapper();
     ,.addr_i(addr_li)
     ,.write_en_i(write_en_li)
     ,.read_en_i(read_en_li)
-    ,.op_size_i(op_size_li)
+    ,.write_mask_i(write_mask_li)
     ,.write_data_i(write_data_li)
     ,.read_data_o(read_data_lo)
 

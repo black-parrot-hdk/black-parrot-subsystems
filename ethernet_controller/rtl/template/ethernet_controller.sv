@@ -5,7 +5,6 @@ module ethernet_controller #
 (
       parameter  data_width_p  = 32
     , parameter  ifg_delay_p   = 12
-    , localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p/8))
     , localparam addr_width_lp = 14
 )
 (
@@ -25,7 +24,7 @@ module ethernet_controller #
     , input  logic [addr_width_lp-1:0]          addr_i
     , input  logic                              write_en_i
     , input  logic                              read_en_i
-    , input  logic [size_width_lp-1:0]          op_size_i
+    , input  logic [data_width_p/8-1:0]         write_mask_i
     , input  logic [data_width_p-1:0]           write_data_i
     , output logic [data_width_p-1:0]           read_data_o // sync read
 
@@ -53,7 +52,7 @@ module ethernet_controller #
   logic [packet_size_width_lp-1:0]  packet_wsize_lo;
 
   logic [packet_addr_width_lp-1:0]  packet_waddr_lo;
-  logic [size_width_lp-1:0]         packet_wdata_size_lo;
+  logic [data_width_p/8-1:0]        packet_wmask_lo;
   logic [data_width_p-1:0]          packet_wdata_lo;
   logic                             packet_wvalid_lo;
 
@@ -118,7 +117,7 @@ module ethernet_controller #
    ,.addr_i
    ,.write_en_i
    ,.read_en_i
-   ,.op_size_i
+   ,.write_mask_i
    ,.write_data_i
    ,.read_data_o
 
@@ -131,7 +130,7 @@ module ethernet_controller #
    ,.packet_wvalid_o(packet_wvalid_lo)
    ,.packet_waddr_o(packet_waddr_lo)
    ,.packet_wdata_o(packet_wdata_lo)
-   ,.packet_wdata_size_o(packet_wdata_size_lo)
+   ,.packet_wmask_o(packet_wmask_lo)
 
    ,.packet_ack_o(packet_ack_lo)
    ,.packet_avail_i(packet_avail_lo)
@@ -165,7 +164,7 @@ module ethernet_controller #
       ,.packet_wvalid_i(packet_wvalid_lo)
       ,.packet_waddr_i(packet_waddr_lo)
       ,.packet_wdata_i(packet_wdata_lo)
-      ,.packet_wdata_size_i(packet_wdata_size_lo)
+      ,.packet_wmask_i(packet_wmask_lo)
 
       ,.tx_axis_tdata_o(tx_axis_tdata_lo)
       ,.tx_axis_tkeep_o(tx_axis_tkeep_lo)
