@@ -74,7 +74,8 @@ bool BP_me_WB_client_ctrl::sim_write() {
 
         if (tx_cooldown == 0) {
             // try to send the response
-            uint128_t response = (static_cast<uint128_t>(resp_it->header) << 64) | resp_it->data;
+            uint128_t response = (static_cast<uint128_t>(resp_it->build_header()) << 64)
+                                 | resp_it->data;
             if (d2f_resp->tx(response)) {
                 resp_it++;
                 tx_cooldown = dice() % 16;

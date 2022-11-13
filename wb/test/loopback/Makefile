@@ -1,5 +1,5 @@
 # Set up BP paths
-TOP =
+TOP = ../../../../black-parrot
 export BP_COMMON_DIR    := $(TOP)/bp_common
 export BP_FE_DIR        := $(TOP)/bp_fe
 export BP_BE_DIR        := $(TOP)/bp_be
@@ -8,23 +8,25 @@ export BP_TOP_DIR       := $(TOP)/bp_top
 export BP_EXTERNAL_DIR  := $(TOP)/external
 export BASEJUMP_STL_DIR := $(BP_EXTERNAL_DIR)/basejump_stl
 export HARDFLOAT_DIR    := $(BP_EXTERNAL_DIR)/HardFloat
-export BP_ME_WB_DIR     := ../sv
+export BP_ME_WB_DIR     := ../../sv
 
 # If $VERILATOR_ROOT isn't in the environment, we assume it is part of a
 # package install, and verilator is in your path. Otherwise find the
 # binary relative to $VERILATOR_ROOT (such as when inside the git sources).
 ifeq ($(VERILATOR_ROOT),)
 VERILATOR = verilator
+VERILATOR_COVERAGE = verilator_coverage
 else
 export VERILATOR_ROOT
 VERILATOR = $(VERILATOR_ROOT)/bin/verilator
+VERILATOR_COVERAGE = $(VERILATOR_ROOT)/bin/verilator_coverage
 endif
 
 VERILATOR_FLAGS =
 # Generate C++ in executable form
 VERILATOR_FLAGS += -cc --exe
 # Optimize
-VERILATOR_FLAGS += -x-assign 0
+VERILATOR_FLAGS += -O2 -x-assign 0
 # Warn abount lint issues; may not want this on less solid designs
 VERILATOR_FLAGS += -Wall -Wno-fatal
 # Make waveforms
@@ -33,19 +35,22 @@ VERILATOR_FLAGS += --trace-fst
 VERILATOR_FLAGS += --assert
 # Run make to compile model, with as many CPUs as are free
 VERILATOR_FLAGS += --build -j
+# Generate coverage analysis
+VERILATOR_FLAGS += --coverage
 # Run Verilator in debug mode
 #VERILATOR_FLAGS += --debug
 # Add this trace to get a backtrace in gdb
 #VERILATOR_FLAGS += --gdbbt
 # Declare top module
 VERILATOR_FLAGS += --top-module top
-# Add the C++ files from the bsg_test directory
+# Add the C++ includes
 VERILATOR_FLAGS += -CFLAGS -I$(realpath $(BASEJUMP_STL_DIR)/bsg_test/)
+VERILATOR_FLAGS += -CFLAGS -I$(realpath ../cpp/)
 
 # Input files for Verilator
 VERILATOR_INPUT = -f flist.verilator
-VERILATOR_INPUT += sv/bp_me_wb_loopback.sv
-VERILATOR_INPUT += cpp/sim_main.cpp cpp/bp_packages.cpp cpp/bp_me_wb_master_ctrl.cpp cpp/bp_me_wb_client_ctrl.cpp
+VERILATOR_INPUT += bp_me_wb_loopback.sv
+VERILATOR_INPUT += sim_main.cpp ../cpp/bp_pkg.cpp ../cpp/bp_me_wb_master_ctrl.cpp ../cpp/bp_me_wb_client_ctrl.cpp
 VERILATOR_INPUT += $(BASEJUMP_STL_DIR)/bsg_test/bsg_nonsynth_dpi_clock_gen.cpp
 
 
@@ -68,6 +73,10 @@ run: check
 	@echo
 	@echo "-- RUN -------------------------"
 	obj_dir/Vtop
+
+	@echo
+	@echo "-- COVERAGE --------------------"
+	$(VERILATOR_COVERAGE) --annotate logs/annotated logs/coverage.dat
 
 	@echo
 	@echo "-- DONE ------------------------"

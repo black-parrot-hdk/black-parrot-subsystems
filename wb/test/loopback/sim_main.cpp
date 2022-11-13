@@ -4,12 +4,11 @@
 #include "Vtop.h"
 #include "bsg_nonsynth_dpi_clock_gen.hpp"
 
-#include "bp_packages.h"
+#include "bp_pkg.h"
 #include "bp_me_wb_master_ctrl.h"
 #include "bp_me_wb_client_ctrl.h"
 
 #include <iostream>
-#include <functional>
 #include <memory>
 
 using namespace bsg_nonsynth_dpi;
@@ -28,11 +27,11 @@ int main(int argc, char* argv[]) {
     auto dut = std::make_unique<Vtop>();
     auto tfp = std::make_unique<VerilatedFstC>();
     dut->trace(tfp.get(), 10);
-    Verilated::mkdir("waveforms");
-    tfp->open("waveforms/wave.fst");
+    Verilated::mkdir("logs");
+    tfp->open("logs/wave.fst");
 
     // create controllers for the adapters
-    int test_size = 1000000;
+    int test_size = 100000;
     unsigned long int seed = time(0);
     BP_me_WB_master_ctrl master_ctrl{test_size, seed};
     BP_me_WB_client_ctrl client_ctrl{test_size, seed};
@@ -65,13 +64,14 @@ int main(int argc, char* argv[]) {
     }
     std::cout << "\n";
     tfp->close();
+    VerilatedCov::write("logs/coverage.dat");
 
     // test if commands and responses were transmitted correctly
     int errors = 0;
-    std::vector<BP_cmd> commands_in = master_ctrl.get_commands();
-    std::vector<BP_cmd> commands_out = client_ctrl.get_commands();
-    std::vector<BP_resp> responses_in = client_ctrl.get_responses();
-    std::vector<BP_resp> responses_out = master_ctrl.get_responses();
+    std::vector<BP_pkg> commands_in = master_ctrl.get_commands();
+    std::vector<BP_pkg> commands_out = client_ctrl.get_commands();
+    std::vector<BP_pkg> responses_in = client_ctrl.get_responses();
+    std::vector<BP_pkg> responses_out = master_ctrl.get_responses();
 
     // check the amount of packages sent and received
     if (commands_out.size() != test_size) {
@@ -93,14 +93,14 @@ int main(int argc, char* argv[]) {
         errors = 3;
     }
 
-    // check if there were errors in the transmitted commands
+    // check if there were errors in the transmitted commandscd
     for (int i = 0; errors < 3 && i < test_size; i++) {
         if (!(commands_in[i] == commands_out[i])) {
             std::cout << "\nError: cmd_in != cmd_out\n";
             std::cout << "Header in:  "
-                << VL_TO_STRING(commands_in[i].header) << "\n";
+                << VL_TO_STRING(commands_in[i].build_header()) << "\n";
             std::cout << "Header out: "
-                << VL_TO_STRING(commands_out[i].header) << "\n";
+                << VL_TO_STRING(commands_out[i].build_header()) << "\n";
             std::cout << "Data in:    "
                 << VL_TO_STRING(commands_in[i].data) << "\n";
             std::cout << "Data out:   "
@@ -114,9 +114,9 @@ int main(int argc, char* argv[]) {
         if (!(responses_in[i] == responses_out[i])) {
             std::cout << "\nError: resp_in != resp_out\n";
             std::cout << "Header in:  "
-                << VL_TO_STRING(responses_in[i].header) << "\n";
+                << VL_TO_STRING(responses_in[i].build_header()) << "\n";
             std::cout << "Header out: "
-                << VL_TO_STRING(responses_out[i].header) << "\n";
+                << VL_TO_STRING(responses_out[i].build_header()) << "\n";
             std::cout << "Data in:    "
                 << VL_TO_STRING(responses_in[i].data) << "\n";
             std::cout << "Data out:   "

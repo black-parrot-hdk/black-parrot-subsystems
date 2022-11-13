@@ -79,7 +79,8 @@ bool BP_me_WB_master_ctrl::sim_write() {
 
         if (tx_cooldown == 0) {
             // try to send the command
-            uint128_t command = (static_cast<uint128_t>(cmd_it->header) << 64) | cmd_it->data;
+            uint128_t command = (static_cast<uint128_t>(cmd_it->build_header()) << 64)
+                                | cmd_it->data;
             if (d2f_cmd->tx(command)) {
                 cmd_it++;
                 tx_cooldown = dice() % 16;
