@@ -17,13 +17,13 @@ $ETH_SRC_DIR/template/axis_adapter.v
 $ETH_SRC_DIR/template/axis_async_fifo_adapter.v
 $ETH_SRC_DIR/template/axis_async_fifo.v
 $ETH_SRC_DIR/template/axis_fifo.v
+$ETH_SRC_DIR/template/axis_fifo_mem.sv
 $ETH_SRC_DIR/template/axis_gmii_rx.v
 $ETH_SRC_DIR/template/axis_gmii_tx.v
 $ETH_SRC_DIR/template/lfsr.v
 $ETH_SRC_DIR/template/tx_clks_generator.sv
 $ETH_SRC_DIR/template/oddr_clock_downsample_and_right_shift.sv
 $ETH_SRC_DIR/template/rgmii_phy_if.v
-$ETH_SRC_DIR/template/mem_1r1w_sync_fpga.sv
 $ETH_SRC_DIR/template/ssio_ddr_in.v
 
 $BASEJUMP_STL_DIR/bsg_link/bsg_link_oddr_phy.v

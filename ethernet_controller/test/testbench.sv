@@ -2,8 +2,6 @@
 
 `include "bsg_defines.v"
 
-`timescale 1ns/1ps
-
 //   This testbench contains two parts: user_signals and phy_nonsynth.
 // user_signals sends and receives packets at user level while phy_nonsynth
 // sends and receives packets at RGMII level.
@@ -102,7 +100,7 @@ program user_signals #(
       if(read_data == 32'd1)
         break;
       if(wait_cnt > 10000) begin
-        $display("TX Timeout");
+        $display("MAC TX Timeout");
         $finish;
       end
       wait_cnt = wait_cnt + 1;
@@ -133,7 +131,7 @@ program user_signals #(
       if(read_data == 32'd1)
         break;
       if(wait_cnt > 10000) begin
-        $display("RX Timeout");
+        $display("MAC RX Timeout");
         $finish;
       end
       wait_cnt = wait_cnt + 1;

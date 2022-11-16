@@ -25,7 +25,6 @@ THE SOFTWARE.
 // Language: Verilog 2001
 
 `resetall
-`timescale 1ns / 1ps
 `default_nettype none
 
 /*
@@ -328,12 +327,14 @@ always @(*) begin
     mem_r_v_li = 1'b0;
     if (m_axis_tready || ~m_axis_tvalid_pipe_reg) begin
         // output ready or bubble in pipeline; read new data from FIFO
-        mem_r_v_li = 1'b1;
+        if (!empty) begin
+            mem_r_v_li = 1'b1;
+        end
     end
 end
 
 
-mem_1r1w_sync_fpga #(
+axis_fifo_mem #(
     .width_p(WIDTH)
    ,.els_p(2**ADDR_WIDTH)
    ,.pipeline_output_p(PIPELINE_OUTPUT)

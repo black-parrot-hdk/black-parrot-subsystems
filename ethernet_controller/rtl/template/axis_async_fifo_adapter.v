@@ -26,8 +26,6 @@ THE SOFTWARE.
 
 `include "bsg_defines.v"
 
-`timescale 1ns / 1ps
-
 /*
  * AXI4-Stream asynchronous FIFO with width converter
  */

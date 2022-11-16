@@ -1,0 +1,9 @@
+**/DVEfiles/
+**/csrc/
+**/dump.*
+**/flist.vcs
+**/simv*
+**/ucli.key
+**/vc_hdrs.h
+**/*.swp
+**/*.swo

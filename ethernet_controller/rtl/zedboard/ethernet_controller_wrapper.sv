@@ -1,9 +1,13 @@
 
+`default_nettype none
+
 `include "bsg_defines.v"
+
 
 module ethernet_controller_wrapper #
 (
       parameter  data_width_p  = 32
+    , parameter  `BSG_INV_PARAM(simulation_p)
     , localparam addr_width_lp = 14
     , localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p/8))
 )
@@ -11,14 +15,21 @@ module ethernet_controller_wrapper #
       input  logic                              clk_i
     , input  logic                              reset_i
     , input  logic                              clk250_i
-    , output logic                              reset_clk125_o
+    , input  logic                              clk250_reset_i
+
+    , output logic                              tx_clk_o
+    , input  logic                              tx_reset_i
+
+    , output logic                              rx_clk_o
+    , input  logic                              rx_reset_i
+
     // zynq-7000 specific: 200 MHZ for IDELAY tap value
     , input  logic                              iodelay_ref_clk_i
 
     , input  logic [addr_width_lp-1:0]          addr_i
     , input  logic                              write_en_i
     , input  logic                              read_en_i
-    , input  logic [size_width_lp-1:0]          op_size_i
+    , input  logic [data_width_p/8-1:0]         write_mask_i
     , input  logic [data_width_p-1:0]           write_data_i
     , output logic [data_width_p-1:0]           read_data_o // sync read
 
@@ -37,7 +48,9 @@ module ethernet_controller_wrapper #
   logic [3:0] rgmii_rxd_delayed_lo;
   logic       rgmii_rx_ctl_delayed_lo;
 
-  iodelay_control iodelay_control (
+  iodelay_control #(
+     .simulation_p(simulation_p))
+   iodelay_control (
     .clk_i(clk_i)
     ,.reset_i(reset_i)
     ,.iodelay_ref_clk_i(iodelay_ref_clk_i)
@@ -47,49 +60,21 @@ module ethernet_controller_wrapper #
     ,.rgmii_rx_ctl_delayed_o(rgmii_rx_ctl_delayed_lo)
   );
 
-  // TODO: should use bsg_tag_trace_replay instead
-  reset_generator #()
-
-  // reset sync logic for clk250
-/*
-  logic [3:0] clk250_reset_sync_r;
-  bsg_dff #(.width_p(1))
-    reset_reg (
-      .clk_i(clk_i)
-      ,.data_i(reset_i)
-      ,.data_o(reset_r_lo)
-      );
-
-  always @(posedge clk250_i or posedge reset_r_lo) begin
-    if(reset_r_lo)
-      clk250_reset_sync_r <= '1;
-    else
-      clk250_reset_sync_r <= {1'b0, clk250_reset_sync_r[3:1]};
-  end
-  wire clk250_reset_li  = clk250_reset_sync_r[0];
-*/
-  arst_sync clk250_reset_sync (
-     .async_reset_i(reset_i)
-    ,.clk_i(clk250_i)
-    ,.sync_reset_o(clk250_reset_li)
-  );
-
   ethernet_controller #(
      .data_width_p(data_width_p))
    eth_ctr (
     .clk_i
     ,.reset_i
     ,.clk250_i
-    ,.clk250_reset_i(clk250_reset_li)
-    ,.tx_clk_o()
-    ,.tx_reset_i()
-    ,.rx_clk_o()
-    ,.rx_reset_i()
+    ,.clk250_reset_i
+    ,.tx_clk_o(tx_clk_o)
+    ,.tx_reset_i(tx_reset_i)
+    ,.rx_clk_o(rx_clk_o)
+    ,.rx_reset_i(rx_reset_i)
 
     ,.addr_i
     ,.write_en_i
     ,.read_en_i
-//    ,.op_size_i
     ,.write_mask_i
     ,.write_data_i
     ,.read_data_o // sync read

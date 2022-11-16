@@ -1,8 +1,5 @@
 `default_nettype none
 
-`timescale 1ns/1ps
-
-
 
 // Change the PHY speed here: SPEED_10/100/1000
 `define SPEED_1000 // MHZ

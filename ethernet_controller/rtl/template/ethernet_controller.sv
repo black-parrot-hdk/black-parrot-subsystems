@@ -200,7 +200,10 @@ module ethernet_controller #
      ,.receive_count_o(/* UNUSED */)
   );
 
-  eth_mac_1g_rgmii_fifo #(.AXIS_DATA_WIDTH(data_width_p))
+  eth_mac_1g_rgmii_fifo #(
+      .AXIS_DATA_WIDTH(data_width_p)
+     ,.TX_FIFO_PIPELINE_OUTPUT(1)
+     ,.RX_FIFO_PIPELINE_OUTPUT(1))
       mac (
       .logic_clk(clk_i)
      ,.logic_rst(reset_i)

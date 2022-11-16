@@ -1,5 +1,10 @@
 
-module iodelay_control(
+`include "bsg_defines.v"
+
+module iodelay_control #(
+      parameter `BSG_INV_PARAM(simulation_p)
+)
+(
       input  logic clk_i
     , input  logic reset_i
     , input  logic iodelay_ref_clk_i
@@ -9,10 +14,12 @@ module iodelay_control(
     , output logic       rgmii_rx_ctl_delayed_o
 );
 
-`ifdef SIM_MP
+logic iodelay_ref_clk_lo;
+
+if(simulation_p == 1) begin: sim
   assign rgmii_rxd_delayed_o    = rgmii_rxd_i;
   assign rgmii_rx_ctl_delayed_o = rgmii_rx_ctl_i;
-`else
+end else begin: nosim
 
 
   BUFG iodelay_ref_clk_bufg(
@@ -74,9 +81,8 @@ module iodelay_control(
   wire  [4:0] input_d   = {rgmii_rxd_i, rgmii_rx_ctl_i};
   logic [4:0] delayed_d;
 
-genvar n;
-generate
-for (n = 0; n < 5; n = n + 1) begin: idelaye2
+  genvar n;
+  for ( n = 0; n < 5; n = n + 1) begin: idelaye2
     // We need IDELAYE2 to meet the timing
     //   requirement for RX side of the RGMII signals
     IDELAYE2 #(
@@ -99,9 +105,7 @@ for (n = 0; n < 5; n = n + 1) begin: idelaye2
        ,.LDPIPEEN(1'b0)
        ,.REGRST(1'b0)
     );
-end
-endgenerate
+  end
   assign {rgmii_rxd_delayed_o, rgmii_rx_ctl_delayed_o} = delayed_d;
-
-`endif
+end
 endmodule
