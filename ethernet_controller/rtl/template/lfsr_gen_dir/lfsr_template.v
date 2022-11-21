@@ -26,7 +26,6 @@ THE SOFTWARE.
 
 `resetall
 `timescale 1ns / 1ps
-`default_nettype none
 
 /*
  * Parametrizable combinatorial parallel LFSR/CRC

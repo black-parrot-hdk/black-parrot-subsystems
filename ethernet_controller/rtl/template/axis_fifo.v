@@ -25,7 +25,6 @@ THE SOFTWARE.
 // Language: Verilog 2001
 
 `resetall
-`default_nettype none
 
 /*
  * AXI4-Stream FIFO

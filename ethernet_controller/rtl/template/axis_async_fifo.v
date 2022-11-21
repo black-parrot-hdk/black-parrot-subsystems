@@ -24,8 +24,6 @@ THE SOFTWARE.
 
 // Language: Verilog 2001
 
-`default_nettype none
-
 /*
  * AXI4-Stream asynchronous FIFO
  */

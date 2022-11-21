@@ -1,6 +1,4 @@
 
-`default_nettype none
-
 `include "bsg_defines.v"
 
 
