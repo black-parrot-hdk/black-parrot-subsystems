@@ -74,9 +74,7 @@ end else begin
     ,.data_o(r_data_o)
   );
 
-  // Without this, sometimes vivado will fail to infer BRAM for us
-  (* KEEP_HIERARCHY = "TRUE" *)
-  bsg_mem_1r1w_sync #(
+  bsg_mem_1r1w_sync_wrapper #(
      .width_p(width_p)
     ,.els_p(els_p)
   ) mem (
