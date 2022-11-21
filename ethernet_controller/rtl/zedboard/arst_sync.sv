@@ -4,7 +4,6 @@ module arst_sync (
   , input        bclk_i
   , output logic brst_o
 );
-  (* ASYNC_REG = "TRUE" *)
   logic [0:0] bsg_SYNC_1_r, bsg_SYNC_2_r;
   always @(posedge bclk_i or posedge arst_i) begin
     if(arst_i)
