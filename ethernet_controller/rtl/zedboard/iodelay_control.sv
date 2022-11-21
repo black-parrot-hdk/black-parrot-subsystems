@@ -41,9 +41,9 @@ end else begin: nosim
   assign reset_iodelay_li = reset_iodelay_sync_r[0];
 */
   arst_sync reset_iodelay_sync (
-     .async_reset_i(reset_i)
-    ,.clk_i(iodelay_ref_clk_lo)
-    ,.sync_reset_o(reset_iodelay_li)
+     .arst_i(reset_i)
+    ,.bclk_i(iodelay_ref_clk_lo)
+    ,.brst_o(reset_iodelay_li)
   );
 
   logic reset_iodelay_hold_r;
