@@ -46,7 +46,6 @@ foreach blss_inst [get_cells -hier -filter {(ORIG_REF_NAME == bsg_launch_sync_sy
 }
 
 ################# bsg_tag_client #################
-foreach blss_inst [get_cells -hier -filter {(ORIG_REF_NAME == bsg_launch_sync_sync || REF_NAME == bsg_launch_sync_sync)}] {
 foreach inst [get_cells -hier -filter {(ORIG_REF_NAME == bsg_tag_client || REF_NAME == bsg_tag_client)}] {
     set source_cell [get_cells $inst/tag_data_reg/data_r_reg[0]]
     set dest_cell [get_cells $inst/recv/data_r_reg[0]]
@@ -59,13 +58,11 @@ foreach inst [get_cells -hier -filter {(ORIG_REF_NAME == bsg_tag_client || REF_N
 }
 
 ################# iodelay reset #################
-# TODO: search for iodelay_control instead
 # ASYNC_REG should have been applied in RTL
-set async_reset_inst [get_cells -hier -filter {(ORIG_REF_NAME == arst_sync || REF_NAME == arst_sync)}]
-
-set dest_cell [get_cells $async_reset_inst/bsg_SYNC_1_r_reg[0]]
+set inst [get_cells -hier -filter {(ORIG_REF_NAME == iodelay_control || REF_NAME == iodelay_control)}]
+set dest_cell [get_cells $inst/nosim.reset_iodelay_sync/bsg_SYNC_1_r_reg[0]]
 set_false_path -to [get_pins -of_objects $dest_cell -filter {IS_PRESET || IS_RESET}]
-set dest_cell [get_cells $async_reset_inst/bsg_SYNC_2_r_reg[0]]
+set dest_cell [get_cells $inst/nosim.reset_iodelay_sync/bsg_SYNC_2_r_reg[0]]
 set_false_path -to [get_pins -of_objects $dest_cell -filter {IS_PRESET || IS_RESET}]
 
 ################# bsg_async_fifo #################
@@ -81,6 +78,7 @@ foreach fifo_inst [get_cells -hier -filter {(ORIG_REF_NAME == bsg_async_fifo || 
     }
 }
 
+################# Input/Ouput delay #################
 # Constant: 8ns
 set CLK125_PERIOD 8
 
@@ -142,8 +140,7 @@ set_output_delay -clock [get_clocks rgmii_tx_clk] -min $TX_MIN_DELAY [get_ports 
 set_output_delay -clock [get_clocks rgmii_tx_clk] -clock_fall -max -add_delay $TX_MAX_DELAY [get_ports rgmii_tx_ctl_o]
 set_output_delay -clock [get_clocks rgmii_tx_clk] -clock_fall -min -add_delay $TX_MIN_DELAY [get_ports rgmii_tx_ctl_o]
 
-# TODO: Constrains eth_phy_resetn_o
-
+################# IOB packing #################
 # Set IOB packing for TX RGMII outputs in order to help meet timing
 set_property IOB TRUE [get_ports rgmii_tx_clk_o]
 set_property IOB TRUE [get_ports rgmii_tx_ctl_o]
@@ -151,3 +148,6 @@ set_property IOB TRUE [get_ports rgmii_txd_o[0]]
 set_property IOB TRUE [get_ports rgmii_txd_o[1]]
 set_property IOB TRUE [get_ports rgmii_txd_o[2]]
 set_property IOB TRUE [get_ports rgmii_txd_o[3]]
+
+############# Ethernet reset path #############
+set_false_path -to [get_ports eth_phy_resetn_o[0]]
