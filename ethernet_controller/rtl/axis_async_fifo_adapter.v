@@ -356,3 +356,5 @@ fifo_inst (
 );
 
 endmodule
+
+`BSG_ABSTRACT_MODULE(axis_async_fifo_adapter)

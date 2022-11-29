@@ -4,7 +4,7 @@
 
 module ethernet_controller_wrapper #
 (
-      parameter  data_width_p  = 32
+      parameter  `BSG_INV_PARAM(data_width_p)
     , parameter  `BSG_INV_PARAM(simulation_p)
     , localparam addr_width_lp = 14
     , localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p/8))
@@ -89,3 +89,5 @@ module ethernet_controller_wrapper #
    );
 
 endmodule
+
+`BSG_ABSTRACT_MODULE(ethernet_controller_wrapper)

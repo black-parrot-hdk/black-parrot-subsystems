@@ -40,11 +40,10 @@
 
 `include "bsg_defines.v"
 
-// TODO: Some parameters should have illegal default values
-module packet_buffer # (
-      parameter  slot_p        = 2
-    , parameter  data_width_p  = 64
-    , parameter  els_p         = 2048
+module packet_buffer #(
+      parameter `BSG_INV_PARAM(slot_p)
+    , parameter `BSG_INV_PARAM(data_width_p)
+    , parameter `BSG_INV_PARAM(els_p)
     , localparam addr_width_lp = $clog2(els_p)
     , localparam packet_size_width_lp = $clog2(els_p+1)
 )
@@ -94,7 +93,7 @@ module packet_buffer # (
     misaligned_access = 1'b0;
     // write
     if(packet_wvalid_i) begin
-      case(packet_wmask_i) // TODO: check wmask cases
+      case(packet_wmask_i)
         (data_width_p/8)'('h3): begin // 2
           if(packet_waddr_i[0])
             misaligned_access = 1'b1;
@@ -277,3 +276,5 @@ endgenerate
   // synopsys translate_on
 
 endmodule
+
+`BSG_ABSTRACT_MODULE(packet_buffer)

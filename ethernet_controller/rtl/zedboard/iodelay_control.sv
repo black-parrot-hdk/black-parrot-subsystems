@@ -85,6 +85,7 @@ end else begin: nosim
   for ( n = 0; n < 5; n = n + 1) begin: idelaye2
     // We need IDELAYE2 to meet the timing
     //   requirement for RX side of the RGMII signals
+
     IDELAYE2 #(
         .DELAY_SRC("IDATAIN")
        ,.IDELAY_TYPE("FIXED")
@@ -109,3 +110,5 @@ end else begin: nosim
   assign {rgmii_rxd_delayed_o, rgmii_rx_ctl_delayed_o} = delayed_d;
 end
 endmodule
+
+`BSG_ABSTRACT_MODULE(iodelay_control)

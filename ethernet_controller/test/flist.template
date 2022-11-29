@@ -25,7 +25,6 @@ $ETH_SRC_DIR/tx_clks_generator.sv
 $ETH_SRC_DIR/oddr_clock_downsample_and_right_shift.sv
 $ETH_SRC_DIR/rgmii_phy_if.v
 $ETH_SRC_DIR/ssio_ddr_in.v
-$ETH_SRC_DIR/bsg_mem_1r1w_sync_wrapper.v
 
 $BASEJUMP_STL_DIR/bsg_link/bsg_link_oddr_phy.v
 $BASEJUMP_STL_DIR/bsg_link/bsg_link_iddr_phy.v

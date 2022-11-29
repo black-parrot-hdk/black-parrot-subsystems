@@ -160,9 +160,6 @@ reg [ADDR_WIDTH:0] wr_ptr_reg;
 reg [ADDR_WIDTH:0] wr_ptr_cur_reg;
 reg [ADDR_WIDTH:0] rd_ptr_reg;
 
-(* ramstyle = "no_rw_check" *)
-reg [WIDTH-1:0] mem_read_data_reg;
-
 wire [WIDTH-1:0] s_axis;
 
 logic                  mem_w_v_li;
