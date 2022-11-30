@@ -1,4 +1,4 @@
-/*** This file is auto-generated from /mnt/users/ssd3/homes/ymchueh/bsg/bump/zynq-parrot2/cosim/import/black-parrot-subsystems/ethernet_controller/rtl/template/lfsr_gen_dir/lfsr_template.v ***/
+/*** This file is auto-generated from lfsr_template.v ***/
 
 /*
  * Parametrizable combinatorial parallel LFSR/CRC

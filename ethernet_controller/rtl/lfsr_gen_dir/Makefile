@@ -19,7 +19,7 @@ VCS_OPTS += $(TEMPLATE_LFSR) $(LFSR_GENERATOR)
 
 all:
 	$(VCS) $(VCS_OPTS)
-	echo "/*** This file is auto-generated from $(TEMPLATE_LFSR) ***/" > $(TARGET_LFSR)
+	echo "/*** This file is auto-generated from lfsr_template.v ***/" > $(TARGET_LFSR)
 	sed -n 29,56p $(TEMPLATE_LFSR) >> $(TARGET_LFSR)
 	$(CUR_DIR)/simv | head -n -4 | tail -n +4 >> $(TARGET_LFSR)
 	sed -n 359,444p $(TEMPLATE_LFSR) >> $(TARGET_LFSR)
