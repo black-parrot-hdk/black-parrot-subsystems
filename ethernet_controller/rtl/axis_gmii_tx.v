@@ -141,8 +141,8 @@ assign gmii_txd = gmii_txd_reg;
 assign gmii_tx_en = gmii_tx_en_reg;
 assign gmii_tx_er = gmii_tx_er_reg;
 
-assign m_axis_ptp_ts = PTP_TS_ENABLE ? m_axis_ptp_ts_reg : 0;
-assign m_axis_ptp_ts_tag = PTP_TAG_ENABLE ? m_axis_ptp_ts_tag_reg : 0;
+assign m_axis_ptp_ts = PTP_TS_ENABLE ? m_axis_ptp_ts_reg : {PTP_TS_WIDTH{1'b0}};
+assign m_axis_ptp_ts_tag = PTP_TAG_ENABLE ? m_axis_ptp_ts_tag_reg : {PTP_TAG_WIDTH{1'b0}};
 assign m_axis_ptp_ts_valid = PTP_TS_ENABLE || PTP_TAG_ENABLE ? m_axis_ptp_ts_valid_reg : 1'b0;
 
 assign start_packet = start_packet_reg;

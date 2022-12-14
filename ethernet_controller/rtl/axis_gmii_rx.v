@@ -133,7 +133,11 @@ wire [31:0] crc_next;
 assign m_axis_tdata = m_axis_tdata_reg;
 assign m_axis_tvalid = m_axis_tvalid_reg;
 assign m_axis_tlast = m_axis_tlast_reg;
-assign m_axis_tuser = PTP_TS_ENABLE ? {ptp_ts_reg, m_axis_tuser_reg} : m_axis_tuser_reg;
+
+if(PTP_TS_ENABLE)
+  assign m_axis_tuser = {ptp_ts_reg, m_axis_tuser_reg};
+else
+  assign m_axis_tuser = m_axis_tuser_reg;
 
 assign start_packet = start_packet_reg;
 assign error_bad_frame = error_bad_frame_reg;

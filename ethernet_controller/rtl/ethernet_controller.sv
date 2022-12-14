@@ -4,7 +4,7 @@
 module ethernet_controller #
 (
       parameter  data_width_p  = 32
-    , parameter  ifg_delay_p   = 12
+    , parameter  ifg_delay_p   = 8'd12
     , localparam addr_width_lp = 14
 )
 (

@@ -17,7 +17,7 @@ DVE_OPTS += -vpd dump.vpd
 VCS_OPTS := -full64
 VCS_OPTS += -f flist.vcs
 VCS_OPTS += -sverilog
-VCS_OPTS += +lint=all +lint=noVCDE +lint=noNS
+VCS_OPTS += +lint=all +lint=noVCDE +lint=noNS +lint=noSVA-UA
 VCS_OPTS += -top $(TOP_MODULE)
 VCS_OPTS += +incdir+$(BASEJUMP_STL_DIR)/bsg_misc
 VCS_OPTS += -assert svaext
