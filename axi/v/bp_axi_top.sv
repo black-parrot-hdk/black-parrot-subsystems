@@ -8,6 +8,8 @@
 module bp_axi_top
  import bp_common_pkg::*;
  import bp_me_pkg::*;
+ import bsg_cache_pkg::*;
+ import bsg_axi_pkg::*;
  // see bp_common/src/include/bp_common_aviary_pkgdef.svh for a list of configurations that you can try!
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
    `declare_bp_proc_params(bp_params_p)
@@ -129,7 +131,7 @@ module bp_axi_top
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
 
   // DMA interface from BP to cache2axi
-  `declare_bsg_cache_dma_pkt_s(daddr_width_p);
+  `declare_bsg_cache_dma_pkt_s(daddr_width_p, l2_block_size_in_words_p);
   bsg_cache_dma_pkt_s [num_cce_p-1:0][l2_banks_p-1:0] c2a_dma_pkt_lo;
   logic [num_cce_p-1:0][l2_banks_p-1:0] c2a_dma_pkt_v_lo, c2a_dma_pkt_ready_and_li;
   logic [num_cce_p-1:0][l2_banks_p-1:0][l2_fill_width_p-1:0] c2a_dma_data_lo;
@@ -561,17 +563,20 @@ module bp_axi_top
              ,.daddr_o(c2a_dma_pkt[i][j].addr)
              );
           assign c2a_dma_pkt[i][j].write_not_read = c2a_dma_pkt_lo[i][j].write_not_read;
+          assign c2a_dma_pkt[i][j].mask = c2a_dma_pkt_lo[i][j].mask;
         end
     end
 
    bsg_cache_to_axi
     #(.addr_width_p(daddr_width_p)
       ,.data_width_p(l2_fill_width_p)
+      ,.mask_width_p(l2_block_size_in_words_p)
       ,.block_size_in_words_p(l2_block_size_in_fill_p)
       ,.num_cache_p(num_cce_p*l2_banks_p)
       ,.axi_data_width_p(axi_data_width_p)
       ,.axi_id_width_p(axi_id_width_p)
       ,.axi_burst_len_p(l2_block_width_p/axi_data_width_p)
+      ,.axi_burst_type_p(e_axi_burst_incr)
       )
     cache2axi
      (.clk_i(clk_i)
