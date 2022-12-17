@@ -28,12 +28,14 @@ module bp_me_wb_master
     , input  [mem_header_width_lp-1:0]       mem_cmd_header_i
     , input  [data_width_p-1:0]              mem_cmd_data_i
     , input                                  mem_cmd_v_i
-    , output logic                           mem_cmd_ready_o
+    , output logic                           mem_cmd_ready_and_o
+    , input                                  mem_cmd_last_i
 
     , output logic [mem_header_width_lp-1:0] mem_resp_header_o
     , output logic [data_width_p-1:0]        mem_resp_data_o
     , output logic                           mem_resp_v_o
-    , input                                  mem_resp_yumi_i
+    , input                                  mem_resp_ready_and_i
+    , output                                 mem_resp_last_o
 
     // WB signals
     , output logic [wbone_addr_width_lp-1:0] adr_o
@@ -49,51 +51,77 @@ module bp_me_wb_master
 
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
   `bp_cast_i(bp_bedrock_mem_header_s, mem_cmd_header);
-  `bp_cast_o(bp_bedrock_mem_header_s, mem_resp_header);
 
-  // command buffer
-  bp_bedrock_mem_header_s mem_cmd_header_lo;
-  wire [data_width_p-1:0] mem_cmd_data_lo;
-  wire mem_cmd_v_li;
-  bsg_one_fifo
-    #(
-      .width_p(mem_header_width_lp + data_width_p)
+  // input pump
+  bp_bedrock_mem_header_s mem_cmd_header_li;
+  logic [paddr_width_p-1:0] mem_cmd_stream_addr_li;
+  logic [l2_data_width_p-1:0] mem_cmd_data_li;
+  logic mem_cmd_v_li;
+  logic mem_cmd_new_li;
+  bp_me_stream_pump_in
+    #(.bp_params_p(bp_params_p)
+     ,.stream_data_width_p(data_width_p)
+     ,.block_width_p(cce_block_width_p)
+     ,.payload_width_p(mem_payload_width_lp)
+     ,.msg_stream_mask_p(mem_cmd_payload_mask_gp)
+     ,.fsm_stream_mask_p(mem_cmd_payload_mask_gp | mem_resp_payload_mask_gp)
+     ,.header_els_p(2)
+     ,.data_els_p(`BSG_MAX(2, cce_block_width_p/l2_data_width_p))
     )
-    cmd_buffer(
-      .clk_i(clk_i)
+    pump_in
+    ( .clk_i(clk_i)
      ,.reset_i(reset_i)
 
-     ,.data_i({mem_cmd_header_i, mem_cmd_data_i})
-     ,.v_i(mem_cmd_v_i)
-     ,.ready_o(mem_cmd_ready_o)
+     ,.msg_header_i(mem_cmd_header_i)
+     ,.msg_data_i(mem_cmd_data_i)
+     ,.msg_v_i(mem_cmd_v_i)
+     ,.msg_last_i(mem_cmd_last_i)
+     ,.msg_ready_and_o(mem_cmd_ready_and_o)
 
-     ,.data_o({mem_cmd_header_lo, mem_cmd_data_lo})
-     ,.v_o(mem_cmd_v_li)
-     ,.yumi_i(mem_resp_yumi_i)
+     ,.fsm_base_header_o(mem_cmd_header_li)
+     ,.fsm_addr_o(mem_cmd_stream_addr_li)
+     ,.fsm_data_o(mem_cmd_data_li)
+     ,.fsm_v_o(mem_cmd_v_li)
+     ,.fsm_ready_and_i(ack_i)
+     ,.fsm_new_o(mem_cmd_new_li)
+     ,.fsm_done_o(/* unused */)
+     ,.fsm_last_o(/* unused */)
     );
 
-  // response data buffer
-  wire mem_resp_ready_lo;
-  bsg_one_fifo
-    #(
-      .width_p(data_width_p)
+  // output pump
+  logic mem_resp_ready_and_lo;
+  bp_me_stream_pump_out
+    #(.bp_params_p(bp_params_p)
+     ,.stream_data_width_p(data_width_p)
+     ,.block_width_p(cce_block_width_p)
+     ,.payload_width_p(mem_payload_width_lp)
+     ,.msg_stream_mask_p(mem_resp_payload_mask_gp)
+     ,.fsm_stream_mask_p(mem_cmd_payload_mask_gp | mem_resp_payload_mask_gp)
     )
-    resp_data_buffer(
-      .clk_i(clk_i)
+    pump_out
+    ( .clk_i(clk_i)
      ,.reset_i(reset_i)
 
-     ,.data_i(dat_i)
-     ,.v_i(ack_i)
-     ,.ready_o(mem_resp_ready_lo)
+     ,.msg_header_o(mem_resp_header_o)
+     ,.msg_data_o(mem_resp_data_o)
+     ,.msg_v_o(mem_resp_v_o)
+     ,.msg_last_o(mem_resp_last_o)
+     ,.msg_ready_and_i(mem_resp_ready_and_i)
 
-     ,.data_o(mem_resp_data_o)
-     ,.v_o(mem_resp_v_o)
-     ,.yumi_i(mem_resp_yumi_i)
+     ,.fsm_base_header_i(mem_cmd_header_li)
+     ,.fsm_data_i(mem_resp_data_li)
+     ,.fsm_v_i(ack_i)
+     ,.fsm_ready_and_o(mem_resp_ready_and_lo)
+     ,.fsm_cnt_o(/* unused */)
+     ,.fsm_new_o(/* unused */)
+     ,.fsm_last_o(/* unused */)
+     ,.fsm_done_o(/* unused */)
     );
 
   // for BP, less than bus width data must be replicated
   localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p>>3));
-  wire [size_width_lp-1:0] resp_size_li = mem_cmd_header_lo.size;
+  wire [size_width_lp-1:0] resp_size_lo = mem_cmd_header_li.size;
+  logic [data_width_p-1:0] mem_resp_data_li;
   bsg_bus_pack
     #(
       .in_width_p(data_width_p)
@@ -101,8 +129,8 @@ module bp_me_wb_master
     bus_pack(
       .data_i(dat_i)
      ,.sel_i('0)
-     ,.size_i(resp_size_li)
-     ,.data_o(mem_resp_data_o)
+     ,.size_i(resp_size_lo)
+     ,.data_o(mem_resp_data_li)
     );
 
   // state machine for handling WB handshake
@@ -114,18 +142,21 @@ module bp_me_wb_master
   } state_e;
   state_e state_n, state_r;
 
+  // registered cyc and stb to avoid cycle with client's ack
+  logic cyc_n, stb_n;
+
   always_comb begin
     state_n = state_r;
 
     // default values for handshake signals
-    cyc_o = 1'b0;
-    stb_o = 1'b0;
+    cyc_n = 1'b0;
+    stb_n = 1'b0;
 
     // WB non-handshake signals
-    dat_o = mem_cmd_data_lo;
-    adr_o = mem_cmd_header_lo.addr[paddr_width_p-1:`BSG_SAFE_CLOG2(data_width_p>>3)];
-    we_o  = (mem_cmd_header_lo.msg_type == e_bedrock_mem_uc_wr);
-    unique case (mem_cmd_header_lo.size)
+    dat_o = mem_cmd_data_li;
+    adr_o = mem_cmd_stream_addr_li[paddr_width_p-1:`BSG_SAFE_CLOG2(data_width_p>>3)];
+    we_o  = (mem_cmd_header_li.msg_type == e_bedrock_mem_uc_wr);
+    unique case (mem_cmd_header_li.size)
       e_bedrock_msg_size_1: sel_o = (data_width_p>>3)'('h1);
       e_bedrock_msg_size_2: sel_o = (data_width_p>>3)'('h3);
       e_bedrock_msg_size_4: sel_o = (data_width_p>>3)'('hF);
@@ -134,7 +165,7 @@ module bp_me_wb_master
     endcase
 
     // BP non-handshake signals
-    mem_resp_header_cast_o = mem_cmd_header_lo;
+    mem_resp_header_o = mem_cmd_header_li;
 
     unique case (state_r)
       e_reset: begin
@@ -143,18 +174,18 @@ module bp_me_wb_master
 
       // wait for incoming BP command
       e_wait_cmd: begin
-        cyc_o = mem_cmd_v_li & mem_resp_ready_lo;
-        stb_o = mem_cmd_v_li & mem_resp_ready_lo;
+        cyc_n = mem_cmd_v_li & mem_resp_ready_and_lo;
+        stb_n = mem_cmd_v_li & mem_resp_ready_and_lo;
 
-        state_n = mem_cmd_v_li & mem_resp_ready_lo
+        state_n = cyc_n & stb_n & ~ack_i
                   ? e_wait_resp
                   : state_r;
       end
 
       // wait for WB response
       e_wait_resp: begin
-        cyc_o = 1'b1;
-        stb_o = 1'b1;
+        cyc_n = ~ack_i;
+        stb_n = ~ack_i;
 
         state_n = ack_i
                   ? e_wait_cmd
@@ -167,11 +198,14 @@ module bp_me_wb_master
 
   // advance to next state
   // synopsys sync_set_reset "reset_i"
-  always_ff @(posedge clk_i)
-    if (reset_i)
-      state_r <= e_reset;
-    else
-      state_r <= state_n;
+  always_ff @(posedge clk_i) begin
+    state_r <= reset_i
+              ? e_reset
+              : state_n;
+
+    cyc_o <= cyc_n;
+    stb_o <= stb_n;
+  end
 
   // assertions
   initial begin

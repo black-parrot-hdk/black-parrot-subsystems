@@ -31,12 +31,14 @@ module bp_me_wb_client
     , output logic [mem_header_width_lp-1:0] mem_cmd_header_o
     , output logic [data_width_p-1:0]        mem_cmd_data_o
     , output logic                           mem_cmd_v_o
-    , input                                  mem_cmd_ready_i
+    , input                                  mem_cmd_ready_and_i
+    , output logic                           mem_cmd_last_o
 
     , input  [mem_header_width_lp-1:0]       mem_resp_header_i
     , input  [data_width_p-1:0]              mem_resp_data_i
     , input                                  mem_resp_v_i
-    , output logic                           mem_resp_ready_o
+    , output logic                           mem_resp_ready_and_o
+    , input                                  mem_resp_last_i
 
     // WB signals
     , input  [wbone_addr_width_lp-1:0]       adr_i
@@ -56,7 +58,7 @@ module bp_me_wb_client
 
   // for BP, less than bus width data must be replicated
   localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p>>3));
-  wire [size_width_lp-1:0] cmd_size_li = msg_size;
+  wire [size_width_lp-1:0] cmd_size_lo = msg_size;
   bsg_bus_pack
     #(
       .in_width_p(data_width_p)
@@ -64,15 +66,15 @@ module bp_me_wb_client
     bus_pack(
       .data_i(dat_i)
      ,.sel_i('0)
-     ,.size_i(cmd_size_li)
+     ,.size_i(cmd_size_lo)
      ,.data_o(mem_cmd_data_o)
     );
 
   // state machine for handling BP and WB handshakes
   typedef enum logic [1:0] {
-     e_reset     = 2'b00
-    ,e_wait_cmd  = 2'b01
-    ,e_wait_resp = 2'b10
+     e_reset          = 2'b00
+    ,e_wait_cmd       = 2'b01
+    ,e_wait_read_resp = 2'b10
   } state_e;
   state_e state_n, state_r;
 
@@ -81,9 +83,10 @@ module bp_me_wb_client
     state_n = state_r;
 
     // default values for handshake signals
-    mem_cmd_v_o      = 1'b0;
-    mem_resp_ready_o = 1'b0;
-    ack_o            = 1'b0;
+    mem_cmd_v_o          = 1'b0;
+    mem_cmd_last_o       = 1'b1;
+    mem_resp_ready_and_o = 1'b1;
+    ack_o                = 1'b0;
 
     // BP non-handshake signals
     unique case (sel_i)
@@ -115,18 +118,23 @@ module bp_me_wb_client
       e_wait_cmd: begin
         mem_cmd_v_o = cyc_i & stb_i;
 
-        state_n = mem_cmd_v_o & mem_cmd_ready_i
-                  ? e_wait_resp
+        // write commands are ack'ed immediately upon transmission
+        // a read command migth be immediately reponded though
+        ack_o = mem_cmd_v_o & mem_cmd_ready_and_i
+                & (we_i | (mem_resp_v_i & mem_resp_header_cast_i.msg_type == e_bedrock_mem_uc_rd));
+
+        // for not immediately responded read commands, go into a waiting state
+        state_n = mem_cmd_v_o & mem_cmd_ready_and_i
+                  & ~(we_i | (mem_resp_v_i & mem_resp_header_cast_i.msg_type == e_bedrock_mem_uc_rd))
+                  ? e_wait_read_resp
                   : state_r;
       end
 
-      // wait for the client's BP response
-      e_wait_resp: begin
-        mem_resp_ready_o = 1'b1;
+      // wait for the client's BP read response
+      e_wait_read_resp: begin
+        ack_o = mem_resp_v_i & mem_resp_header_cast_i.msg_type == e_bedrock_mem_uc_rd;
 
-        ack_o = mem_resp_v_i;
-
-        state_n = mem_resp_v_i
+        state_n = ack_o
                   ? e_wait_cmd
                   : state_r;
       end
@@ -137,11 +145,11 @@ module bp_me_wb_client
 
   // advance to next state
   // synopsys sync_set_reset "reset_i"
-  always_ff @(posedge clk_i)
-    if (reset_i)
-      state_r <= e_reset;
-    else
-      state_r <= state_n;
+  always_ff @(posedge clk_i) begin
+    state_r <= reset_i
+               ? e_reset
+               : state_n;
+  end
 
   // assertions
   initial begin
