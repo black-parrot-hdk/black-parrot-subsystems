@@ -34,13 +34,14 @@ int main(int argc, char* argv[]) {
     tfp->open("logs/wave.fst");
 
     // create controllers for the adapters
-    int test_size = 100000;
+    int test_size = 1000000;
     unsigned long int seed = time(0);
     BP_me_WB_master_ctrl ram_ctrl{test_size, seed};
 
     // simulate until all responses have been recieved
     dut->eval();
     tfp->dump(Verilated::time());
+    int c = 0;
     while (!ram_ctrl.done()) {
         if (!ram_ctrl.sim_read())
             break;
@@ -58,6 +59,11 @@ int main(int argc, char* argv[]) {
             + std::to_string(responses) + "/" + std::to_string(test_size)
             + " (" + std::to_string(100 * responses / test_size) + "%)";
         std::cout << "\r" << bar;
+
+        if (c > 100)
+            ;//break;
+        else
+            c++;
     }
     std::cout << "\n";
     tfp->close();
@@ -83,13 +89,13 @@ int main(int argc, char* argv[]) {
         // emulated ram or test if the response data was correct
         uint8_t addr = commands[i].addr & 0xFF;
         uint8_t data_size = 1 << commands[i].size;
-        if (commands[i].msg_type == 2) {
+        if (commands[i].msg_type == 0b0010) {
             // read operation
             uint64_t data_ram = 0;
             uint64_t data_pkg = 0;
             for (int j = 0; j < data_size; j++) {
                 data_ram = (data_ram << 8) | ram[addr + j];
-                data_pkg = (data_pkg << 8) | get_byte(responses[i].data, j);
+                data_pkg = (data_pkg << 8) | get_byte(responses[i].data[j/8], j % 8);
             }
             
             if (data_ram != data_pkg) {
@@ -108,7 +114,7 @@ int main(int argc, char* argv[]) {
         } else {
             // write operation
             for (int j = 0; j < data_size; j++)
-                ram[addr + j] = get_byte(commands[i].data, j);
+                ram[addr + j] = get_byte(commands[i].data[j/8], j % 8);
         }
     }
 

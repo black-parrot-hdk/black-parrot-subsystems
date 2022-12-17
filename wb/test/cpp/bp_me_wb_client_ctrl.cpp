@@ -1,6 +1,7 @@
 #include "bp_me_wb_client_ctrl.h"
 
 #include <iostream>
+#include <cstring>
 
 using namespace bsg_nonsynth_dpi;
 
@@ -33,23 +34,41 @@ bool BP_me_WB_client_ctrl::sim_read() {
             f2d_cmd_init = true;
         }
 
+        // read the command
         if (rx_cooldown == 0) {
-            // check if adapter command is valid
             uint128_t command;
             if (f2d_cmd->rx(command)) {
-                
-                if (commands.size() == test_size) {
-                    std::cout << "\nError: Client adapter received too many commands\n";
-                    return false;
+
+                // the highest bit of the header holds 'last' bit
+                uint64_t header = command >> 64;
+                bool last = header & 0x8000000000000000;
+                cmd.header = header & ~0x8000000000000000;
+                cmd.data.push_back(command & 0xFFFFFFFFFFFFFFFF);
+
+                if (last) {
+                    commands.push_back(cmd);
+                    cmd.data.clear();
                 }
 
-                uint64_t header = (command >> 64);
-                uint64_t data = command & 0xFFFFFFFFFFFFFFFF;
-                commands.emplace_back(header, data);
-
                 // construct a response with the same header
-                uint64_t data_resp = replicate(dice(), 0);
-                responses.emplace_back(header, data_resp);
+                BP_pkg resp;
+                resp.header = cmd.header;
+
+                // generate response data
+                std::vector<uint64_t> data;
+                if (cmd.msg_type == 0b10) {
+                    // read commands might require multiple transfers
+                    int bits = (1 << cmd.size) * 8;
+                    int transfers = bits / 64 + (bits < 64);
+                    for (int j = 0; j < transfers; j++)
+                        data.push_back(replicate(dice(), resp.size));
+                } else {
+                    // write responses only require one transfer
+                    data.push_back(replicate(dice(), resp.size));
+                }
+                resp.data = std::move(data);
+                responses.push_back(std::move(resp));
+                data_it = resp_it->data.begin();
 
                 rx_cooldown = dice() % 16;
             }
@@ -72,12 +91,27 @@ bool BP_me_WB_client_ctrl::sim_write() {
             d2f_resp_init = true;
         }
 
+        // send the response
         if (tx_cooldown == 0) {
-            // try to send the response
-            uint128_t response = (static_cast<uint128_t>(resp_it->build_header()) << 64)
-                                 | resp_it->data;
+            bool last = data_it + 1 == resp_it->data.end();
+
+            // construct the response and set or clear the 'last' bit if required
+            uint128_t response = resp_it->header;
+            if (last)
+                response |= 0x8000000000000000;
+            else
+                response &= ~0x8000000000000000;
+            response = response << 64 | *data_it;
+
+            // try to send and adjust the iterators if successful
             if (d2f_resp->tx(response)) {
-                resp_it++;
+                if (last) {
+                    resp_it++;
+                    data_it = resp_it->data.begin();
+                } else {
+                    data_it++;
+                }
+
                 tx_cooldown = dice() % 16;
             }
         } else {
@@ -92,19 +126,19 @@ uint64_t BP_me_WB_client_ctrl::replicate(uint64_t data, uint8_t size) {
     // for BP, less than bus width data must be replicated
     switch (size) {
         case 0: return (data & 0xFF)
-                    + ((data & 0xFF) << 8)
-                    + ((data & 0xFF) << 16)
-                    + ((data & 0xFF) << 24)
-                    + ((data & 0xFF) << 32)
-                    + ((data & 0xFF) << 40)
-                    + ((data & 0xFF) << 48)
-                    + ((data & 0xFF) << 56);
+                    | ((data & 0xFF) << 8)
+                    | ((data & 0xFF) << 16)
+                    | ((data & 0xFF) << 24)
+                    | ((data & 0xFF) << 32)
+                    | ((data & 0xFF) << 40)
+                    | ((data & 0xFF) << 48)
+                    | ((data & 0xFF) << 56);
         case 1: return (data & 0xFFFF)
-                    + ((data & 0xFFFF) << 16)
-                    + ((data & 0xFFFF) << 32)
-                    + ((data & 0xFFFF) << 48);
+                    | ((data & 0xFFFF) << 16)
+                    | ((data & 0xFFFF) << 32)
+                    | ((data & 0xFFFF) << 48);
         case 2: return (data & 0xFFFFFFFF)
-                    + ((data & 0xFFFFFFFF) << 32);
+                    | ((data & 0xFFFFFFFF) << 32);
         default: return data;
     }
 }

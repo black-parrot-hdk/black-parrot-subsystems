@@ -49,8 +49,8 @@ VERILATOR_FLAGS += -CFLAGS -I$(realpath ../cpp/)
 
 # Input files for Verilator
 VERILATOR_INPUT = -f flist.verilator
-VERILATOR_INPUT += bp_me_wb_ram.sv ram.v
-VERILATOR_INPUT += sim_main.cpp ../cpp/bp_pkg.cpp ../cpp/bp_me_wb_master_ctrl.cpp
+VERILATOR_INPUT += bp_me_wb_ram.sv wb_ram.v
+VERILATOR_INPUT += sim_main.cpp ../cpp/bp_me_wb_master_ctrl.cpp
 VERILATOR_INPUT += $(BASEJUMP_STL_DIR)/bsg_test/bsg_nonsynth_dpi_clock_gen.cpp
 
 

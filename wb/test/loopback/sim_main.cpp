@@ -31,14 +31,16 @@ int main(int argc, char* argv[]) {
     tfp->open("logs/wave.fst");
 
     // create controllers for the adapters
-    int test_size = 100000;
-    unsigned long int seed = time(0);
+    int test_size = 1000000;
+    std::random_device r;
+    unsigned long int seed = r();//time(0);
     BP_me_WB_master_ctrl master_ctrl{test_size, seed};
     BP_me_WB_client_ctrl client_ctrl{test_size, seed};
 
     // simulate until all responses have been recieved
     dut->eval();
     tfp->dump(Verilated::time());
+    int c = 0;
     while (!master_ctrl.done()) {
         if (!master_ctrl.sim_read())
             break;
@@ -61,6 +63,11 @@ int main(int argc, char* argv[]) {
             + std::to_string(responses) + "/" + std::to_string(test_size)
             + " (" + std::to_string(100 * responses / test_size) + "%)";
         std::cout << "\r" << bar;
+
+        if (c > 100)
+            ;//break;
+        else
+            c++;
     }
     std::cout << "\n";
     tfp->close();
@@ -93,35 +100,65 @@ int main(int argc, char* argv[]) {
         errors = 3;
     }
 
-    // check if there were errors in the transmitted commandscd
+    // check if there were errors in the transmitted commands
     for (int i = 0; errors < 3 && i < test_size; i++) {
-        if (!(commands_in[i] == commands_out[i])) {
+        BP_pkg cmd_in = commands_in[i];
+        BP_pkg cmd_out = commands_out[i];
+
+        // data is only compared for write commands
+        bool header_error = !(cmd_in.header == cmd_out.header);
+        bool data_error = cmd_in.msg_type == 0b0011 && !(cmd_in.data == cmd_out.data);
+
+        if (header_error || data_error) {
             std::cout << "\nError: cmd_in != cmd_out\n";
             std::cout << "Header in:  "
-                << VL_TO_STRING(commands_in[i].build_header()) << "\n";
+                << VL_TO_STRING(cmd_in.header) << "\n";
             std::cout << "Header out: "
-                << VL_TO_STRING(commands_out[i].build_header()) << "\n";
-            std::cout << "Data in:    "
-                << VL_TO_STRING(commands_in[i].data) << "\n";
-            std::cout << "Data out:   "
-                << VL_TO_STRING(commands_out[i].data) << "\n";
+                << VL_TO_STRING(cmd_out.header) << "\n";
             errors++;
+        }
+
+        if (data_error) {
+            std::cout << "Data in:\n";
+            for (uint64_t data : cmd_in.data)
+                std::cout << "  " << VL_TO_STRING(data) << "\n";
+
+            std::cout << "Data out:\n";
+            for (uint64_t data : cmd_out.data)
+                std::cout << "  " << VL_TO_STRING(data) << "\n";
+        } else if (header_error) {
+            std:: cout << "Data is only compared for write commands\n";
         }
     }
 
     // check if there were errors in the transmitted responses
     for (int i = 0; errors < 3 && i < test_size; i++) {
-        if (!(responses_in[i] == responses_out[i])) {
+        BP_pkg resp_in = responses_in[i];
+        BP_pkg resp_out = responses_out[i];
+
+        // data is only compared for read responses
+        bool header_error = !(resp_in.header == resp_out.header);
+        bool data_error = resp_in.msg_type == 0b0010 && !(resp_in.data == resp_out.data);
+
+        if (header_error || data_error) {
             std::cout << "\nError: resp_in != resp_out\n";
             std::cout << "Header in:  "
-                << VL_TO_STRING(responses_in[i].build_header()) << "\n";
+                << VL_TO_STRING(resp_in.header) << "\n";
             std::cout << "Header out: "
-                << VL_TO_STRING(responses_out[i].build_header()) << "\n";
-            std::cout << "Data in:    "
-                << VL_TO_STRING(responses_in[i].data) << "\n";
-            std::cout << "Data out:   "
-                << VL_TO_STRING(responses_out[i].data) << "\n";
+                << VL_TO_STRING(resp_out.header) << "\n";
             errors++;
+        }
+
+        if (data_error) {
+            std::cout << "Data in:\n";
+            for (uint64_t data : resp_in.data)
+                std::cout << "  " << VL_TO_STRING(data) << "\n";
+
+            std::cout << "Data out:\n";
+            for (uint64_t data : resp_out.data)
+                std::cout << "  " << VL_TO_STRING(data) << "\n";
+        } else if (header_error) {
+            std:: cout << "Data is only compared for read responses\n";
         }
     }
 
@@ -132,5 +169,5 @@ int main(int argc, char* argv[]) {
     else
         std::cout << "Check failed\n";
 
-    return 0;
+    return errors != 0;
 }

@@ -41,8 +41,10 @@ private:
     int tx_cooldown;
 
     std::vector<BP_pkg> commands;
+    BP_pkg cmd;
     std::vector<BP_pkg> responses;
     std::vector<BP_pkg>::iterator resp_it;
+    std::vector<uint64_t>::iterator data_it;
 
     std::default_random_engine generator;
     std::uniform_int_distribution<uint64_t> distribution;

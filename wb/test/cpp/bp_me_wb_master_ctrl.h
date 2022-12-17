@@ -45,7 +45,9 @@ private:
 
     std::vector<BP_pkg> commands;
     std::vector<BP_pkg>::iterator cmd_it;
+    std::vector<uint64_t>::iterator data_it;
     std::vector<BP_pkg> responses;
+    BP_pkg resp;
 
     std::default_random_engine generator;
     std::uniform_int_distribution<uint64_t> distribution;

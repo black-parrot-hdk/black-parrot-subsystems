@@ -23,29 +23,33 @@ module top
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
 
   // BP master signals
-  wire [mem_header_width_lp-1:0] mem_cmd_header_i;
-  wire [data_width_p-1:0]        mem_cmd_data_i;
-  wire                           mem_cmd_v_i;
-  wire                           mem_cmd_ready_o;
+  logic [mem_header_width_lp-1:0] mem_cmd_header_i;
+  logic [data_width_p-1:0]        mem_cmd_data_i;
+  logic                           mem_cmd_v_i;
+  logic                           mem_cmd_ready_and_o;
+  logic                           mem_cmd_last_i;
 
-  wire [mem_header_width_lp-1:0] mem_resp_header_o;
-  wire [data_width_p-1:0]        mem_resp_data_o;
-  wire                           mem_resp_v_o;
-  wire                           mem_resp_yumi_i;
+  logic [mem_header_width_lp-1:0] mem_resp_header_o;
+  logic [data_width_p-1:0]        mem_resp_data_o;
+  logic                           mem_resp_v_o;
+  logic                           mem_resp_ready_and_i;
+  logic                           mem_resp_last_o;
 
   // WB signals
-  wire [wbone_addr_width_lp-1:0] adr;
-  wire [data_width_p-1:0]        dat_mosi;
-  wire                           stb;
-  wire                           cyc;
-  wire [(data_width_p>>3)-1:0]   sel;
-  wire                           we;
+  logic [wbone_addr_width_lp-1:0] adr;
+  logic [data_width_p-1:0]        dat_mosi;
+  logic                           stb;
+  logic                           cyc;
+  logic [(data_width_p>>3)-1:0]   sel;
+  logic                           we;
 
-  wire [data_width_p-1:0]        dat_miso;
-  wire                           ack;
+  logic [data_width_p-1:0]        dat_miso;
+  logic                           ack;
 
-  // generate clk and reset
-  wire clk;
+  /*
+   * generate clk and reset
+   */
+  logic clk;
   bsg_nonsynth_dpi_clock_gen
     #(
       .cycle_time_p(cycle_time_lp)
@@ -54,7 +58,7 @@ module top
       .o(clk)
     );
 
-  wire reset;
+  logic reset;
   bsg_nonsynth_reset_gen
     #(
       .reset_cycles_lo_p(reset_cycles_lo_lp)
@@ -65,11 +69,11 @@ module top
      ,.async_reset_o(reset)
     );
 
-  // send commands to the master adapter
-  wire [63:0] m_d2f_cmd_header_o;
-  wire [63:0] m_d2f_cmd_data_o;
-  assign mem_cmd_header_i = {'0, m_d2f_cmd_header_o};
-  assign mem_cmd_data_i   = m_d2f_cmd_data_o;
+  /*
+   * dpi module for sending commands to the master adapter
+   */
+  logic [62:0] mem_cmd_header_li;
+  assign mem_cmd_header_i = {'0, mem_cmd_header_li};
 
   bsg_nonsynth_dpi_to_fifo
     #(
@@ -82,15 +86,33 @@ module top
      ,.debug_o() 
 
      ,.v_o(mem_cmd_v_i)
-     ,.ready_i(mem_cmd_ready_o)
-     ,.data_o({m_d2f_cmd_header_o, m_d2f_cmd_data_o})
+     ,.ready_i(mem_cmd_ready_and_o)
+     ,.data_o({mem_cmd_last_i, mem_cmd_header_li, mem_cmd_data_i})
     );
-  
-  // receive responses from the master adapter
-  wire [63:0] m_f2d_resp_header_i;
-  wire [63:0] m_f2d_resp_data_i;
-  assign m_f2d_resp_header_i = mem_resp_header_o[0+:64];
-  assign m_f2d_resp_data_i   = mem_resp_data_o;
+
+  /*
+   * dpi module for receiving responses from the master adapter
+   */
+  // the dpi module has a valid->yumi interface, which breaks the adapter,
+  // so we introduce a fifo in between the two modules
+  bsg_two_fifo
+    #(.width_p(128))
+    m_f2d_fifo(
+       .clk_i(clk)
+      ,.reset_i(reset)
+
+      ,.ready_o(mem_resp_ready_and_i)
+      ,.data_i({mem_resp_last_o, mem_resp_header_o[0+:63], mem_resp_data_o})
+      ,.v_i(mem_resp_v_o)
+
+      ,.v_o(m_f2d_resp_v_i)
+      ,.data_o(m_f2d_resp_data_i)
+      ,.yumi_i(m_f2d_resp_yumi_o)
+    );
+
+  logic         m_f2d_resp_v_i;
+  logic         m_f2d_resp_yumi_o;
+  logic [127:0] m_f2d_resp_data_i;
 
   bsg_nonsynth_dpi_from_fifo
     #(
@@ -102,12 +124,14 @@ module top
      ,.reset_i(reset)
      ,.debug_o()
 
-     ,.v_i(mem_resp_v_o)
-     ,.yumi_o(mem_resp_yumi_i)
-     ,.data_i({m_f2d_resp_header_i, m_f2d_resp_data_i})
+     ,.v_i(m_f2d_resp_v_i)
+     ,.yumi_o(m_f2d_resp_yumi_o)
+     ,.data_i(m_f2d_resp_data_i)
     );
 
-  // master adapter
+  /*
+   * master adapter
+   */
   bp_me_wb_master
    #(.bp_params_p(bp_params_p))
    bp_me_wb_master
@@ -117,12 +141,14 @@ module top
      ,.mem_cmd_header_i(mem_cmd_header_i)
      ,.mem_cmd_data_i(mem_cmd_data_i)
      ,.mem_cmd_v_i(mem_cmd_v_i)
-     ,.mem_cmd_ready_o(mem_cmd_ready_o)
+     ,.mem_cmd_ready_and_o(mem_cmd_ready_and_o)
+     ,.mem_cmd_last_i(mem_cmd_last_i)
 
      ,.mem_resp_header_o(mem_resp_header_o)
      ,.mem_resp_data_o(mem_resp_data_o)
      ,.mem_resp_v_o(mem_resp_v_o)
-     ,.mem_resp_yumi_i(mem_resp_yumi_i)
+     ,.mem_resp_ready_and_i(mem_resp_ready_and_i)
+     ,.mem_resp_last_o(mem_resp_last_o)
 
      ,.adr_o(adr)
      ,.dat_o(dat_mosi)
@@ -134,8 +160,10 @@ module top
      ,.dat_i(dat_miso)
      ,.ack_i(ack)
      );
-  
-  // ram
+
+  /*
+   * ram module
+   */
   wb_ram
    #(
      .DATA_WIDTH(data_width_p)
@@ -154,7 +182,9 @@ module top
      ,.dat_o(dat_miso)
      );
 
-  // assertions
+  /*
+   * assertions
+   */
   initial begin
     assert(data_width_p == 64)
       else $error("Testbench is to be used with 64 bit wide data");

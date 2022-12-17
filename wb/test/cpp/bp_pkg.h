@@ -1,19 +1,20 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 struct BP_pkg {
-    // header is actually larger than 64 bits, but the
-    // upper bits are not used by the adapter anyway
-    uint8_t size;
-    uint64_t addr;
-    uint8_t msg_type;
-    uint64_t data;
+    union {
+        struct {
+            uint64_t msg_type : 4;
+            uint64_t subop    : 4;
+            uint64_t addr     : 40;
+            uint64_t size     : 3;
+            uint64_t payload  : 13;
+        };
 
-    BP_pkg(uint8_t size, uint64_t addr, uint8_t msg_type, uint64_t data);
-    BP_pkg(uint64_t header, uint64_t data);
+        uint64_t header;
+    };
 
-    bool operator==(const BP_pkg other);
-
-    uint64_t build_header();
+    std::vector<uint64_t> data;
 };
