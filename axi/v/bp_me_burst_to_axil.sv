@@ -30,23 +30,23 @@ module bp_me_burst_to_axil
   , input                                      reset_i
 
   //==================== BP-BURST SIGNALS =====================
-  , input [mem_header_width_lp-1:0]            io_cmd_header_i
-  , input                                      io_cmd_header_v_i
-  , input                                      io_cmd_has_data_i
-  , output logic                               io_cmd_header_ready_and_o
-  , input [io_data_width_p-1:0]                io_cmd_data_i
-  , input                                      io_cmd_data_v_i
-  , input                                      io_cmd_last_i
-  , output logic                               io_cmd_data_ready_and_o
+  , input [mem_fwd_header_width_lp-1:0]        mem_fwd_header_i
+  , input                                      mem_fwd_header_v_i
+  , input                                      mem_fwd_has_data_i
+  , output logic                               mem_fwd_header_ready_and_o
+  , input [io_data_width_p-1:0]                mem_fwd_data_i
+  , input                                      mem_fwd_data_v_i
+  , input                                      mem_fwd_last_i
+  , output logic                               mem_fwd_data_ready_and_o
 
-  , output logic [mem_header_width_lp-1:0]     io_resp_header_o
-  , output logic                               io_resp_header_v_o
-  , output logic                               io_resp_has_data_o
-  , input                                      io_resp_header_ready_and_i
-  , output logic [io_data_width_p-1:0]         io_resp_data_o
-  , output logic                               io_resp_data_v_o
-  , output logic                               io_resp_last_o
-  , input                                      io_resp_data_ready_and_i
+  , output logic [mem_rev_header_width_lp-1:0] mem_rev_header_o
+  , output logic                               mem_rev_header_v_o
+  , output logic                               mem_rev_has_data_o
+  , input                                      mem_rev_header_ready_and_i
+  , output logic [io_data_width_p-1:0]         mem_rev_data_o
+  , output logic                               mem_rev_data_v_o
+  , output logic                               mem_rev_last_o
+  , input                                      mem_rev_data_ready_and_i
 
   //====================== AXI4-LITE ==========================
   // WRITE ADDRESS CHANNEL SIGNALS
@@ -81,34 +81,34 @@ module bp_me_burst_to_axil
 
   // declaring i/o command and response struct type and size
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
-  `bp_cast_i(bp_bedrock_mem_header_s, io_cmd_header);
-  `bp_cast_o(bp_bedrock_mem_header_s, io_resp_header);
+  `bp_cast_i(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
+  `bp_cast_o(bp_bedrock_mem_rev_header_s, mem_rev_header);
 
   // command header buffer
-  bp_bedrock_mem_header_s io_cmd_header_li;
-  logic io_cmd_has_data_li;
+  bp_bedrock_mem_fwd_header_s mem_fwd_header_li;
+  logic mem_fwd_has_data_li;
   bsg_dff_reset_en
-   #(.width_p($bits(bp_bedrock_mem_header_s)+1))
+   #(.width_p($bits(bp_bedrock_mem_fwd_header_s)+1))
    cmd_header_reg
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
-     ,.data_i({io_cmd_has_data_i, io_cmd_header_cast_i})
-     ,.en_i(io_cmd_header_v_i & io_cmd_header_ready_and_o)
-     ,.data_o({io_cmd_has_data_li, io_cmd_header_li})
+     ,.data_i({mem_fwd_has_data_i, mem_fwd_header_cast_i})
+     ,.en_i(mem_fwd_header_v_i & mem_fwd_header_ready_and_o)
+     ,.data_o({mem_fwd_has_data_li, mem_fwd_header_li})
      );
 
   // read data out select
   localparam byte_offset_width_lp = `BSG_SAFE_CLOG2(axil_data_width_p>>3);
   localparam size_width_lp = `BSG_WIDTH(byte_offset_width_lp);
-  wire [byte_offset_width_lp-1:0] resp_sel_li = io_cmd_header_li.addr[0+:byte_offset_width_lp];
-  wire [size_width_lp-1:0] resp_size_li = io_cmd_header_li.size;
+  wire [byte_offset_width_lp-1:0] resp_sel_li = mem_fwd_header_li.addr[0+:byte_offset_width_lp];
+  wire [size_width_lp-1:0] resp_size_li = mem_fwd_header_li.size;
   bsg_bus_pack
    #(.in_width_p(axil_data_width_p), .out_width_p(io_data_width_p))
    resp_data_bus_pack
     (.data_i(m_axil_rdata_i)
      ,.sel_i(resp_sel_li)
      ,.size_i(resp_size_li)
-     ,.data_o(io_resp_data_o)
+     ,.data_o(mem_rev_data_o)
      );
 
   // declaring all possible states
@@ -130,27 +130,27 @@ module bp_me_burst_to_axil
     begin
       state_n = state_r;
 
-      io_cmd_header_ready_and_o = 1'b0;
-      io_cmd_data_ready_and_o = 1'b0;
+      mem_fwd_header_ready_and_o = 1'b0;
+      mem_fwd_data_ready_and_o = 1'b0;
 
-      io_resp_header_v_o = 1'b0;
-      io_resp_header_cast_o = io_cmd_header_li;
+      mem_rev_header_v_o = 1'b0;
+      mem_rev_header_cast_o = mem_fwd_header_li;
       // response has data is opposite of command has data
-      io_resp_has_data_o = ~io_cmd_has_data_li;
-      io_resp_data_v_o = 1'b0;
-      io_resp_last_o = 1'b1;
+      mem_rev_has_data_o = ~mem_fwd_has_data_li;
+      mem_rev_data_v_o = 1'b0;
+      mem_rev_last_o = 1'b1;
 
       // WRITE ADDRESS CHANNEL SIGNALS
-      m_axil_awaddr_o  = io_cmd_header_li.addr[0+:axil_addr_width_p];
+      m_axil_awaddr_o  = mem_fwd_header_li.addr[0+:axil_addr_width_p];
       m_axil_awprot_o  = e_axi_prot_dsn;
       m_axil_awvalid_o = 1'b0;
 
       // WRITE DATA CHANNEL SIGNALS
-      m_axil_wdata_o   = io_cmd_data_i;
+      m_axil_wdata_o   = mem_fwd_data_i;
       m_axil_wvalid_o  = 1'b0;
 
       // READ ADDRESS CHANNEL SIGNALS
-      m_axil_araddr_o  = io_cmd_header_li.addr[0+:axil_addr_width_p];
+      m_axil_araddr_o  = mem_fwd_header_li.addr[0+:axil_addr_width_p];
       m_axil_arprot_o  = e_axi_prot_dsn;
       m_axil_arvalid_o = 1'b0;
 
@@ -160,7 +160,7 @@ module bp_me_burst_to_axil
       // WRITE RESPONSE CHANNEL SIGNALS
       m_axil_bready_o  = 1'b0;
 
-      case (io_cmd_header_li.size)
+      case (mem_fwd_header_li.size)
         e_bedrock_msg_size_1 : m_axil_wstrb_o = (axil_data_width_p>>3)'('h1);
         e_bedrock_msg_size_2 : m_axil_wstrb_o = (axil_data_width_p>>3)'('h3);
         e_bedrock_msg_size_4 : m_axil_wstrb_o = (axil_data_width_p>>3)'('hF);
@@ -171,9 +171,9 @@ module bp_me_burst_to_axil
       case (state_r)
         // consume io cmd
         e_ready: begin
-          io_cmd_header_ready_and_o = 1'b1;
-          state_n = (io_cmd_header_v_i & io_cmd_header_ready_and_o)
-                    ? io_cmd_has_data_i
+          mem_fwd_header_ready_and_o = 1'b1;
+          state_n = (mem_fwd_header_v_i & mem_fwd_header_ready_and_o)
+                    ? mem_fwd_has_data_i
                       ? e_write_addr_and_data
                       : e_read_addr
                     : state_r;
@@ -183,8 +183,8 @@ module bp_me_burst_to_axil
         // subordinate is allowed to wait for both to be valid
         e_write_addr_and_data: begin
           m_axil_awvalid_o = 1'b1;
-          m_axil_wvalid_o = io_cmd_data_v_i;
-          io_cmd_data_ready_and_o = m_axil_wready_i;
+          m_axil_wvalid_o = mem_fwd_data_v_i;
+          mem_fwd_data_ready_and_o = m_axil_wready_i;
           state_n = (m_axil_awvalid_o & m_axil_awready_i) & (m_axil_wvalid_o & m_axil_wready_i)
                     ? e_write_resp
                     : (m_axil_awvalid_o & m_axil_awready_i)
@@ -203,15 +203,15 @@ module bp_me_burst_to_axil
         // send write data, address already sent
         e_write_data: begin
           m_axil_wvalid_o = 1'b1;
-          io_cmd_data_ready_and_o = m_axil_wready_i;
+          mem_fwd_data_ready_and_o = m_axil_wready_i;
           state_n = m_axil_wready_i ? e_write_resp : state_r;
         end
 
         // consume write response, issue response header
         e_write_resp: begin
-          m_axil_bready_o = io_resp_header_ready_and_i;
-          io_resp_header_v_o = m_axil_bvalid_i;
-          state_n = (io_resp_header_v_o & io_resp_header_ready_and_i)
+          m_axil_bready_o = mem_rev_header_ready_and_i;
+          mem_rev_header_v_o = m_axil_bvalid_i;
+          state_n = (mem_rev_header_v_o & mem_rev_header_ready_and_i)
                     ? e_ready
                     : state_r;
         end
@@ -224,17 +224,17 @@ module bp_me_burst_to_axil
 
         // send read response header
         e_read_header: begin
-          io_resp_header_v_o = 1'b1;
-          state_n = (io_resp_header_v_o & io_resp_header_ready_and_i)
+          mem_rev_header_v_o = 1'b1;
+          state_n = (mem_rev_header_v_o & mem_rev_header_ready_and_i)
                     ? e_read_data
                     : state_r;
         end
 
         // consume read data, issue response data
         e_read_data: begin
-          m_axil_rready_o = io_resp_data_ready_and_i;
-          io_resp_data_v_o = m_axil_rvalid_i;
-          state_n = (io_resp_data_v_o & io_resp_data_ready_and_i)
+          m_axil_rready_o = mem_rev_data_ready_and_i;
+          mem_rev_data_v_o = m_axil_rvalid_i;
+          state_n = (mem_rev_data_v_o & mem_rev_data_ready_and_i)
                     ? e_ready
                     : state_r;
         end
@@ -270,16 +270,16 @@ module bp_me_burst_to_axil
       else $error("Client device has an error response to reads");
     assert (reset_i !== '0 || ~m_axil_bvalid_i || m_axil_bresp_i == '0)
       else $error("Client device has an error response to writes");
-    assert (reset_i !== '0 || ~io_cmd_header_v_i
-            || io_cmd_header_cast_i.size <= e_bedrock_msg_size_8
+    assert (reset_i !== '0 || ~mem_fwd_header_v_i
+            || mem_fwd_header_cast_i.size <= e_bedrock_msg_size_8
             || axil_data_width_p == 64)
       else $error("64-bit BedRock command not supported with 32-bit AXIL data width");
-    assert (reset_i !== '0 || ~io_cmd_header_v_i
-            || (io_cmd_header_cast_i.msg_type inside {e_bedrock_mem_uc_rd, e_bedrock_mem_rd} && ~io_cmd_has_data_i)
-            || (io_cmd_header_cast_i.msg_type inside {e_bedrock_mem_uc_wr, e_bedrock_mem_wr} && io_cmd_has_data_i)
+    assert (reset_i !== '0 || ~mem_fwd_header_v_i
+            || (mem_fwd_header_cast_i.msg_type inside {e_bedrock_mem_uc_rd, e_bedrock_mem_rd} && ~mem_fwd_has_data_i)
+            || (mem_fwd_header_cast_i.msg_type inside {e_bedrock_mem_uc_wr, e_bedrock_mem_wr} && mem_fwd_has_data_i)
            )
       else $error("BedRock command type and has data signal inconsistent");
-    assert (reset_i !== '0 || ~io_cmd_data_v_i || io_cmd_last_i)
+    assert (reset_i !== '0 || ~mem_fwd_data_v_i || mem_fwd_last_i)
       else $error("BedRock command data must be single beat");
   end
   //synopsys translate_on

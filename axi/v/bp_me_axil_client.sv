@@ -24,17 +24,17 @@ module bp_me_axil_client
    , input [lce_id_width_p-1:0]                 lce_id_i
    , input [did_width_p-1:0]                    did_i
 
-   , output logic [mem_header_width_lp-1:0]     io_cmd_header_o
-   , output logic [axil_data_width_p-1:0]       io_cmd_data_o
-   , output logic                               io_cmd_v_o
-   , input                                      io_cmd_ready_and_i
-   , output logic                               io_cmd_last_o
+   , output logic [mem_fwd_header_width_lp-1:0] mem_fwd_header_o
+   , output logic [axil_data_width_p-1:0]       mem_fwd_data_o
+   , output logic                               mem_fwd_v_o
+   , input                                      mem_fwd_ready_and_i
+   , output logic                               mem_fwd_last_o
 
-   , input [mem_header_width_lp-1:0]            io_resp_header_i
-   , input [axil_data_width_p-1:0]              io_resp_data_i
-   , input                                      io_resp_v_i
-   , output logic                               io_resp_ready_and_o
-   , input                                      io_resp_last_i
+   , input [mem_rev_header_width_lp-1:0]        mem_rev_header_i
+   , input [axil_data_width_p-1:0]              mem_rev_data_i
+   , input                                      mem_rev_v_i
+   , output logic                               mem_rev_ready_and_o
+   , input                                      mem_rev_last_i
 
    //====================== AXI-4 LITE =========================
    // WRITE ADDRESS CHANNEL SIGNALS
@@ -67,13 +67,13 @@ module bp_me_axil_client
    , input                                      s_axil_rready_i
    );
 
-  wire unused = &{io_resp_last_i};
-  assign io_cmd_last_o = io_cmd_v_o;
+  wire unused = &{mem_rev_last_i};
+  assign mem_fwd_last_o = mem_fwd_v_o;
 
   // declaring i/o command and response struct type and size
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
-  `bp_cast_o(bp_bedrock_mem_header_s, io_cmd_header);
-  `bp_cast_i(bp_bedrock_mem_header_s, io_resp_header);
+  `bp_cast_o(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
+  `bp_cast_i(bp_bedrock_mem_rev_header_s, mem_rev_header);
 
   logic [axil_data_width_p-1:0] wdata_lo;
   logic [axil_addr_width_p-1:0] addr_lo;
@@ -107,29 +107,29 @@ module bp_me_axil_client
 
   always_comb
     begin
-      io_cmd_data_o = wdata_lo;
-      io_cmd_header_cast_o = '0;
-      io_cmd_header_cast_o.payload.lce_id = lce_id_i;
-      io_cmd_header_cast_o.payload.did    = did_i;
-      io_cmd_header_cast_o.addr           = addr_lo;
-      io_cmd_header_cast_o.msg_type       = w_lo ? e_bedrock_mem_uc_wr : e_bedrock_mem_uc_rd;
+      mem_fwd_data_o = wdata_lo;
+      mem_fwd_header_cast_o = '0;
+      mem_fwd_header_cast_o.payload.lce_id = lce_id_i;
+      mem_fwd_header_cast_o.payload.did    = did_i;
+      mem_fwd_header_cast_o.addr           = addr_lo;
+      mem_fwd_header_cast_o.msg_type       = w_lo ? e_bedrock_mem_uc_wr : e_bedrock_mem_uc_rd;
       case (wmask_lo)
-        axil_mask_width_lp'('h1): io_cmd_header_cast_o.size = e_bedrock_msg_size_1;
-        axil_mask_width_lp'('h3): io_cmd_header_cast_o.size = e_bedrock_msg_size_2;
-        axil_mask_width_lp'('hF): io_cmd_header_cast_o.size = e_bedrock_msg_size_4;
+        axil_mask_width_lp'('h1): mem_fwd_header_cast_o.size = e_bedrock_msg_size_1;
+        axil_mask_width_lp'('h3): mem_fwd_header_cast_o.size = e_bedrock_msg_size_2;
+        axil_mask_width_lp'('hF): mem_fwd_header_cast_o.size = e_bedrock_msg_size_4;
         // axil_mask_width_lp'('hFF):
-        default: io_cmd_header_cast_o.size = e_bedrock_msg_size_8;
+        default: mem_fwd_header_cast_o.size = e_bedrock_msg_size_8;
       endcase
 
-      io_cmd_v_o = v_lo;
-      ready_and_li = io_cmd_ready_and_i;
+      mem_fwd_v_o = v_lo;
+      ready_and_li = mem_fwd_ready_and_i;
     end
 
   always_comb
     begin
-      rdata_li = io_resp_data_i;
-      v_li = io_resp_v_i;
-      io_resp_ready_and_o = ready_and_lo;
+      rdata_li = mem_rev_data_i;
+      v_li = mem_rev_v_i;
+      mem_rev_ready_and_o = ready_and_lo;
     end
 
 endmodule
