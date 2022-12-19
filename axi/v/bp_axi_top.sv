@@ -291,11 +291,11 @@ module bp_axi_top
          ,.my_did_i(did_li)
          ,.host_did_i(host_did_li)
 
-         ,.mem_fwd_link_i({proc_fwd_link_li, stub_fwd_link_li})
-         ,.mem_fwd_link_o({proc_fwd_link_lo, stub_fwd_link_lo})
+         ,.io_fwd_link_i({proc_fwd_link_li, stub_fwd_link_li})
+         ,.io_fwd_link_o({proc_fwd_link_lo, stub_fwd_link_lo})
 
-         ,.mem_rev_link_i({proc_rev_link_li, stub_rev_link_li})
-         ,.mem_rev_link_o({proc_rev_link_lo, stub_rev_link_lo})
+         ,.io_rev_link_i({proc_rev_link_li, stub_rev_link_li})
+         ,.io_rev_link_o({proc_rev_link_lo, stub_rev_link_lo})
 
          ,.mem_dma_link_o(mem_dma_link_lo)
          ,.mem_dma_link_i(mem_dma_link_li)
