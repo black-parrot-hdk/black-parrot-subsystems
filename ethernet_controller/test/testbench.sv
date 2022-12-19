@@ -186,6 +186,8 @@ program user_signals #(
     @(posedge tx_clk_i);
     tx_reset_o = 1'b0;
     @(posedge rx_clk_i)
+    @(posedge rx_clk_i)
+    @(posedge rx_clk_i)
     rx_reset_o = 1'b0;
     @(posedge clk_i)
     reset_o = 1'b0;
