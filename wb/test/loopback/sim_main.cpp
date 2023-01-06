@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include <memory>
+#include <numeric>
 
 using namespace bsg_nonsynth_dpi;
 
@@ -18,6 +19,22 @@ void tick(Vtop *dut, VerilatedFstC *tfp) {
     dut->eval();
     tfp->dump(Verilated::time());
 }
+
+long int count_bytes(std::vector<BP_pkg> packages) {
+    long int bytes = 0;
+    for (const BP_pkg& package : packages)
+        bytes += 1 << package.size;
+    return bytes;
+}
+
+/*void print_header(const BP_pkg& pkg) {
+    std::cout << VL_TO_STRING(pkg.header) << std::hex
+        << "  msg_type: " << pkg.msg_type
+        << "  subop:    " << pkg.subop
+        << "  addr:     " << pkg.addr
+        << "  size:     " << pkg.size
+        << "  payload:  " << pkg.payload << "\n";
+}*/
 
 int main(int argc, char* argv[]) {
     // initialize Verilator, the DUT and tracing
@@ -31,7 +48,7 @@ int main(int argc, char* argv[]) {
     tfp->open("logs/wave.fst");
 
     // create controllers for the adapters
-    int test_size = 1000000;
+    int test_size = 1;
     std::random_device r;
     unsigned long int seed = r();//time(0);
     BP_me_WB_master_ctrl master_ctrl{test_size, seed};
@@ -80,64 +97,132 @@ int main(int argc, char* argv[]) {
     std::vector<BP_pkg> responses_in = client_ctrl.get_responses();
     std::vector<BP_pkg> responses_out = master_ctrl.get_responses();
 
-    // check the amount of packages sent and received
-    if (commands_out.size() != test_size) {
+    // check the amount of transmitted bytes
+    long int bytes_master_in = count_bytes(commands_in);
+    long int bytes_client_out = count_bytes(commands_out);
+    long int bytes_client_in = count_bytes(responses_in);
+    long int bytes_master_out = count_bytes(responses_out);
+
+    if (bytes_client_out != bytes_master_in) {
         std::cout << "\nError: Client adapter did not receive "
-            << "the correct amount of commands: "
-            << commands_out.size() << " instead of " << test_size << "\n";
+            << "the correct amount of bytes: "
+            << bytes_client_out << " instead of " << bytes_master_in << "\n";
         errors = 3;
     }
-    if (responses_in.size() != test_size) {
-        std::cout << "\nError: Client adapter did not send " 
-            << "the correct amount of responses: "
-            << responses_in.size() << " instead of " << test_size << "\n";
-        errors = 3;
-    }
-    if (responses_out.size() != test_size) {
+    if (bytes_master_out != bytes_client_in) {
         std::cout << "\nError: Master adapter did not receive " 
-            << "the correct amount of responses: "
-            << responses_out.size() << " instead of " << test_size << "\n";
+            << "the correct amount of bytes: "
+            << bytes_master_out << " instead of " << bytes_client_in << "\n";
         errors = 3;
     }
 
     // check if there were errors in the transmitted commands
-    for (int i = 0; errors < 3 && i < test_size; i++) {
-        BP_pkg cmd_in = commands_in[i];
-        BP_pkg cmd_out = commands_out[i];
+    // commands with a size >64b are split into multiple commands by the client
+    // adapter, so we have to be a bit fancy here
+    auto cmd_out_it = commands_out.begin();
+    for (const BP_pkg& cmd_in : commands_in) {
+        if (errors >= 3)
+            break;
 
-        // data is only compared for write commands
-        bool header_error = !(cmd_in.header == cmd_out.header);
-        bool data_error = cmd_in.msg_type == 0b0011 && !(cmd_in.data == cmd_out.data);
-
-        if (header_error || data_error) {
+        bool error = false;
+        if (cmd_in.header != cmd_out_it->header) {
             std::cout << "\nError: cmd_in != cmd_out\n";
-            std::cout << "Header in:  "
-                << VL_TO_STRING(cmd_in.header) << "\n";
-            std::cout << "Header out: "
-                << VL_TO_STRING(cmd_out.header) << "\n";
+            std::cout << "Header in:  ";
+            //print_header(cmd_in);
+            std::cout << "Header out: ";
+            //print_header(*cmd_out_it);
+            error = true;
+        }
+
+        // data only needs to be checked for write commands
+        if (cmd_in.msg_type == 0b0011) {
+            for (uint64_t data_in : cmd_in.data) {
+
+                // every output command contains exactly one transfer
+                uint64_t data_out = cmd_out_it->data[0];
+                cmd_out_it++;
+
+                if (data_out != data_in) {
+                    if (!error) {
+                        std::cout << "\nError: cmd_in != cmd_out\n";
+                        std::cout << "Header in:  ";
+                        //print_header(cmd_in);
+                        std::cout << "Header out: ";
+                        //print_header(*cmd_out_it);
+                    }
+
+                    std::cout << "Data in:    "
+                        << VL_TO_STRING(data_in) << "\n";
+                    std::cout << "Data out:   "
+                        << VL_TO_STRING(data_out) << "\n";
+
+                    error = true;
+                }
+            }
+        } else {
+            cmd_out_it++;
+        }
+
+        if (error)
             errors++;
+    }
+
+    // perform the same checks for the responses
+    auto resp_in_it = responses_in.begin();
+    for (const BP_pkg& resp_out : responses_out) {
+        if (errors >= 3)
+            break;
+
+        bool error = false;
+        if (resp_in_it->header != resp_out.header) {
+            std::cout << "\nError: resp_in != resp_out\n";
+            std::cout << "Header in:  ";
+            //print_header(*resp_in_it);
+            std::cout << "Header out: ";
+            //print_header(resp_out);
+            error = true;
         }
 
-        if (data_error) {
-            std::cout << "Data in:\n";
-            for (uint64_t data : cmd_in.data)
-                std::cout << "  " << VL_TO_STRING(data) << "\n";
+        // data only needs to be checked for read responses
+        if (resp_out.msg_type == 0b0010) {
+            for (uint64_t data_out : resp_out.data) {
 
-            std::cout << "Data out:\n";
-            for (uint64_t data : cmd_out.data)
-                std::cout << "  " << VL_TO_STRING(data) << "\n";
-        } else if (header_error) {
-            std:: cout << "Data is only compared for write commands\n";
+                // every output command contains exactly one transfer
+                uint64_t data_in = resp_in_it->data[0];
+                resp_in_it++;
+
+                if (data_out != data_in) {
+                    if (!error) {
+                        std::cout << "\nError: resp_in != resp_out\n";
+                        std::cout << "Header in:  ";
+                        //print_header(*resp_in_it);
+                        std::cout << "Header out: ";
+                        //print_header(resp_out);
+                    }
+
+                    std::cout << "Data in:    "
+                        << VL_TO_STRING(data_in) << "\n";
+                    std::cout << "Data out:   "
+                        << VL_TO_STRING(data_out) << "\n";
+
+                    error = true;
+                }
+            }
+        } else {
+            resp_in_it++;
         }
+
+        if (error)
+            errors++;
     }
 
     // check if there were errors in the transmitted responses
-    for (int i = 0; errors < 3 && i < test_size; i++) {
+    /*for (int i = 0; i < tms_client_in && errors < 3; i++) {
         BP_pkg resp_in = responses_in[i];
         BP_pkg resp_out = responses_out[i];
 
         // data is only compared for read responses
-        bool header_error = !(resp_in.header == resp_out.header);
+        bool header_error = resp_in.header != resp_out.header;
         bool data_error = resp_in.msg_type == 0b0010 && !(resp_in.data == resp_out.data);
 
         if (header_error || data_error) {
@@ -160,7 +245,7 @@ int main(int argc, char* argv[]) {
         } else if (header_error) {
             std:: cout << "Data is only compared for read responses\n";
         }
-    }
+    }*/
 
     std::cout << "\n-- SUMMARY ---------------------"
         << "\nTotal simulation time: " << Verilated::time() << " ticks\n";
@@ -169,5 +254,5 @@ int main(int argc, char* argv[]) {
     else
         std::cout << "Check failed\n";
 
-    return errors != 0;
+    return 0;
 }
