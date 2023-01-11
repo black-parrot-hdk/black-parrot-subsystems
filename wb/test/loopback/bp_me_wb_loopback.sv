@@ -116,13 +116,13 @@ module top
 
      ,.v_i(c_mem_cmd_v_o)
      ,.yumi_o(c_mem_cmd_ready_and_i)
-     ,.data_i({c_mem_cmd_last_o, c_mem_cmd_header_o[0+:63], c_mem_cmd_data_o})
+     ,.data_i({c_mem_cmd_header_o[0+:64], c_mem_cmd_data_o})
     );
 
   /*
    * dpi module for sending responses to the client adapter
    */
-  logic [62:0] c_mem_resp_header_li;
+  logic [63:0] c_mem_resp_header_li;
   assign c_mem_resp_header_i = {'0, c_mem_resp_header_li};
 
   bsg_nonsynth_dpi_to_fifo
@@ -137,7 +137,7 @@ module top
 
      ,.v_o(c_mem_resp_v_i)
      ,.ready_i(c_mem_resp_ready_and_o)
-     ,.data_o({c_mem_resp_last_i, c_mem_resp_header_li, c_mem_resp_data_i})
+     ,.data_o({c_mem_resp_header_li, c_mem_resp_data_i})
     );
 
   /*
@@ -224,13 +224,13 @@ module top
      ,.mem_cmd_data_o(c_mem_cmd_data_o)
      ,.mem_cmd_v_o(c_mem_cmd_v_o)
      ,.mem_cmd_ready_and_i(c_mem_cmd_ready_and_i)
-     ,.mem_cmd_last_o(c_mem_cmd_last_o)
+     ,.mem_cmd_last_o(/* always 1, unused */)
 
      ,.mem_resp_header_i(c_mem_resp_header_i)
      ,.mem_resp_data_i(c_mem_resp_data_i)
      ,.mem_resp_v_i(c_mem_resp_v_i)
      ,.mem_resp_ready_and_o(c_mem_resp_ready_and_o)
-     ,.mem_resp_last_i(c_mem_resp_last_i)
+     ,.mem_resp_last_i('1)
 
      ,.adr_i(adr)
      ,.dat_i(dat_mosi)

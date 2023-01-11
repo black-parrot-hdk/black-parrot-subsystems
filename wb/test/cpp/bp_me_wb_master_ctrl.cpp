@@ -7,7 +7,7 @@ using namespace bsg_nonsynth_dpi;
 
 BP_me_WB_master_ctrl::BP_me_WB_master_ctrl(
     int test_size,
-    unsigned long int seed
+    unsigned long seed
 ) : test_size{test_size},
     generator{seed},
     dice{std::bind(distribution, generator)}
@@ -24,12 +24,12 @@ BP_me_WB_master_ctrl::BP_me_WB_master_ctrl(
         cmd.msg_type = 0b0010 + (cmd.msg_type & 0b0001);
         cmd.subop = 0;
         cmd.addr = cmd.addr & 0x7FFFFFFFF8;
-        cmd.size = cmd.size % 4;
+        cmd.size = cmd.size % 6;
         cmd.payload = 0;
 
         // generate data
         std::vector<uint64_t> data;
-        if (cmd.msg_type == 0b10) {
+        if (cmd.msg_type == 0b0010) {
             // read commands only require one transfer
             data.push_back(replicate(dice(), cmd.size));
         } else {
@@ -41,11 +41,10 @@ BP_me_WB_master_ctrl::BP_me_WB_master_ctrl(
         }
         cmd.data = std::move(data);
         commands.push_back(std::move(cmd));
-
     }
 
-    cmd_it = commands.begin();
-    data_it = cmd_it->data.begin();
+    cmd_ind = 0;
+    data_ind = 0;
 
     d2f_cmd = std::make_unique<dpi_to_fifo<uint128_t>>("TOP.top.m_d2f_cmd");
     f2d_resp = std::make_unique<dpi_from_fifo<uint128_t>>("TOP.top.m_f2d_resp");
@@ -54,35 +53,30 @@ BP_me_WB_master_ctrl::BP_me_WB_master_ctrl(
     tx_cooldown = dice() % 16;
 };
 
-bool BP_me_WB_master_ctrl::sim_read() {
+void BP_me_WB_master_ctrl::sim_read() {
+    // init the rx fifo
+    if (!f2d_resp_init) {
+        svScope prev = svSetScope(svGetScopeFromName("TOP.top.m_f2d_resp"));
+        bsg_dpi_init();
+        svSetScope(prev);
+        f2d_resp_init = true;
+    }
+
     if (f2d_resp->is_window()) {
-
-        // init the rx fifo
-        if (!f2d_resp_init) {
-            svScope prev = svSetScope(svGetScopeFromName("TOP.top.m_f2d_resp"));
-            bsg_dpi_init();
-            svSetScope(prev);
-            f2d_resp_init = true;
-        }
-
         // read the response
         if (rx_cooldown == 0) {
             uint128_t response;
             if (f2d_resp->rx(response)) {
-                
-                // error if we receive a new response but have already received enough responses
-                if (resp.data.empty() && responses.size() == test_size) {
-                    std::cout << "\nError: Master adapter received too many responses\n";
-                    return false;
-                }
 
-                // the highest bit of the header holds 'last' bit
+                // only the header of the first package is stored
                 uint64_t header = response >> 64;
-                bool last = header & 0x8000000000000000;
-                resp.header = header & ~0x8000000000000000;
+                if (resp.data.empty())
+                    resp.header = header & ~0x8000000000000000;
                 resp.data.push_back(response & 0xFFFFFFFFFFFFFFFF);
 
-                if (last) {
+                // for this testbench, the highest bit of the
+                // header holds the 'last' bit
+                if (header & 0x8000000000000000) {
                     responses.push_back(resp);
                     resp.data.clear();
                 }
@@ -93,40 +87,32 @@ bool BP_me_WB_master_ctrl::sim_read() {
             rx_cooldown--;
         }
     }
-
-    return true;
 }
 
-bool BP_me_WB_master_ctrl::sim_write() {
-    if (d2f_cmd->is_window() && cmd_it != commands.end()) {
+void BP_me_WB_master_ctrl::sim_write() {
+    // init the tx fifo
+    if (!d2f_cmd_init) {
+        svScope prev = svSetScope(svGetScopeFromName("TOP.top.m_d2f_cmd"));
+        bsg_dpi_init();
+        svSetScope(prev);
+        d2f_cmd_init = true;
+    }
 
-        // init the tx fifo
-        if (!d2f_cmd_init) {
-            svScope prev = svSetScope(svGetScopeFromName("TOP.top.m_d2f_cmd"));
-            bsg_dpi_init();
-            svSetScope(prev);
-            d2f_cmd_init = true;
-        }
-
+    if (d2f_cmd->is_window() && cmd_ind < commands.size()) {
         // send the command
         if (tx_cooldown == 0) {
-            bool last = data_it + 1 == cmd_it->data.end();
-
-            // construct the command and set or clear the 'last' bit if required
-            uint128_t command = cmd_it->header;
-            if (last)
+            // construct the command and set the 'last' bit if required
+            uint128_t command = commands[cmd_ind].header;
+            if (data_ind == commands[cmd_ind].data.size() - 1)
                 command |= 0x8000000000000000;
-            else
-                command &= ~0x8000000000000000;
-            command = command << 64 | *data_it;
+            command = command << 64 | commands[cmd_ind].data[data_ind];
 
             // try to send and adjust the iterators if successful
             if (d2f_cmd->tx(command)) {
-                if (last) {
-                    cmd_it++;
-                    data_it = cmd_it->data.begin();
-                } else {
-                    data_it++;
+                ++data_ind;
+                if (data_ind == commands[cmd_ind].data.size()) {
+                    ++cmd_ind;
+                    data_ind = 0;
                 }
 
                 tx_cooldown = dice() % 16;
@@ -135,8 +121,6 @@ bool BP_me_WB_master_ctrl::sim_write() {
             tx_cooldown--;
         }
     }
-
-    return true;
 }
 
 uint64_t BP_me_WB_master_ctrl::replicate(uint64_t data, uint8_t size) {

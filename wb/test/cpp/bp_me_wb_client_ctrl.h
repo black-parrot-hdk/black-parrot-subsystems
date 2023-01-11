@@ -5,6 +5,7 @@
 #include "bp_pkg.h"
 
 #include <vector>
+#include <deque>
 #include <iterator>
 #include <random>
 #include <functional>
@@ -19,14 +20,14 @@ class BP_me_WB_client_ctrl {
 public:
     BP_me_WB_client_ctrl(
         int test_size,
-        unsigned long int seed
+        unsigned long seed
     );
 
     const std::vector<BP_pkg>& get_commands() {return commands;}
     const std::vector<BP_pkg>& get_responses() {return responses;}
 
-    bool sim_read();
-    bool sim_write();
+    void sim_read();
+    void sim_write();
 
 private:
     std::unique_ptr<dpi_from_fifo<uint128_t>> f2d_cmd;
@@ -35,7 +36,7 @@ private:
     bool d2f_resp_init = false;
 
     int test_size;
-    unsigned long int seed;
+    unsigned long seed;
 
     int rx_cooldown;
     int tx_cooldown;
@@ -43,8 +44,7 @@ private:
     std::vector<BP_pkg> commands;
     BP_pkg cmd;
     std::vector<BP_pkg> responses;
-    std::vector<BP_pkg>::iterator resp_it;
-    std::vector<uint64_t>::iterator data_it;
+    int resp_ind;
 
     std::default_random_engine generator;
     std::uniform_int_distribution<uint64_t> distribution;

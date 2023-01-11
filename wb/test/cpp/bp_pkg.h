@@ -3,6 +3,9 @@
 #include <cstdint>
 #include <vector>
 
+// this struct only stores the header of the first package
+// the address of follwoing packages must be calculated follwing the wrapping
+// rules, e.g. from https://verificationguide.com/wrap-address-calculation/
 struct BP_pkg {
     union {
         struct {

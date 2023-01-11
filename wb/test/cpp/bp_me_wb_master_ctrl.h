@@ -19,17 +19,17 @@ class BP_me_WB_master_ctrl {
 public:
     BP_me_WB_master_ctrl(
         int test_size,
-        unsigned long int seed
+        unsigned long seed
     );
 
     const std::vector<BP_pkg>& get_commands() {return commands;}
     const std::vector<BP_pkg>& get_responses() {return responses;}
 
-    bool sim_read();
-    bool sim_write();
+    void sim_read();
+    void sim_write();
 
     int get_progress() {return responses.size();}
-    bool done() {return cmd_it == commands.end() && responses.size() == test_size;}
+    bool done() {return cmd_ind == commands.size() && responses.size() == test_size;}
 
 private:
     std::unique_ptr<dpi_to_fifo<uint128_t>> d2f_cmd;
@@ -38,14 +38,14 @@ private:
     bool f2d_resp_init = false;
 
     int test_size;
-    unsigned long int seed;
+    unsigned long seed;
 
     unsigned int rx_cooldown;
     unsigned int tx_cooldown;
 
     std::vector<BP_pkg> commands;
-    std::vector<BP_pkg>::iterator cmd_it;
-    std::vector<uint64_t>::iterator data_it;
+    int cmd_ind;
+    int data_ind;
     std::vector<BP_pkg> responses;
     BP_pkg resp;
 
