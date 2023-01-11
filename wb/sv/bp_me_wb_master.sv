@@ -55,7 +55,7 @@ module bp_me_wb_master
   // input pump
   bp_bedrock_mem_header_s mem_cmd_header_li;
   logic [paddr_width_p-1:0] mem_cmd_stream_addr_li;
-  logic [l2_data_width_p-1:0] mem_cmd_data_li;
+  logic [data_width_p-1:0] mem_cmd_data_li;
   logic mem_cmd_v_li;
   logic mem_cmd_new_li;
   bp_me_stream_pump_in
@@ -66,7 +66,7 @@ module bp_me_wb_master
      ,.msg_stream_mask_p(mem_cmd_payload_mask_gp)
      ,.fsm_stream_mask_p(mem_cmd_payload_mask_gp | mem_resp_payload_mask_gp)
      ,.header_els_p(2)
-     ,.data_els_p(`BSG_MAX(2, cce_block_width_p/l2_data_width_p))
+     ,.data_els_p(`BSG_MAX(2, cce_block_width_p/data_width_p))
     )
     pump_in
     ( .clk_i(clk_i)
@@ -120,7 +120,9 @@ module bp_me_wb_master
 
   // for BP, less than bus width data must be replicated
   localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p>>3));
-  wire [size_width_lp-1:0] resp_size_lo = mem_cmd_header_li.size;
+  wire [size_width_lp-1:0] resp_size_lo = mem_cmd_header_li.size > e_bedrock_msg_size_8
+                                          ? e_bedrock_msg_size_8
+                                          : mem_cmd_header_li.size;
   logic [data_width_p-1:0] mem_resp_data_li;
   bsg_bus_pack
     #(
@@ -160,7 +162,7 @@ module bp_me_wb_master
       e_bedrock_msg_size_1: sel_o = (data_width_p>>3)'('h1);
       e_bedrock_msg_size_2: sel_o = (data_width_p>>3)'('h3);
       e_bedrock_msg_size_4: sel_o = (data_width_p>>3)'('hF);
-      // e_bedrock_msg_size_8:
+      // >= e_bedrock_msg_size_8:
       default: sel_o = (data_width_p>>3)'('hFF);
     endcase
 
