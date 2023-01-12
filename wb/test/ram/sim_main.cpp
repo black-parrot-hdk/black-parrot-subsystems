@@ -22,6 +22,66 @@ uint8_t get_byte(uint64_t data, int i) {
     return (data >> (8*i)) & 0xFF;
 }
 
+bool check_packets(const std::vector<BP_pkg>& commands,
+                   const std::vector<BP_pkg>& responses,
+                   int& errors) {
+    bool error_found = false;
+    std::array<uint8_t, 4096> ram{0};
+    for (int i = 0; i < commands.size(); ++i) {
+        if (errors >= 3)
+            break;
+
+        int data_size = 1 << commands[i].size;
+        int transfers = data_size / 8 + (data_size < 8);
+        uint64_t current_addr = commands[i].addr & 0xFFF;
+        uint64_t wrap_low = (current_addr / (8 * transfers)) * (8 * transfers);
+        uint64_t wrap_high = wrap_low + 8 * transfers;
+        if (data_size > 8)
+            data_size = 8;
+
+        for (int j = 0; j < transfers; ++j) {
+            // depending on the message type, either update the
+            // emulated ram or test if the response data was correct
+            if (commands[i].msg_type == 0b0011) {
+                // write operation
+                for (int k = 0; k < data_size; k++)
+                    ram[current_addr + k] = get_byte(commands[i].data[j], k);
+            } else {
+                // read operation
+                uint64_t data_ram = 0;
+                uint64_t data_pkg = 0;
+                for (int k = 0; k < data_size; ++k) {
+                    data_ram = data_ram << 8
+                               | ram[current_addr + data_size-1 - k];
+                    data_pkg = data_pkg << 8
+                               | get_byte(responses[i].data[j], data_size-1 - k);
+                }
+
+                if (data_ram != data_pkg) {
+                    uint8_t wb_addr = current_addr >> 3;
+                    std::cout << "\nError: Read incorrect data form the RAM\n";
+                    std::cout << "BP Address:\t"
+                        << VL_TO_STRING(current_addr) << "\n";
+                    std::cout << "WB Address:\t" << VL_TO_STRING(wb_addr) << "\n";
+                    std::cout << "Data size:\t" << +data_size << " bytes\n";
+                    std::cout << "Data read was " << VL_TO_STRING(data_pkg)
+                        << ", but should have been "
+                        << VL_TO_STRING(data_ram) << "\n";
+
+                    ++errors;
+                    error_found = true;
+                }
+            }
+
+            current_addr += 8;
+            if (current_addr == wrap_high)
+                current_addr = wrap_low;
+        }
+    }
+
+    return error_found;
+}
+
 int main(int argc, char* argv[]) {
     // initialize Verilator, the DUT and tracing
     Verilated::commandArgs(argc, argv);
@@ -34,19 +94,17 @@ int main(int argc, char* argv[]) {
     tfp->open("logs/wave.fst");
 
     // create controllers for the adapters
-    int test_size = 1000000;
-    unsigned long int seed = time(0);
+    int test_size = 100000;
+    std::random_device r;
+    unsigned long seed = r();
     BP_me_WB_master_ctrl ram_ctrl{test_size, seed};
 
     // simulate until all responses have been recieved
     dut->eval();
     tfp->dump(Verilated::time());
-    int c = 0;
     while (!ram_ctrl.done()) {
-        if (!ram_ctrl.sim_read())
-            break;
-        if (!ram_ctrl.sim_write())
-            break;
+        ram_ctrl.sim_read();
+        ram_ctrl.sim_write();
         tick(dut.get(), tfp.get());
 
         // progress bar
@@ -59,11 +117,6 @@ int main(int argc, char* argv[]) {
             + std::to_string(responses) + "/" + std::to_string(test_size)
             + " (" + std::to_string(100 * responses / test_size) + "%)";
         std::cout << "\r" << bar;
-
-        if (c > 100)
-            ;//break;
-        else
-            c++;
     }
     std::cout << "\n";
     tfp->close();
@@ -77,53 +130,26 @@ int main(int argc, char* argv[]) {
     // check the amount of packages received
     if (responses.size() != test_size) {
         std::cout << "\nError: Master adapter did not receive " 
-            << "the correct amount of responses: "
-            << responses.size() << " instead of " << test_size << "\n";
+                  << "the correct amount of responses: "
+                  << responses.size() << " instead of " << test_size << "\n";
         errors = 3;
     }
 
     // check if the respose data was correct by emulating a ram
-    std::array<uint8_t, 256> ram{0};
-    for (int i = 0; i < test_size && errors < 3; i++) {
-        // depending on the message type, either update the
-        // emulated ram or test if the response data was correct
-        uint8_t addr = commands[i].addr & 0xFF;
-        uint8_t data_size = 1 << commands[i].size;
-        if (commands[i].msg_type == 0b0010) {
-            // read operation
-            uint64_t data_ram = 0;
-            uint64_t data_pkg = 0;
-            for (int j = 0; j < data_size; j++) {
-                data_ram = (data_ram << 8) | ram[addr + j];
-                data_pkg = (data_pkg << 8) | get_byte(responses[i].data[j/8], j % 8);
-            }
-            
-            if (data_ram != data_pkg) {
-                uint8_t wb_addr = addr >> 3;
-                std::cout << "\nError: Read incorrect data form the RAM\n";
-                std::cout << "BP Address:\t"
-                    << VL_TO_STRING(responses[i].addr) << "\n";
-                std::cout << "WB Address:\t" << VL_TO_STRING(wb_addr) << "\n";
-                std::cout << "Data size:\t" << +data_size << "\n";
-                std::cout << "Data read was " << VL_TO_STRING(data_pkg)
-                    << ", but should have been "
-                    << VL_TO_STRING(data_ram) << "\n";
-
-                errors++;
-            }
-        } else {
-            // write operation
-            for (int j = 0; j < data_size; j++)
-                ram[addr + j] = get_byte(commands[i].data[j/8], j % 8);
-        }
+    if (errors < 3) {
+        std::cout << "\nChecking transmissions\n";
+        if (!check_packets(commands, responses, errors))
+            std::cout << "No errors found\n";
+    } else {
+        std::cout << "\nSkipped checking transmissions due to previous errors\n";
     }
 
     std::cout << "\n-- SUMMARY ---------------------"
-        << "\nTotal simulation time: " << Verilated::time() << " ticks\n";
+              << "\nTotal simulation time: " << Verilated::time() << " ticks\n";
     if (errors == 0)
         std::cout << "Check succeeded\n";
     else
         std::cout << "Check failed\n";
 
-    return 0;
+    return errors > 0;
 }

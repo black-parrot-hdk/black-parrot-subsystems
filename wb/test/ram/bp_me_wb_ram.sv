@@ -9,8 +9,8 @@ module top
     `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
 
     , parameter  data_width_p        = dword_width_gp
-    , localparam ram_elements_lp     = 256
-    , localparam wbone_addr_width_lp =   `BSG_SAFE_CLOG2(ram_elements_lp)
+    , localparam ram_size_lp         = 4096
+    , localparam wbone_addr_width_lp =   `BSG_SAFE_CLOG2(ram_size_lp)
                                        - `BSG_SAFE_CLOG2(data_width_p>>3)
 
     , localparam cycle_time_lp      = 4
@@ -167,7 +167,7 @@ module top
   wb_ram
    #(
      .DATA_WIDTH(data_width_p)
-    ,.ADDR_WIDTH(8)
+    ,.ADDR_WIDTH(`BSG_SAFE_CLOG2(ram_size_lp))
    )
    ram
     ( .clk(clk)

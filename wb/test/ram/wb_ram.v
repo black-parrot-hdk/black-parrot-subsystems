@@ -17,43 +17,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-// Language: Verilog 2001
-
-//`timescale 1ns / 1ps
-
-/*
- * Wishbone RAM
- */
 module wb_ram #
 (
-    parameter DATA_WIDTH = 32,              // width of data bus in bits (8, 16, 32, or 64)
-    parameter ADDR_WIDTH = 16,              // width of address bus in bits
-    parameter SELECT_WIDTH = (DATA_WIDTH/8) // width of word select bus (1, 2, 4, or 8)
+    parameter DATA_WIDTH = 32,
+    parameter ADDR_WIDTH = 16,
+    parameter SELECT_WIDTH = (DATA_WIDTH/8)
 )
 (
     input  wire                    clk,
 
-    input  wire [ADDR_WIDTH-1:0]   adr_i,   // ADR_I() address
-    input  wire [DATA_WIDTH-1:0]   dat_i,   // DAT_I() data in
-    output wire [DATA_WIDTH-1:0]   dat_o,   // DAT_O() data out
-    input  wire                    we_i,    // WE_I write enable input
-    input  wire [SELECT_WIDTH-1:0] sel_i,   // SEL_I() select input
-    input  wire                    stb_i,   // STB_I strobe input
-    output wire                    ack_o,   // ACK_O acknowledge output
-    input  wire                    cyc_i    // CYC_I cycle input
+    input  wire [ADDR_WIDTH-1:0]   adr_i,
+    input  wire [DATA_WIDTH-1:0]   dat_i,
+    input  wire                    cyc_i,
+    input  wire                    stb_i,
+    input  wire [SELECT_WIDTH-1:0] sel_i,
+    input  wire                    we_i,
+    output wire [DATA_WIDTH-1:0]   dat_o,
+    output wire                    ack_o
 );
 
-// for interfaces that are more than one word wide, disable address lines
 parameter VALID_ADDR_WIDTH = ADDR_WIDTH - $clog2(SELECT_WIDTH);
-// width of data port in words (1, 2, 4, or 8)
 parameter WORD_WIDTH = SELECT_WIDTH;
-// size of words (8, 16, 32, or 64 bits)
 parameter WORD_SIZE = DATA_WIDTH/WORD_WIDTH;
 
 reg [DATA_WIDTH-1:0] dat_o_reg = {DATA_WIDTH{1'b0}};
 reg ack_o_reg = 1'b0;
 
-// (* RAM_STYLE="BLOCK" *)
 reg [DATA_WIDTH-1:0] mem[(2**VALID_ADDR_WIDTH)-1:0];
 
 wire [VALID_ADDR_WIDTH-1:0] adr_i_valid = adr_i >> (ADDR_WIDTH - VALID_ADDR_WIDTH);
