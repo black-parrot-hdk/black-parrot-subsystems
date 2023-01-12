@@ -120,8 +120,8 @@ module bp_me_wb_master
 
   // for BP, less than bus width data must be replicated
   localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p>>3));
-  wire [size_width_lp-1:0] resp_size_lo = mem_cmd_header_li.size > e_bedrock_msg_size_8
-                                          ? e_bedrock_msg_size_8
+  wire [size_width_lp-1:0] resp_size_lo = mem_cmd_header_li.size > {size_width_lp{1'b1}}
+                                          ? {size_width_lp{1'b1}}
                                           : mem_cmd_header_li.size;
   logic [data_width_p-1:0] mem_resp_data_li;
   bsg_bus_pack
