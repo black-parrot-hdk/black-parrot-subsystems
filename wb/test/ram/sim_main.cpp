@@ -61,12 +61,12 @@ bool check_packets(const std::vector<BP_pkg>& commands,
                     uint8_t wb_addr = current_addr >> 3;
                     std::cout << "\nError: Read incorrect data form the RAM\n";
                     std::cout << "BP Address:\t"
-                        << VL_TO_STRING(current_addr) << "\n";
+                              << VL_TO_STRING(current_addr) << "\n";
                     std::cout << "WB Address:\t" << VL_TO_STRING(wb_addr) << "\n";
                     std::cout << "Data size:\t" << +data_size << " bytes\n";
                     std::cout << "Data read was " << VL_TO_STRING(data_pkg)
-                        << ", but should have been "
-                        << VL_TO_STRING(data_ram) << "\n";
+                              << ", but should have been "
+                              << VL_TO_STRING(data_ram) << "\n";
 
                     ++errors;
                     error_found = true;
@@ -144,8 +144,8 @@ int main(int argc, char* argv[]) {
         std::cout << "\nSkipped checking transmissions due to previous errors\n";
     }
 
-    std::cout << "\n-- SUMMARY ---------------------"
-              << "\nTotal simulation time: " << Verilated::time() << " ticks\n";
+    std::cout << "\n-- SUMMARY ---------------------\n"
+              << "Total simulation time: " << Verilated::time() << " ticks\n";
     if (errors == 0)
         std::cout << "Check succeeded\n";
     else

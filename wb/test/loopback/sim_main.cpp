@@ -28,13 +28,13 @@ long count_bytes(std::vector<BP_pkg> packages) {
 }
 
 void print_header(const BP_pkg& pkg) {
-    std::cout << VL_TO_STRING(pkg.header) << std::hex
-              << "\n  msg_type: 'h" << pkg.msg_type
-              << "\n  subop:    'h" << pkg.subop
-              << "\n  addr:     'h" << pkg.addr
-              << "\n  size:     'h" << pkg.size
-              << "\n  payload:  'h" << pkg.payload
-              << "\n" << std::dec;
+    std::cout << VL_TO_STRING(pkg.header)
+              << "\n  msg_type: " << VL_TO_STRING(pkg.msg_type)
+              << "\n  subop:    " << VL_TO_STRING(pkg.subop)
+              << "\n  addr:     " << VL_TO_STRING(pkg.addr)
+              << "\n  size:     " << VL_TO_STRING(pkg.size)
+              << "\n  payload:  " << VL_TO_STRING(pkg.payload)
+              << "\n";
 }
 
 bool check_packets(const std::vector<BP_pkg>& master_pkgs,
@@ -56,9 +56,9 @@ bool check_packets(const std::vector<BP_pkg>& master_pkgs,
         uint64_t current_addr = master_pkg.addr;
         for (int i = 0; i < transfers; ++i) {
             const BP_pkg& client_pkg = *client_pkg_it;
-            std::vector<std::string> diff;
 
             // check the various header fields for differences
+            std::vector<std::string> diff;
             if (master_pkg.msg_type != client_pkg.msg_type)
                 diff.push_back("msg_type");
             if (master_pkg.subop != client_pkg.subop)
@@ -196,11 +196,11 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "\n-- SUMMARY ---------------------\n"
-        << "Total simulation time: " << Verilated::time() << " ticks\n";
+              << "Total simulation time: " << Verilated::time() << " ticks\n";
     if (errors == 0)
         std::cout << "Check succeeded\n";
     else
         std::cout << "Check failed\n";
 
-    return 0;
+    return errors > 0;
 }

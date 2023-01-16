@@ -40,8 +40,8 @@ private:
     int test_size;
     unsigned long seed;
 
-    unsigned int rx_cooldown;
-    unsigned int tx_cooldown;
+    int rx_cooldown;
+    int tx_cooldown;
 
     std::vector<BP_pkg> commands;
     int cmd_ind;

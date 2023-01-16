@@ -78,9 +78,6 @@ run: check
 	@echo "-- COVERAGE --------------------"
 	$(VERILATOR_COVERAGE) --annotate logs/annotated logs/coverage.dat
 
-	@echo
-	@echo "-- DONE ------------------------"
-
 show-config:
 	$(VERILATOR) -V
 
