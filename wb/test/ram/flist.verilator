@@ -27,7 +27,7 @@ $BP_COMMON_DIR/src/v/bsg_bus_pack.sv
 
 # BP me stream pumps
 $BP_ME_DIR/src/v/network/bp_me_stream_fifo.sv 
-$BP_ME_DIR/src/v/network/bp_me_stream_wraparound.sv
+$BP_ME_DIR/src/v/network/bp_me_stream_pump_control.sv
 $BP_ME_DIR/src/v/network/bp_me_stream_pump_in.sv
 $BP_ME_DIR/src/v/network/bp_me_stream_pump_out.sv
 

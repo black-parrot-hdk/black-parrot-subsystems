@@ -1,6 +1,6 @@
 /*
  * Name:
- *  bp_me_wb_master.v
+ *  bp_me_wb_master.sv
  *
  * Description:
  *  This module converts BlackParrot (BP) Bedrock commands to Wishbone (WB)
@@ -21,50 +21,49 @@ module bp_me_wb_master
     , parameter  data_width_p        = dword_width_gp
     , localparam wbone_addr_width_lp = paddr_width_p - `BSG_SAFE_CLOG2(data_width_p>>3)
   )
-  (   input                                  clk_i
-    , input                                  reset_i
+  (   input                                      clk_i
+    , input                                      reset_i
 
     // BP signals
-    , input  [mem_header_width_lp-1:0]       mem_cmd_header_i
-    , input  [data_width_p-1:0]              mem_cmd_data_i
-    , input                                  mem_cmd_v_i
-    , output logic                           mem_cmd_ready_and_o
-    , input                                  mem_cmd_last_i
+    , input  [mem_fwd_header_width_lp-1:0]       mem_fwd_header_i
+    , input  [data_width_p-1:0]                  mem_fwd_data_i
+    , input                                      mem_fwd_v_i
+    , output logic                               mem_fwd_ready_and_o
+    , input                                      mem_fwd_last_i
 
-    , output logic [mem_header_width_lp-1:0] mem_resp_header_o
-    , output logic [data_width_p-1:0]        mem_resp_data_o
-    , output logic                           mem_resp_v_o
-    , input                                  mem_resp_ready_and_i
-    , output                                 mem_resp_last_o
+    , output logic [mem_rev_header_width_lp-1:0] mem_rev_header_o
+    , output logic [data_width_p-1:0]            mem_rev_data_o
+    , output logic                               mem_rev_v_o
+    , input                                      mem_rev_ready_and_i
+    , output                                     mem_rev_last_o
 
     // WB signals
-    , output logic [wbone_addr_width_lp-1:0] adr_o
-    , output logic [data_width_p-1:0]        dat_o
-    , output logic                           cyc_o
-    , output logic                           stb_o
-    , output logic [(data_width_p>>3)-1:0]   sel_o
-    , output logic                           we_o
+    , output logic [wbone_addr_width_lp-1:0]     adr_o
+    , output logic [data_width_p-1:0]            dat_o
+    , output logic                               cyc_o
+    , output logic                               stb_o
+    , output logic [(data_width_p>>3)-1:0]       sel_o
+    , output logic                               we_o
 
-    , input  [data_width_p-1:0]              dat_i
-    , input                                  ack_i
+    , input  [data_width_p-1:0]                  dat_i
+    , input                                      ack_i
   );
 
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
-  `bp_cast_i(bp_bedrock_mem_header_s, mem_cmd_header);
+  `bp_cast_i(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
 
   // input pump
-  bp_bedrock_mem_header_s mem_cmd_header_li;
-  logic [paddr_width_p-1:0] mem_cmd_stream_addr_li;
-  logic [data_width_p-1:0] mem_cmd_data_li;
-  logic mem_cmd_v_li;
-  logic mem_cmd_new_li;
+  bp_bedrock_mem_fwd_header_s mem_fwd_header_li;
+  logic [paddr_width_p-1:0] mem_fwd_addr_li;
+  logic [data_width_p-1:0] mem_fwd_data_li;
+  logic mem_fwd_v_li;
   bp_me_stream_pump_in
     #(.bp_params_p(bp_params_p)
      ,.stream_data_width_p(data_width_p)
      ,.block_width_p(cce_block_width_p)
-     ,.payload_width_p(mem_payload_width_lp)
-     ,.msg_stream_mask_p(mem_cmd_payload_mask_gp)
-     ,.fsm_stream_mask_p(mem_cmd_payload_mask_gp | mem_resp_payload_mask_gp)
+     ,.payload_width_p(mem_fwd_payload_width_lp)
+     ,.msg_stream_mask_p(mem_fwd_payload_mask_gp)
+     ,.fsm_stream_mask_p(mem_fwd_payload_mask_gp | mem_rev_payload_mask_gp)
      ,.header_els_p(2)
      ,.data_els_p(`BSG_MAX(2, cce_block_width_p/data_width_p))
     )
@@ -72,58 +71,58 @@ module bp_me_wb_master
     ( .clk_i(clk_i)
      ,.reset_i(reset_i)
 
-     ,.msg_header_i(mem_cmd_header_i)
-     ,.msg_data_i(mem_cmd_data_i)
-     ,.msg_v_i(mem_cmd_v_i)
-     ,.msg_last_i(mem_cmd_last_i)
-     ,.msg_ready_and_o(mem_cmd_ready_and_o)
+     ,.msg_header_i(mem_fwd_header_i)
+     ,.msg_data_i(mem_fwd_data_i)
+     ,.msg_v_i(mem_fwd_v_i)
+     ,.msg_last_i(mem_fwd_last_i)
+     ,.msg_ready_and_o(mem_fwd_ready_and_o)
 
-     ,.fsm_base_header_o(mem_cmd_header_li)
-     ,.fsm_addr_o(mem_cmd_stream_addr_li)
-     ,.fsm_data_o(mem_cmd_data_li)
-     ,.fsm_v_o(mem_cmd_v_li)
-     ,.fsm_ready_and_i(ack_i)
-     ,.fsm_new_o(mem_cmd_new_li)
-     ,.fsm_done_o(/* unused */)
+     ,.fsm_header_o(mem_fwd_header_li)
+     ,.fsm_addr_o(mem_fwd_addr_li)
+     ,.fsm_data_o(mem_fwd_data_li)
+     ,.fsm_v_o(mem_fwd_v_li)
+     ,.fsm_yumi_i(ack_i)
+     ,.fsm_new_o(/* unused */)
+     ,.fsm_cnt_o(/* unused */)
      ,.fsm_last_o(/* unused */)
     );
 
   // output pump
-  logic mem_resp_ready_and_lo;
+  logic mem_rev_ready_and_li;
   bp_me_stream_pump_out
     #(.bp_params_p(bp_params_p)
      ,.stream_data_width_p(data_width_p)
      ,.block_width_p(cce_block_width_p)
-     ,.payload_width_p(mem_payload_width_lp)
-     ,.msg_stream_mask_p(mem_resp_payload_mask_gp)
-     ,.fsm_stream_mask_p(mem_cmd_payload_mask_gp | mem_resp_payload_mask_gp)
+     ,.payload_width_p(mem_rev_payload_width_lp)
+     ,.msg_stream_mask_p(mem_rev_payload_mask_gp)
+     ,.fsm_stream_mask_p(mem_fwd_payload_mask_gp | mem_rev_payload_mask_gp)
     )
     pump_out
     ( .clk_i(clk_i)
      ,.reset_i(reset_i)
 
-     ,.msg_header_o(mem_resp_header_o)
-     ,.msg_data_o(mem_resp_data_o)
-     ,.msg_v_o(mem_resp_v_o)
-     ,.msg_last_o(mem_resp_last_o)
-     ,.msg_ready_and_i(mem_resp_ready_and_i)
+     ,.msg_header_o(mem_rev_header_o)
+     ,.msg_data_o(mem_rev_data_o)
+     ,.msg_v_o(mem_rev_v_o)
+     ,.msg_last_o(mem_rev_last_o)
+     ,.msg_ready_and_i(mem_rev_ready_and_i)
 
-     ,.fsm_base_header_i(mem_cmd_header_li)
-     ,.fsm_data_i(mem_resp_data_li)
+     ,.fsm_header_i(mem_fwd_header_li)
+     ,.fsm_addr_o(/* unused */)
+     ,.fsm_data_i(mem_rev_data_li)
      ,.fsm_v_i(ack_i)
-     ,.fsm_ready_and_o(mem_resp_ready_and_lo)
+     ,.fsm_ready_and_o(mem_rev_ready_and_li)
      ,.fsm_cnt_o(/* unused */)
      ,.fsm_new_o(/* unused */)
      ,.fsm_last_o(/* unused */)
-     ,.fsm_done_o(/* unused */)
     );
 
   // for BP, less than bus width data must be replicated
   localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p>>3));
-  wire [size_width_lp-1:0] resp_size_lo = mem_cmd_header_li.size > {size_width_lp{1'b1}}
+  wire [size_width_lp-1:0] resp_size_lo = mem_fwd_header_li.size > {size_width_lp{1'b1}}
                                           ? {size_width_lp{1'b1}}
-                                          : mem_cmd_header_li.size;
-  logic [data_width_p-1:0] mem_resp_data_li;
+                                          : mem_fwd_header_li.size;
+  logic [data_width_p-1:0] mem_rev_data_li;
   bsg_bus_pack
     #(
       .in_width_p(data_width_p)
@@ -132,7 +131,7 @@ module bp_me_wb_master
       .data_i(dat_i)
      ,.sel_i('0)
      ,.size_i(resp_size_lo)
-     ,.data_o(mem_resp_data_li)
+     ,.data_o(mem_rev_data_li)
     );
 
   // state machine for handling WB handshake
@@ -155,19 +154,16 @@ module bp_me_wb_master
     stb_n = 1'b0;
 
     // WB non-handshake signals
-    dat_o = mem_cmd_data_li;
-    adr_o = mem_cmd_stream_addr_li[paddr_width_p-1:`BSG_SAFE_CLOG2(data_width_p>>3)];
-    we_o  = (mem_cmd_header_li.msg_type == e_bedrock_mem_uc_wr);
-    unique case (mem_cmd_header_li.size)
+    dat_o = mem_fwd_data_li;
+    adr_o = mem_fwd_addr_li[paddr_width_p-1:`BSG_SAFE_CLOG2(data_width_p>>3)];
+    we_o  = (mem_fwd_header_li.msg_type == e_bedrock_mem_uc_wr);
+    unique case (mem_fwd_header_li.size)
       e_bedrock_msg_size_1: sel_o = (data_width_p>>3)'('h1);
       e_bedrock_msg_size_2: sel_o = (data_width_p>>3)'('h3);
       e_bedrock_msg_size_4: sel_o = (data_width_p>>3)'('hF);
       // >= e_bedrock_msg_size_8:
       default: sel_o = (data_width_p>>3)'('hFF);
     endcase
-
-    // BP non-handshake signals
-    mem_resp_header_o = mem_cmd_header_li;
 
     unique case (state_r)
       e_reset: begin
@@ -176,8 +172,8 @@ module bp_me_wb_master
 
       // wait for incoming BP command
       e_wait_cmd: begin
-        cyc_n = mem_cmd_v_li & mem_resp_ready_and_lo;
-        stb_n = mem_cmd_v_li & mem_resp_ready_and_lo;
+        cyc_n = mem_fwd_v_li & mem_rev_ready_and_li;
+        stb_n = mem_fwd_v_li & mem_rev_ready_and_li;
 
         state_n = cyc_n & stb_n & ~ack_i
                   ? e_wait_resp
@@ -218,11 +214,11 @@ module bp_me_wb_master
   end
 
   always_ff @(negedge clk_i) begin
-    assert(reset_i !== '0 || ~mem_cmd_v_i
-           || mem_cmd_header_cast_i.addr[0+:`BSG_SAFE_CLOG2(data_width_p>>3)] == '0)
+    assert(reset_i !== '0 || ~mem_fwd_v_i
+           || mem_fwd_header_cast_i.addr[0+:`BSG_SAFE_CLOG2(data_width_p>>3)] == '0)
       else $error("Command address not aligned to bus width");
-    assert(reset_i !== '0 || ~mem_cmd_v_i
-           || mem_cmd_header_cast_i.msg_type inside {e_bedrock_mem_uc_wr, e_bedrock_mem_uc_rd})
+    assert(reset_i !== '0 || ~mem_fwd_v_i
+           || mem_fwd_header_cast_i.msg_type inside {e_bedrock_mem_uc_wr, e_bedrock_mem_uc_rd})
       else $error("Command message type must be uncached");
   end
 endmodule

@@ -20,31 +20,31 @@ module top
   )
   ();
 
-  `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
+  `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
 
   // BP master signals
-  logic [mem_header_width_lp-1:0] mem_cmd_header_i;
-  logic [data_width_p-1:0]        mem_cmd_data_i;
-  logic                           mem_cmd_v_i;
-  logic                           mem_cmd_ready_and_o;
-  logic                           mem_cmd_last_i;
+  logic [mem_fwd_header_width_lp-1:0] mem_fwd_header_i;
+  logic [data_width_p-1:0]            mem_fwd_data_i;
+  logic                               mem_fwd_v_i;
+  logic                               mem_fwd_ready_and_o;
+  logic                               mem_fwd_last_i;
 
-  logic [mem_header_width_lp-1:0] mem_resp_header_o;
-  logic [data_width_p-1:0]        mem_resp_data_o;
-  logic                           mem_resp_v_o;
-  logic                           mem_resp_ready_and_i;
-  logic                           mem_resp_last_o;
+  logic [mem_rev_header_width_lp-1:0] mem_rev_header_o;
+  logic [data_width_p-1:0]            mem_rev_data_o;
+  logic                               mem_rev_v_o;
+  logic                               mem_rev_ready_and_i;
+  logic                               mem_rev_last_o;
 
   // WB signals
-  logic [wbone_addr_width_lp-1:0] adr;
-  logic [data_width_p-1:0]        dat_mosi;
-  logic                           stb;
-  logic                           cyc;
-  logic [(data_width_p>>3)-1:0]   sel;
-  logic                           we;
+  logic [wbone_addr_width_lp-1:0]     adr;
+  logic [data_width_p-1:0]            dat_mosi;
+  logic                               stb;
+  logic                               cyc;
+  logic [(data_width_p>>3)-1:0]       sel;
+  logic                               we;
 
-  logic [data_width_p-1:0]        dat_miso;
-  logic                           ack;
+  logic [data_width_p-1:0]            dat_miso;
+  logic                               ack;
 
   /*
    * generate clk and reset
@@ -72,8 +72,8 @@ module top
   /*
    * dpi module for sending commands to the master adapter
    */
-  logic [62:0] mem_cmd_header_li;
-  assign mem_cmd_header_i = {'0, mem_cmd_header_li};
+  logic [62:0] mem_fwd_header_li;
+  assign mem_fwd_header_i = {'0, mem_fwd_header_li};
 
   bsg_nonsynth_dpi_to_fifo
     #(
@@ -85,9 +85,9 @@ module top
      ,.reset_i(reset)
      ,.debug_o() 
 
-     ,.v_o(mem_cmd_v_i)
-     ,.ready_i(mem_cmd_ready_and_o)
-     ,.data_o({mem_cmd_last_i, mem_cmd_header_li, mem_cmd_data_i})
+     ,.v_o(mem_fwd_v_i)
+     ,.ready_i(mem_fwd_ready_and_o)
+     ,.data_o({mem_fwd_last_i, mem_fwd_header_li, mem_fwd_data_i})
     );
 
   /*
@@ -101,9 +101,9 @@ module top
        .clk_i(clk)
       ,.reset_i(reset)
 
-      ,.ready_o(mem_resp_ready_and_i)
-      ,.data_i({mem_resp_last_o, mem_resp_header_o[0+:63], mem_resp_data_o})
-      ,.v_i(mem_resp_v_o)
+      ,.ready_o(mem_rev_ready_and_i)
+      ,.data_i({mem_rev_last_o, mem_rev_header_o[0+:63], mem_rev_data_o})
+      ,.v_i(mem_rev_v_o)
 
       ,.v_o(m_f2d_resp_v_i)
       ,.data_o(m_f2d_resp_data_i)
@@ -138,17 +138,17 @@ module top
     ( .clk_i(clk)
      ,.reset_i(reset)
 
-     ,.mem_cmd_header_i(mem_cmd_header_i)
-     ,.mem_cmd_data_i(mem_cmd_data_i)
-     ,.mem_cmd_v_i(mem_cmd_v_i)
-     ,.mem_cmd_ready_and_o(mem_cmd_ready_and_o)
-     ,.mem_cmd_last_i(mem_cmd_last_i)
+     ,.mem_fwd_header_i(mem_fwd_header_i)
+     ,.mem_fwd_data_i(mem_fwd_data_i)
+     ,.mem_fwd_v_i(mem_fwd_v_i)
+     ,.mem_fwd_ready_and_o(mem_fwd_ready_and_o)
+     ,.mem_fwd_last_i(mem_fwd_last_i)
 
-     ,.mem_resp_header_o(mem_resp_header_o)
-     ,.mem_resp_data_o(mem_resp_data_o)
-     ,.mem_resp_v_o(mem_resp_v_o)
-     ,.mem_resp_ready_and_i(mem_resp_ready_and_i)
-     ,.mem_resp_last_o(mem_resp_last_o)
+     ,.mem_rev_header_o(mem_rev_header_o)
+     ,.mem_rev_data_o(mem_rev_data_o)
+     ,.mem_rev_v_o(mem_rev_v_o)
+     ,.mem_rev_ready_and_i(mem_rev_ready_and_i)
+     ,.mem_rev_last_o(mem_rev_last_o)
 
      ,.adr_o(adr)
      ,.dat_o(dat_mosi)
