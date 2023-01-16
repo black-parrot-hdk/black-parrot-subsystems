@@ -249,5 +249,7 @@ module top
   initial begin
     assert(data_width_p == 64)
       else $error("Testbench is to be used with 64 bit wide data");
+    assert(cce_block_width_p >= 512)
+      else $error("Testbench is to be used with at least 512 bit wide cache blocks");
   end
 endmodule
