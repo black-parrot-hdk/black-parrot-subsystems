@@ -24,7 +24,7 @@ BP_me_WB_master_ctrl::BP_me_WB_master_ctrl(
         cmd.msg_type = 0b0010 + (cmd.msg_type & 0b0001);
         cmd.subop = 0;
         cmd.addr = cmd.addr & 0x7FFFFFFFF8;
-        cmd.size = cmd.size % 6;
+        cmd.size = cmd.size % 7;
         cmd.payload = 0;
 
         // generate data
