@@ -36,7 +36,7 @@ module bp_me_wb_master
     , output logic [data_width_p-1:0]            mem_rev_data_o
     , output logic                               mem_rev_v_o
     , input                                      mem_rev_ready_and_i
-    , output                                     mem_rev_last_o
+    , output logic                               mem_rev_last_o
 
     // WB signals
     , output logic [wbone_addr_width_lp-1:0]     adr_o
@@ -222,8 +222,8 @@ module bp_me_wb_master
   // synopsys sync_set_reset "reset_i"
   always_ff @(posedge clk_i) begin
     state_r <= reset_i
-              ? e_reset
-              : state_n;
+               ? e_reset
+               : state_n;
 
     cyc_o <= cyc_n;
     stb_o <= stb_n;
