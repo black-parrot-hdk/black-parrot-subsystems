@@ -19,6 +19,7 @@ module bp_me_wb_master
     `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
 
     , parameter  data_width_p        = dword_width_gp
+    , parameter  return_fifo_els_p   = 4
     , localparam wbone_addr_width_lp = paddr_width_p - `BSG_SAFE_CLOG2(data_width_p>>3)
   )
   (   input                                      clk_i
@@ -101,11 +102,11 @@ module bp_me_wb_master
     ( .clk_i(clk_i)
      ,.reset_i(reset_i)
 
-     ,.msg_header_o(mem_rev_header_o)
-     ,.msg_data_o(mem_rev_data_o)
-     ,.msg_v_o(mem_rev_v_o)
-     ,.msg_last_o(mem_rev_last_o)
-     ,.msg_ready_and_i(mem_rev_ready_and_i)
+     ,.msg_header_o(return_fifo_header_o)
+     ,.msg_data_o(return_fifo_data_o)
+     ,.msg_v_o(return_fifo_v_o)
+     ,.msg_last_o(return_fifo_last_o)
+     ,.msg_ready_and_i(return_fifo_ready_and_i)
 
      ,.fsm_header_i(mem_fwd_header_li)
      ,.fsm_addr_o(/* unused */)
@@ -115,6 +116,29 @@ module bp_me_wb_master
      ,.fsm_cnt_o(/* unused */)
      ,.fsm_new_o(/* unused */)
      ,.fsm_last_o(/* unused */)
+    );
+  
+  // return fifo to convert from ready->valid to ready&valid
+  logic [mem_rev_header_width_lp-1:0] return_fifo_header_o;
+  logic [data_width_p-1:0] return_fifo_data_o;
+  logic return_fifo_last_o;
+  logic return_fifo_v_o;
+  logic return_fifo_ready_and_i;
+  bsg_fifo_1r1w_small
+    #(.width_p(mem_rev_header_width_lp + data_width_p + 1)
+     ,.els_p(return_fifo_els_p)
+    )
+    return_fifo
+    ( .clk_i(clk_i)
+     ,.reset_i(reset_i)
+
+     ,.data_i({return_fifo_header_o, return_fifo_data_o, return_fifo_last_o})
+     ,.v_i(return_fifo_v_o)
+     ,.ready_o(return_fifo_ready_and_i)
+
+     ,.data_o({mem_rev_header_o, mem_rev_data_o, mem_rev_last_o})
+     ,.v_o(mem_rev_v_o)
+     ,.yumi_i(mem_rev_ready_and_i & mem_rev_v_o)
     );
 
   // for BP, less than bus width data must be replicated

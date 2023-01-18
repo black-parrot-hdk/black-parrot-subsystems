@@ -93,27 +93,6 @@ module top
   /*
    * dpi module for receiving responses from the master adapter
    */
-  // the dpi module has a valid->yumi interface, which breaks the adapter,
-  // so we introduce a fifo in between the two modules
-  bsg_two_fifo
-    #(.width_p(128))
-    m_f2d_fifo(
-       .clk_i(clk)
-      ,.reset_i(reset)
-
-      ,.ready_o(mem_rev_ready_and_i)
-      ,.data_i({mem_rev_last_o, mem_rev_header_o[0+:63], mem_rev_data_o})
-      ,.v_i(mem_rev_v_o)
-
-      ,.v_o(m_f2d_resp_v_i)
-      ,.data_o(m_f2d_resp_data_i)
-      ,.yumi_i(m_f2d_resp_yumi_o)
-    );
-
-  logic         m_f2d_resp_v_i;
-  logic         m_f2d_resp_yumi_o;
-  logic [127:0] m_f2d_resp_data_i;
-
   bsg_nonsynth_dpi_from_fifo
     #(
       .width_p(128)
@@ -124,9 +103,9 @@ module top
      ,.reset_i(reset)
      ,.debug_o()
 
-     ,.v_i(m_f2d_resp_v_i)
-     ,.yumi_o(m_f2d_resp_yumi_o)
-     ,.data_i(m_f2d_resp_data_i)
+     ,.v_i(mem_rev_v_o)
+     ,.yumi_o(mem_rev_ready_and_i)
+     ,.data_i({mem_rev_last_o, mem_rev_header_o[0+:63], mem_rev_data_o})
     );
 
   /*
