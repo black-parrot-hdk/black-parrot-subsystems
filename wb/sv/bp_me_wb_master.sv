@@ -102,11 +102,11 @@ module bp_me_wb_master
     ( .clk_i(clk_i)
      ,.reset_i(reset_i)
 
-     ,.msg_header_o(return_fifo_header_o)
-     ,.msg_data_o(return_fifo_data_o)
-     ,.msg_v_o(return_fifo_v_o)
-     ,.msg_last_o(return_fifo_last_o)
-     ,.msg_ready_and_i(return_fifo_ready_and_i)
+     ,.msg_header_o(return_fifo_header_lo)
+     ,.msg_data_o(return_fifo_data_lo)
+     ,.msg_v_o(return_fifo_v_lo)
+     ,.msg_last_o(return_fifo_last_lo)
+     ,.msg_ready_and_i(return_fifo_ready_and_li)
 
      ,.fsm_header_i(mem_fwd_header_li)
      ,.fsm_addr_o(/* unused */)
@@ -117,13 +117,13 @@ module bp_me_wb_master
      ,.fsm_new_o(/* unused */)
      ,.fsm_last_o(/* unused */)
     );
-  
+
   // return fifo to convert from ready->valid to ready&valid
-  logic [mem_rev_header_width_lp-1:0] return_fifo_header_o;
-  logic [data_width_p-1:0] return_fifo_data_o;
-  logic return_fifo_last_o;
-  logic return_fifo_v_o;
-  logic return_fifo_ready_and_i;
+  logic [mem_rev_header_width_lp-1:0] return_fifo_header_lo;
+  logic [data_width_p-1:0] return_fifo_data_lo;
+  logic return_fifo_last_lo;
+  logic return_fifo_v_lo;
+  logic return_fifo_ready_and_li;
   bsg_fifo_1r1w_small
     #(.width_p(mem_rev_header_width_lp + data_width_p + 1)
      ,.els_p(return_fifo_els_p)
@@ -132,9 +132,9 @@ module bp_me_wb_master
     ( .clk_i(clk_i)
      ,.reset_i(reset_i)
 
-     ,.data_i({return_fifo_header_o, return_fifo_data_o, return_fifo_last_o})
-     ,.v_i(return_fifo_v_o)
-     ,.ready_o(return_fifo_ready_and_i)
+     ,.data_i({return_fifo_header_lo, return_fifo_data_lo, return_fifo_last_lo})
+     ,.v_i(return_fifo_v_lo)
+     ,.ready_o(return_fifo_ready_and_li)
 
      ,.data_o({mem_rev_header_o, mem_rev_data_o, mem_rev_last_o})
      ,.v_o(mem_rev_v_o)
@@ -158,24 +158,13 @@ module bp_me_wb_master
      ,.data_o(mem_rev_data_li)
     );
 
-  // state machine for handling WB handshake
-  // BP handshake is handled by the command and response data buffers
-  typedef enum logic [1:0] {
-     e_reset     = 2'b00
-    ,e_wait_cmd  = 2'b01
-    ,e_wait_resp = 2'b10
-  } state_e;
-  state_e state_n, state_r;
-
   // registered cyc and stb to avoid cycle with client's ack
   logic cyc_n, stb_n;
 
   always_comb begin
-    state_n = state_r;
-
-    // default values for handshake signals
-    cyc_n = 1'b0;
-    stb_n = 1'b0;
+    // WB handshake signals
+    cyc_n = mem_fwd_v_li & mem_rev_ready_and_li;
+    stb_n = mem_fwd_v_li & mem_rev_ready_and_li & ~ack_i;
 
     // WB non-handshake signals
     dat_o = mem_fwd_data_li;
@@ -188,45 +177,19 @@ module bp_me_wb_master
       // >= e_bedrock_msg_size_8:
       default: sel_o = (data_width_p>>3)'('hFF);
     endcase
-
-    unique case (state_r)
-      e_reset: begin
-        state_n = e_wait_cmd;
-      end
-
-      // wait for incoming BP command
-      e_wait_cmd: begin
-        cyc_n = mem_fwd_v_li & mem_rev_ready_and_li;
-        stb_n = mem_fwd_v_li & mem_rev_ready_and_li;
-
-        state_n = cyc_n & stb_n & ~ack_i
-                  ? e_wait_resp
-                  : state_r;
-      end
-
-      // wait for WB response
-      e_wait_resp: begin
-        cyc_n = ~ack_i;
-        stb_n = ~ack_i;
-
-        state_n = ack_i
-                  ? e_wait_cmd
-                  : state_r;
-      end
-
-      default: begin end
-    endcase
   end
 
   // advance to next state
   // synopsys sync_set_reset "reset_i"
   always_ff @(posedge clk_i) begin
-    state_r <= reset_i
-               ? e_reset
-               : state_n;
-
-    cyc_o <= cyc_n;
-    stb_o <= stb_n;
+    if (reset_i) begin
+      cyc_o <= 1'b0;
+      stb_o <= 1'b0;
+    end
+    else begin
+      cyc_o <= cyc_n;
+      stb_o <= stb_n;
+    end
   end
 
   // assertions

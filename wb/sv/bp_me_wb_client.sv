@@ -73,7 +73,7 @@ module bp_me_wb_client
   // state machine for handling BP and WB handshakes
   typedef enum logic [1:0] {
      e_reset          = 2'b00
-    ,e_wait_cmd       = 2'b01
+    ,e_ready       = 2'b01
     ,e_wait_read_resp = 2'b10
   } state_e;
   state_e state_n, state_r;
@@ -111,11 +111,11 @@ module bp_me_wb_client
 
     unique case (state_r)
       e_reset: begin
-        state_n = e_wait_cmd;
+        state_n = e_ready;
       end
 
       // wait for incoming WB command
-      e_wait_cmd: begin
+      e_ready: begin
         mem_fwd_v_o = cyc_i & stb_i;
 
         // write commands are ack'ed immediately upon transmission
@@ -135,7 +135,7 @@ module bp_me_wb_client
         ack_o = mem_rev_v_i & mem_rev_header_cast_i.msg_type == e_bedrock_mem_uc_rd;
 
         state_n = ack_o
-                  ? e_wait_cmd
+                  ? e_ready
                   : state_r;
       end
 
@@ -146,9 +146,10 @@ module bp_me_wb_client
   // advance to next state
   // synopsys sync_set_reset "reset_i"
   always_ff @(posedge clk_i) begin
-    state_r <= reset_i
-               ? e_reset
-               : state_n;
+    if (reset_i)
+      state_r <= e_reset;
+    else
+      state_r <= state_n;
   end
 
   // assertions
