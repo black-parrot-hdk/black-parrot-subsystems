@@ -28,7 +28,7 @@ module bp_axi_lite_top
    , output logic [1:0][axil_addr_width_p-1:0]  m_axil_awaddr_o
    , output [1:0][2:0]                          m_axil_awprot_o
    , output logic [1:0]                         m_axil_awvalid_o
-   , input                                      m_axil_awready_i
+   , input [1:0]                                m_axil_awready_i
 
    , output logic [1:0][axil_data_width_p-1:0]  m_axil_wdata_o
    , output logic [1:0][axil_mask_width_lp-1:0] m_axil_wstrb_o
@@ -56,6 +56,7 @@ module bp_axi_lite_top
    , input                                      s_external_irq_i
    );
 
+  `declare_bp_cfg_bus_s(vaddr_width_p, hio_width_p, core_id_width_p, cce_id_width_p, lce_id_width_p);
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
 
   bp_bedrock_mem_header_s [1:0] proc_fwd_header_lo;
