@@ -116,23 +116,23 @@ module phy_nonsynth (
 `elsif SPEED_10
   wire [6:0] val_li = 7'd49;
 `endif
-  bit rgmii_txd_reference_clk;
+  bit rgmii_rxd_reference_clk;
   // X / 2 - 1
   bsg_counter_clock_downsample #(
      .width_p(7)
-  ) rgmii_txd_reference_clk_downsample (
+  ) rgmii_rxd_reference_clk_downsample (
      .clk_i(clk250_internal)
     ,.reset_i(clk250_reset_internal)
     ,.val_i(val_li)
-    ,.clk_r_o(rgmii_txd_reference_clk)
+    ,.clk_r_o(rgmii_rxd_reference_clk)
   );
 
   task automatic rx_clk_generator();
     forever begin
-      @(posedge rgmii_txd_reference_clk);
+      @(posedge rgmii_rxd_reference_clk);
       @(negedge clk250_internal);
       rgmii_rx_clk_o = ~rgmii_rx_clk_o;
-      @(negedge rgmii_txd_reference_clk)
+      @(negedge rgmii_rxd_reference_clk)
       @(negedge clk250_internal);
       rgmii_rx_clk_o = ~rgmii_rx_clk_o;
     end
@@ -146,7 +146,7 @@ module phy_nonsynth (
     bit second_half = 1'b0;
 
     forever begin
-      @(posedge rgmii_txd_reference_clk);
+      @(posedge rgmii_rxd_reference_clk);
       if(packet_idx == packet_size + 12) begin
         rgmii_rx_ctl_o = 1'b0;
         break;
@@ -162,7 +162,7 @@ module phy_nonsynth (
 
 `endif
       rgmii_rx_ctl_o = 1'b1;
-      @(negedge rgmii_txd_reference_clk)
+      @(negedge rgmii_rxd_reference_clk)
 `ifdef SPEED_1000
       rgmii_rxd_o = next_byte[7:4];
 `endif
