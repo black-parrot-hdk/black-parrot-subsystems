@@ -53,6 +53,7 @@ module eth_mac_1g_rgmii_fifo #
 
     input  wire                       clk250,
     input  wire                       clk250_rst,
+    input  wire                       tx_clk_gen_rst,
 
     output wire                       tx_clk,
     input  wire                       tx_rst,
@@ -263,6 +264,7 @@ eth_mac_1g_rgmii #(
 eth_mac_1g_rgmii_inst (
     .clk250(clk250),
     .clk250_rst(clk250_rst),
+    .tx_clk_gen_rst(tx_clk_gen_rst),
     .tx_clk(tx_clk),
     .tx_rst(tx_rst),
     .rx_clk(rx_clk),

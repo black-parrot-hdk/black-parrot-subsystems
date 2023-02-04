@@ -35,6 +35,7 @@ module tx_clks_generator
 (
       input  logic       clk250_i
     , input  logic       clk250_rst_i
+    , input  logic       tx_clk_gen_rst_i
 
     // phy_rgmii_tx_clk_setting_i:
     // It is used for determining the frequency of
@@ -67,7 +68,7 @@ oddr_clock_downsample_and_right_shift
 bsg_counter_clock_downsample #(.width_p(2))
  gtx_clk_gen (
   .clk_i(clk250_i)
-  ,.reset_i(clk250_rst_i)
+  ,.reset_i(tx_clk_gen_rst_i)
   ,.val_i(2'b0) // divided by 2
   ,.clk_r_o(mac_gmii_tx_clk_o));
 

@@ -35,6 +35,8 @@ module eth_mac_1g_rgmii #
 (
     input  wire        clk250,
     input  wire        clk250_rst,
+    input  wire        tx_clk_gen_rst,
+
     output wire        rx_clk,
     input  wire        rx_rst,
     output wire        tx_clk,
@@ -221,6 +223,7 @@ assign speed = speed_reg;
 rgmii_phy_if rgmii_phy_if_inst (
     .clk250(clk250),
     .clk250_rst(clk250_rst),
+    .tx_clk_gen_rst(tx_clk_gen_rst),
 
     .mac_gmii_rx_clk(rx_clk),
     .mac_gmii_rx_rst(rx_rst),

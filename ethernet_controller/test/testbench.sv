@@ -13,7 +13,7 @@
 
 // The write op size can be set to different value
 // 2'b00: 1 byte, 2'b01: 2 bytes, 2'b10: 4 bytes
-`define WRITE_OP_SIZE 2'b10
+`define WRITE_OP_SIZE 2'b00
 program user_signals #(
     parameter data_width_p
   , localparam addr_width_lp = 14
@@ -23,6 +23,7 @@ program user_signals #(
     , output bit                         reset_o
     , input  bit                         clk250_i
     , output bit                         clk250_reset_o
+    , output bit                         tx_clk_gen_reset_o
     , input  bit                         tx_clk_i
     , output bit                         tx_reset_o
     , input  bit                         rx_clk_i
@@ -39,29 +40,36 @@ program user_signals #(
     , input  logic                       tx_interrupt_pending_i
 );
 
-  int unsigned op_size_lo;
-
   function automatic int unsigned op_size_to_mask(
-       int unsigned op_size_i);
-    int unsigned mask_o;
-    case(op_size_i)
-      'b00:    mask_o = 'h1;
-      'b01:    mask_o = 'h3;
-      'b10:    mask_o = 'hF;
-      'b11:    mask_o = 'hFF;
-      default: begin mask_o = 'x; $display("%m: invalid op_size"); end
+       int unsigned op_size_i
+     , int unsigned addr_i);
+    int unsigned mask_tmp, mask_o;
+    mask_tmp = '0;
+    mask_o  = '0;
+    case (op_size_i)
+      'b00:
+        mask_tmp = (8'h1 << addr_i[2:0]);
+      'b01:
+        mask_tmp = (8'h3 << {addr_i[2:1], 1'b0});
+      'b10:
+        mask_tmp = (8'hF << {addr_i[2], 2'b0});
+      'b11:
+        mask_tmp = 8'hFF;
+      default: begin $display("unknown op_size"); $finish; end
+    endcase
+    case (data_width_p / 8)
+      4: mask_o = mask_tmp[3:0] | mask_tmp[7:4];
+      8: mask_o = mask_tmp;
     endcase
     return mask_o;
   endfunction
-
 
   task automatic write_addr (
        input int unsigned address
       ,input int unsigned data
       ,input int unsigned op_size);
     assert((address % ('b1 << op_size)) == 0);
-//    op_size_o    = op_size;
-    write_mask_o = op_size_to_mask(op_size);
+    write_mask_o = op_size_to_mask(op_size, address);
     addr_o       = address;
     write_data_o = data;
     write_en_o   = 1'b1;
@@ -74,8 +82,7 @@ program user_signals #(
       ,output int unsigned read_data
       ,input int unsigned op_size);
     assert((address % ('b1 << op_size)) == 0);
-//    op_size_o = op_size;
-    write_mask_o = op_size_to_mask(op_size);
+    write_mask_o = op_size_to_mask(op_size, address);
     addr_o    = address;
     read_en_o = 1'b1;
     @(posedge clk_i)
@@ -110,6 +117,7 @@ program user_signals #(
       for(int j = 0;j < (1 << op_size);j++)
         write_data[j * 8+:8] = next_char++;
       write_data = write_data << (i * ('d1 << op_size) * 8 % data_width_p);
+      $display("DEBUG: %0x %0x", 'h0800 + (i * ('d1 << op_size)), write_data);
       write_addr('h0800 + (i * ('d1 << op_size)), write_data, op_size);
     end
 
@@ -169,6 +177,24 @@ program user_signals #(
     reset_o        = 1'b1;
     rx_reset_o     = 1'b1;
     tx_reset_o    = 1'b1;
+    tx_clk_gen_reset_o = 1'b1;
+    @(posedge clk250_i)
+    // Now tx_clk is toggling
+    tx_clk_gen_reset_o = 1'b0;
+    // Assuming rx_clk can be the slowest clock
+    // Wait for 3 * 2.5MHZ cycle starting from a rx_clk posedge clk
+    // This should be long enough for flushing all the unknown values
+    // in bsg_launch_sync_sync
+    @(posedge rx_clk_i);
+    #1200; // ((1/2.5) * 1000) * 3
+    @(posedge clk250_i);
+    clk250_reset_o = 1'b0;
+    @(posedge tx_clk_i);
+    tx_reset_o = 1'b0;
+    @(posedge rx_clk_i)
+    rx_reset_o = 1'b0;
+    @(posedge clk_i)
+/*
     // Assuming rx_clk can be the slowest clock
     // Wait for 3 * 2.5MHZ cycle starting from a rx_clk posedge clk
     // This should be long enough for flushing all the unknown values
@@ -190,8 +216,8 @@ program user_signals #(
     @(posedge rx_clk_i)
     rx_reset_o = 1'b0;
     @(posedge clk_i)
+*/
     reset_o = 1'b0;
-
     // test starts
     // Set the write op size here:
     write_op_size = `WRITE_OP_SIZE;
@@ -217,6 +243,7 @@ module wrapper();
   bit reset_li;
   bit clk250_li;
   bit clk250_reset_li;
+  bit tx_clk_gen_reset_li;
   bit tx_clk_lo;
   bit tx_reset_li;
   bit rx_clk_lo;
@@ -249,6 +276,7 @@ module wrapper();
     ,.reset_o(reset_li)
     ,.clk250_i(clk250_li)
     ,.clk250_reset_o(clk250_reset_li)
+    ,.tx_clk_gen_reset_o(tx_clk_gen_reset_li)
     ,.tx_clk_i(tx_clk_lo)
     ,.tx_reset_o(tx_reset_li)
     ,.rx_clk_i(rx_clk_lo)
@@ -284,6 +312,7 @@ module wrapper();
     ,.reset_i(reset_li)
     ,.clk250_i(clk250_li)
     ,.clk250_reset_i(clk250_reset_li)
+    ,.tx_clk_gen_reset_i(tx_clk_gen_reset_li)
     ,.tx_clk_o(tx_clk_lo)
     ,.tx_reset_i(tx_reset_li)
     ,.rx_clk_o(rx_clk_lo)

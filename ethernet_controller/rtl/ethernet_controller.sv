@@ -14,6 +14,9 @@ module ethernet_controller #
     // For 2X clock for generating RGMII signals (DDR)
     , input  logic                              clk250_i
     , input  logic                              clk250_reset_i
+    // For tx_clk clock generator
+    , input  logic                              tx_clk_gen_reset_i
+
     // MAC TX clock downsampled from clk250_i
     , output logic                              tx_clk_o
     , input  logic                              tx_reset_i
@@ -209,6 +212,7 @@ module ethernet_controller #
      ,.logic_rst(reset_i)
      ,.clk250(clk250_i)
      ,.clk250_rst(clk250_reset_i)
+     ,.tx_clk_gen_rst(tx_clk_gen_reset_i)
      ,.tx_clk(tx_clk_o)
      ,.tx_rst(tx_reset_i)
      ,.rx_clk(rx_clk_o)

@@ -70,6 +70,7 @@ rgmii_txd, rgmii_tx_ctl:
 module rgmii_phy_if (
     input  wire        clk250,
     input  wire        clk250_rst,
+    input  wire        tx_clk_gen_rst,
 
     /*
      * GMII interface to MAC
@@ -226,6 +227,7 @@ tx_clks_generator
  tx_clks_gen
   (.clk250_i(clk250)
    ,.clk250_rst_i(clk250_rst)
+   ,.tx_clk_gen_rst_i(tx_clk_gen_rst)
 
    ,.phy_rgmii_tx_clk_setting_i({rgmii_tx_clk_2, rgmii_tx_clk_1})
    ,.phy_rgmii_tx_clk_o(phy_rgmii_tx_clk)
