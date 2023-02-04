@@ -72,9 +72,9 @@ module bp_me_wb_client
 
   // state machine for handling BP and WB handshakes
   typedef enum logic [1:0] {
-     e_reset          = 2'b00
-    ,e_ready       = 2'b01
-    ,e_wait_read_resp = 2'b10
+     e_reset     = 2'b00
+    ,e_ready     = 2'b01
+    ,e_wait_resp = 2'b10
   } state_e;
   state_e state_n, state_r;
 
@@ -118,21 +118,18 @@ module bp_me_wb_client
       e_ready: begin
         mem_fwd_v_o = cyc_i & stb_i;
 
-        // write commands are ack'ed immediately upon transmission
-        // a read command migth be immediately reponded though
-        ack_o = mem_fwd_v_o & mem_fwd_ready_and_i
-                & (we_i | (mem_rev_v_i & mem_rev_header_cast_i.msg_type == e_bedrock_mem_uc_rd));
+        // ack if we immediately receive a BP response
+        ack_o = mem_fwd_v_o & mem_fwd_ready_and_i & mem_rev_v_i;
 
-        // for not immediately responded read commands, go into a waiting state
-        state_n = mem_fwd_v_o & mem_fwd_ready_and_i
-                  & ~(we_i | (mem_rev_v_i & mem_rev_header_cast_i.msg_type == e_bedrock_mem_uc_rd))
-                  ? e_wait_read_resp
+        // for not immediately responded commands, go into a waiting state
+        state_n = mem_fwd_v_o & mem_fwd_ready_and_i & ~mem_rev_v_i
+                  ? e_wait_resp
                   : state_r;
       end
 
-      // wait for the client's BP read response
-      e_wait_read_resp: begin
-        ack_o = mem_rev_v_i & mem_rev_header_cast_i.msg_type == e_bedrock_mem_uc_rd;
+      // wait for the BP client's response
+      e_wait_resp: begin
+        ack_o = mem_rev_v_i;
 
         state_n = ack_o
                   ? e_ready
