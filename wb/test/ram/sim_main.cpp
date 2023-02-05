@@ -124,8 +124,8 @@ int main(int argc, char* argv[]) {
 
     // test if commands and responses were transmitted correctly
     int errors = 0;
-    std::vector<BP_pkg> commands = ram_ctrl.get_commands();
-    std::vector<BP_pkg> responses = ram_ctrl.get_responses();
+    const std::vector<BP_pkg>& commands = ram_ctrl.get_commands();
+    const std::vector<BP_pkg>& responses = ram_ctrl.get_responses();
 
     // check the amount of packages received
     if (responses.size() != test_size) {

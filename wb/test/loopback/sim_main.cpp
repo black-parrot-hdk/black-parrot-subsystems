@@ -153,10 +153,10 @@ int main(int argc, char* argv[]) {
 
     // test if commands and responses were transmitted correctly
     int errors = 0;
-    std::vector<BP_pkg> commands_in = master_ctrl.get_commands();
-    std::vector<BP_pkg> commands_out = client_ctrl.get_commands();
-    std::vector<BP_pkg> responses_in = client_ctrl.get_responses();
-    std::vector<BP_pkg> responses_out = master_ctrl.get_responses();
+    const std::vector<BP_pkg>& commands_in = master_ctrl.get_commands();
+    const std::vector<BP_pkg>& commands_out = client_ctrl.get_commands();
+    const std::vector<BP_pkg>& responses_in = client_ctrl.get_responses();
+    const std::vector<BP_pkg>& responses_out = master_ctrl.get_responses();
 
     // check the amount of transmitted bytes
     long bytes_master_in = count_bytes(commands_in);
