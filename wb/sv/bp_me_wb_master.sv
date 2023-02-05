@@ -110,7 +110,7 @@ module bp_me_wb_master
 
      ,.fsm_header_i(mem_fwd_header_li)
      ,.fsm_addr_o(/* unused */)
-     ,.fsm_data_i(mem_rev_data_li)
+     ,.fsm_data_i(mem_rev_data_lo)
      ,.fsm_v_i(ack_i)
      ,.fsm_ready_and_o(mem_rev_ready_and_li)
      ,.fsm_cnt_o(/* unused */)
@@ -146,7 +146,7 @@ module bp_me_wb_master
   wire [size_width_lp-1:0] resp_size_lo = mem_fwd_header_li.size > {size_width_lp{1'b1}}
                                           ? {size_width_lp{1'b1}}
                                           : mem_fwd_header_li.size;
-  logic [data_width_p-1:0] mem_rev_data_li;
+  logic [data_width_p-1:0] mem_rev_data_lo;
   bsg_bus_pack
     #(
       .in_width_p(data_width_p)
@@ -155,16 +155,13 @@ module bp_me_wb_master
       .data_i(dat_i)
      ,.sel_i('0)
      ,.size_i(resp_size_lo)
-     ,.data_o(mem_rev_data_li)
+     ,.data_o(mem_rev_data_lo)
     );
-
-  // registered cyc and stb to avoid cycle with client's ack
-  logic cyc_n, stb_n;
 
   always_comb begin
     // WB handshake signals
-    cyc_n = mem_fwd_v_li & mem_rev_ready_and_li;
-    stb_n = mem_fwd_v_li & mem_rev_ready_and_li & ~ack_i;
+    cyc_o = mem_fwd_v_li & mem_rev_ready_and_li;
+    stb_o = mem_fwd_v_li & mem_rev_ready_and_li;
 
     // WB non-handshake signals
     dat_o = mem_fwd_data_li;
@@ -177,19 +174,6 @@ module bp_me_wb_master
       // >= e_bedrock_msg_size_8:
       default: sel_o = (data_width_p>>3)'('hFF);
     endcase
-  end
-
-  // advance to next state
-  // synopsys sync_set_reset "reset_i"
-  always_ff @(posedge clk_i) begin
-    if (reset_i) begin
-      cyc_o <= 1'b0;
-      stb_o <= 1'b0;
-    end
-    else begin
-      cyc_o <= cyc_n;
-      stb_o <= stb_n;
-    end
   end
 
   // assertions
