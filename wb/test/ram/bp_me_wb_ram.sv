@@ -150,6 +150,7 @@ module top
    )
    ram
     ( .clk(clk)
+     ,.reset(reset)
      ,.adr_i({adr, 3'b000})
      ,.dat_i(dat_mosi)
      ,.cyc_i(cyc)
