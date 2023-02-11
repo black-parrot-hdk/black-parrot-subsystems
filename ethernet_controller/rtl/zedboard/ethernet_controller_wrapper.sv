@@ -15,6 +15,8 @@ module ethernet_controller_wrapper #
     , input  logic                              clk250_i
     , input  logic                              clk250_reset_i
 
+    , input  logic                              tx_clk_gen_reset_i
+
     , output logic                              tx_clk_o
     , input  logic                              tx_reset_i
 
@@ -65,10 +67,11 @@ module ethernet_controller_wrapper #
     ,.reset_i
     ,.clk250_i
     ,.clk250_reset_i
-    ,.tx_clk_o(tx_clk_o)
-    ,.tx_reset_i(tx_reset_i)
-    ,.rx_clk_o(rx_clk_o)
-    ,.rx_reset_i(rx_reset_i)
+    ,.tx_clk_gen_reset_i
+    ,.tx_clk_o
+    ,.tx_reset_i
+    ,.rx_clk_o
+    ,.rx_reset_i
 
     ,.addr_i
     ,.write_en_i
