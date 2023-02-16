@@ -117,7 +117,7 @@ module bsg_axil_fifo_master
 
   assign addr_yumi_li = (m_axil_arready_i & m_axil_arvalid_o) | (m_axil_awready_i & m_axil_awvalid_o);
 
-  assign v_o = m_axil_rvalid_i | m_axil_bvalid_i;
+  assign v_o = return_v_lo & (return_w_lo ? m_axil_bvalid_i : m_axil_rvalid_i);
   assign data_o = m_axil_rdata_i;
   assign m_axil_bready_o = return_v_lo &  return_w_lo & ready_and_i;
   assign m_axil_rready_o = return_v_lo & ~return_w_lo & ready_and_i;
