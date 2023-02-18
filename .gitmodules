@@ -1,3 +1,6 @@
 [submodule "ethernet_controller/import/basejump_stl"]
 	path = ethernet_controller/import/basejump_stl
 	url = https://github.com/bespoke-silicon-group/basejump_stl.git
+[submodule "rv_plic/import/opentitan"]
+	path = rv_plic/import/opentitan
+	url = https://github.com/lowRISC/opentitan.git
