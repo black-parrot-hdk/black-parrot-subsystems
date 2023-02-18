@@ -24,7 +24,8 @@ module ethernet_controller_wrapper #
     , input  logic                              rx_reset_i
 
     // zynq-7000 specific: 200 MHZ for IDELAY tap value
-    , input  logic                              iodelay_ref_clk_i
+    , input  logic                              iodelay_clk_i
+    , input  logic                              iodelay_reset_i
 
     , input  logic [addr_width_lp-1:0]          addr_i
     , input  logic                              write_en_i
@@ -53,7 +54,8 @@ module ethernet_controller_wrapper #
    iodelay_control (
     .clk_i(clk_i)
     ,.reset_i(reset_i)
-    ,.iodelay_ref_clk_i(iodelay_ref_clk_i)
+    ,.iodelay_clk_i(iodelay_clk_i)
+    ,.iodelay_reset_i(iodelay_reset_i)
     ,.rgmii_rxd_i(rgmii_rxd_i)
     ,.rgmii_rx_ctl_i(rgmii_rx_ctl_i)
     ,.rgmii_rxd_delayed_o(rgmii_rxd_delayed_lo)
