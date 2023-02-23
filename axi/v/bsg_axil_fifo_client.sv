@@ -5,7 +5,6 @@ module bsg_axil_fifo_client
  import bsg_axi_pkg::*;
  #(parameter `BSG_INV_PARAM(axil_data_width_p)
    , parameter `BSG_INV_PARAM(axil_addr_width_p)
-   , parameter `BSG_INV_PARAM(fifo_els_p)
 
    , localparam axil_mask_width_lp = axil_data_width_p >> 3
    )
@@ -61,8 +60,8 @@ module bsg_axil_fifo_client
 
   logic [axil_addr_width_p-1:0] araddr_li;
   logic araddr_v_li, araddr_yumi_lo;
-  bsg_fifo_1r1w_small
-   #(.width_p(axil_addr_width_p), .els_p(fifo_els_p))
+  bsg_one_fifo
+   #(.width_p(axil_addr_width_p))
    araddr_fifo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
@@ -78,8 +77,8 @@ module bsg_axil_fifo_client
 
   logic [axil_addr_width_p-1:0] awaddr_li;
   logic awaddr_v_li, awaddr_yumi_lo;
-  bsg_fifo_1r1w_small
-   #(.width_p(axil_addr_width_p), .els_p(fifo_els_p))
+  bsg_one_fifo
+   #(.width_p(axil_addr_width_p))
    awaddr_fifo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
@@ -96,8 +95,8 @@ module bsg_axil_fifo_client
   logic [axil_data_width_p-1:0] wdata_li;
   logic [axil_mask_width_lp-1:0] wmask_li;
   logic wdata_v_li, wdata_yumi_lo;
-  bsg_fifo_1r1w_small
-   #(.width_p(axil_mask_width_lp+axil_data_width_p), .els_p(fifo_els_p))
+  bsg_one_fifo
+   #(.width_p(axil_mask_width_lp+axil_data_width_p))
    wdata_fifo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
@@ -112,8 +111,8 @@ module bsg_axil_fifo_client
      );
 
   logic return_v_li, return_ready_lo, return_w_lo, return_v_lo, return_yumi_li;
-  bsg_fifo_1r1w_small
-   #(.width_p(1), .els_p(fifo_els_p), .ready_THEN_valid_p(1))
+  bsg_one_fifo
+   #(.width_p(1))
    return_fifo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
