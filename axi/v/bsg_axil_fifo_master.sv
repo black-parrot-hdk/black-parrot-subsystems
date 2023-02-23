@@ -5,7 +5,6 @@ module bsg_axil_fifo_master
  import bsg_axi_pkg::*;
  #(parameter `BSG_INV_PARAM(axil_data_width_p)
    , parameter `BSG_INV_PARAM(axil_addr_width_p)
-   , parameter `BSG_INV_PARAM(fifo_els_p)
 
    , localparam axi_mask_width_lp = axil_data_width_p >> 3
    )
@@ -57,8 +56,8 @@ module bsg_axil_fifo_master
   wire unused = &{m_axil_rresp_i, m_axil_bresp_i};
 
   logic wdata_ready_lo;
-  bsg_fifo_1r1w_small
-   #(.width_p(axil_data_width_p+axi_mask_width_lp), .els_p(fifo_els_p))
+  bsg_one_fifo
+   #(.width_p(axil_data_width_p+axi_mask_width_lp))
    wdata_fifo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
@@ -75,8 +74,8 @@ module bsg_axil_fifo_master
   logic addr_ready_lo;
   logic w_lo, addr_v_lo, addr_yumi_li;
   logic [axil_addr_width_p-1:0] addr_lo;
-  bsg_fifo_1r1w_small
-   #(.width_p(1+axil_addr_width_p), .els_p(fifo_els_p))
+  bsg_one_fifo
+   #(.width_p(1+axil_addr_width_p))
    addr_fifo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
@@ -91,8 +90,8 @@ module bsg_axil_fifo_master
      );
 
   logic return_ready_lo, return_w_lo, return_v_lo, return_yumi_li;
-  bsg_fifo_1r1w_small
-   #(.width_p(1), .els_p(fifo_els_p))
+  bsg_one_fifo
+   #(.width_p(1))
    return_fifo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
