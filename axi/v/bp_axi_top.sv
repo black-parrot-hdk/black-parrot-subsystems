@@ -15,9 +15,13 @@ module bp_axi_top
    `declare_bp_proc_params(bp_params_p)
 
    // AXI4-LITE PARAMS
-   , parameter axil_addr_width_p   = 32
-   , parameter axil_data_width_p   = 32
-   , localparam axil_mask_width_lp = axil_data_width_p>>3
+   , parameter m_axil_addr_width_p   = 32
+   , parameter m_axil_data_width_p   = 32
+   , localparam m_axil_mask_width_lp = m_axil_data_width_p>>3
+
+   , parameter s_axil_addr_width_p   = 32
+   , parameter s_axil_data_width_p   = 32
+   , localparam s_axil_mask_width_lp = s_axil_data_width_p>>3
 
    , parameter axi_addr_width_p = 32
    , parameter axi_data_width_p = 64
@@ -33,13 +37,13 @@ module bp_axi_top
    , input                                     rt_clk_i
 
    //======================== Outgoing I/O ========================
-   , output logic [axil_addr_width_p-1:0]      m_axil_awaddr_o
+   , output logic [m_axil_addr_width_p-1:0]    m_axil_awaddr_o
    , output [2:0]                              m_axil_awprot_o
    , output logic                              m_axil_awvalid_o
    , input                                     m_axil_awready_i
 
-   , output logic [axil_data_width_p-1:0]      m_axil_wdata_o
-   , output logic [axil_mask_width_lp-1:0]     m_axil_wstrb_o
+   , output logic [m_axil_data_width_p-1:0]    m_axil_wdata_o
+   , output logic [m_axil_mask_width_lp-1:0]   m_axil_wstrb_o
    , output logic                              m_axil_wvalid_o
    , input                                     m_axil_wready_i
 
@@ -47,24 +51,24 @@ module bp_axi_top
    , input                                     m_axil_bvalid_i
    , output logic                              m_axil_bready_o
 
-   , output logic [axil_addr_width_p-1:0]      m_axil_araddr_o
+   , output logic [m_axil_addr_width_p-1:0]    m_axil_araddr_o
    , output [2:0]                              m_axil_arprot_o
    , output logic                              m_axil_arvalid_o
    , input                                     m_axil_arready_i
 
-   , input [axil_data_width_p-1:0]             m_axil_rdata_i
+   , input [m_axil_data_width_p-1:0]           m_axil_rdata_i
    , input [1:0]                               m_axil_rresp_i
    , input                                     m_axil_rvalid_i
    , output logic                              m_axil_rready_o
 
    //======================== Incoming I/O ========================
-   , input [axil_addr_width_p-1:0]             s_axil_awaddr_i
+   , input [s_axil_addr_width_p-1:0]           s_axil_awaddr_i
    , input [2:0]                               s_axil_awprot_i
    , input                                     s_axil_awvalid_i
    , output logic                              s_axil_awready_o
 
-   , input [axil_data_width_p-1:0]             s_axil_wdata_i
-   , input [axil_mask_width_lp-1:0]            s_axil_wstrb_i
+   , input [s_axil_data_width_p-1:0]           s_axil_wdata_i
+   , input [s_axil_mask_width_lp-1:0]          s_axil_wstrb_i
    , input                                     s_axil_wvalid_i
    , output logic                              s_axil_wready_o
 
@@ -72,12 +76,12 @@ module bp_axi_top
    , output logic                              s_axil_bvalid_o
    , input                                     s_axil_bready_i
 
-   , input [axil_addr_width_p-1:0]             s_axil_araddr_i
+   , input [s_axil_addr_width_p-1:0]           s_axil_araddr_i
    , input [2:0]                               s_axil_arprot_i
    , input                                     s_axil_arvalid_i
    , output logic                              s_axil_arready_o
 
-   , output logic [axil_data_width_p-1:0]      s_axil_rdata_o
+   , output logic [s_axil_data_width_p-1:0]    s_axil_rdata_o
    , output [1:0]                              s_axil_rresp_o
    , output logic                              s_axil_rvalid_o
    , input                                     s_axil_rready_i
@@ -209,8 +213,8 @@ module bp_axi_top
 
       bp_me_axil_client
        #(.bp_params_p(bp_params_p)
-         ,.axil_data_width_p(axil_data_width_p)
-         ,.axil_addr_width_p(axil_addr_width_p)
+         ,.axil_data_width_p(s_axil_data_width_p)
+         ,.axil_addr_width_p(s_axil_addr_width_p)
          )
        axil2io
         (.clk_i(clk_i)
@@ -235,8 +239,8 @@ module bp_axi_top
 
       bp_me_axil_master
        #(.bp_params_p(bp_params_p)
-         ,.axil_data_width_p(axil_data_width_p)
-         ,.axil_addr_width_p(axil_addr_width_p)
+         ,.axil_data_width_p(m_axil_data_width_p)
+         ,.axil_addr_width_p(m_axil_addr_width_p)
          )
        io2axil
         (.clk_i(clk_i)
@@ -424,8 +428,8 @@ module bp_axi_top
 
       bp_me_axil_to_burst
        #(.bp_params_p(bp_params_p)
-         ,.axil_data_width_p(axil_data_width_p)
-         ,.axil_addr_width_p(axil_addr_width_p)
+         ,.axil_data_width_p(s_axil_data_width_p)
+         ,.axil_addr_width_p(s_axil_addr_width_p)
          )
        axil2io
         (.clk_i(clk_i)
@@ -456,8 +460,8 @@ module bp_axi_top
 
       bp_me_burst_to_axil
        #(.bp_params_p(bp_params_p)
-         ,.axil_data_width_p(axil_data_width_p)
-         ,.axil_addr_width_p(axil_addr_width_p)
+         ,.axil_data_width_p(m_axil_data_width_p)
+         ,.axil_addr_width_p(m_axil_addr_width_p)
          )
        io2axil
         (.clk_i(clk_i)
