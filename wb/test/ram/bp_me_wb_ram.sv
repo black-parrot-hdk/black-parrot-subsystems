@@ -9,7 +9,7 @@ module top
     `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
 
     , parameter  data_width_p        = dword_width_gp
-    , localparam ram_size_lp         = 4096
+    , localparam ram_size_lp         = 2**12
     , localparam wbone_addr_width_lp =   `BSG_SAFE_CLOG2(ram_size_lp)
                                        - `BSG_SAFE_CLOG2(data_width_p>>3)
 
@@ -42,6 +42,8 @@ module top
   logic                               cyc;
   logic [(data_width_p>>3)-1:0]       sel;
   logic                               we;
+  logic [2:0]                         cti;
+  logic [1:0]                         bte;
 
   logic [data_width_p-1:0]            dat_miso;
   logic                               ack;
@@ -135,6 +137,8 @@ module top
      ,.stb_o(stb)
      ,.sel_o(sel)
      ,.we_o(we)
+     ,.cti_o(cti)
+     ,.bte_o(bte)
 
      ,.dat_i(dat_miso)
      ,.ack_i(ack)
@@ -145,18 +149,20 @@ module top
    */
   wb_ram
    #(
-     .DATA_WIDTH(data_width_p)
-    ,.ADDR_WIDTH(`BSG_SAFE_CLOG2(ram_size_lp))
+     .data_width_p(data_width_p)
+    ,.ram_size_p(ram_size_lp)
    )
    ram
-    ( .clk(clk)
-     ,.reset(reset)
-     ,.adr_i({adr, 3'b000})
+    ( .clk_i(clk)
+     ,.reset_i(reset)
+     ,.adr_i(adr)
      ,.dat_i(dat_mosi)
      ,.cyc_i(cyc)
      ,.stb_i(stb)
      ,.sel_i(sel)
      ,.we_i(we)
+     ,.cti_i(cti)
+     ,.bte_i(bte)
 
      ,.ack_o(ack)
      ,.dat_o(dat_miso)

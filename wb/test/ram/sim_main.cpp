@@ -1,6 +1,6 @@
 #include "verilated.h"
 #include "svdpi.h"
-#include "verilated_fst_c.h"
+#include "verilated_vcd_c.h"
 #include "Vtop.h"
 #include "bsg_nonsynth_dpi_clock_gen.hpp"
 
@@ -12,7 +12,7 @@
 
 using namespace bsg_nonsynth_dpi;
 
-void tick(Vtop *dut, VerilatedFstC *tfp) {
+void tick(Vtop *dut, VerilatedVcdC *tfp) {
     bsg_timekeeper::next();
     dut->eval();
     tfp->dump(Verilated::time());
@@ -85,13 +85,13 @@ bool check_packets(const std::vector<BP_pkg>& commands,
 int main(int argc, char* argv[]) {
     // initialize Verilator, the DUT and tracing
     Verilated::commandArgs(argc, argv);
-    Verilated::traceEverOn(VM_TRACE_FST);
+    Verilated::traceEverOn(VM_TRACE_VCD);
 
     auto dut = std::make_unique<Vtop>();
-    auto tfp = std::make_unique<VerilatedFstC>();
+    auto tfp = std::make_unique<VerilatedVcdC>();
     dut->trace(tfp.get(), 10);
     Verilated::mkdir("logs");
-    tfp->open("logs/wave.fst");
+    tfp->open("logs/wave.vcd");
 
     // create controllers for the adapters
     int test_size = 100000;

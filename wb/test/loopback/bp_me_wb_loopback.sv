@@ -185,6 +185,8 @@ module top
      ,.stb_o(stb)
      ,.sel_o(sel)
      ,.we_o(we)
+     ,.bte_o()
+     ,.cti_o()
 
      ,.dat_i(dat_miso)
      ,.ack_i(ack)
