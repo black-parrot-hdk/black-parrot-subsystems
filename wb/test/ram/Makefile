@@ -1,5 +1,5 @@
 # Set up BP paths
-TOP = ../../../../black-parrot
+TOP =
 export BP_COMMON_DIR    := $(TOP)/bp_common
 export BP_FE_DIR        := $(TOP)/bp_fe
 export BP_BE_DIR        := $(TOP)/bp_be
