@@ -5,7 +5,6 @@
 #include "bp_pkg.h"
 
 #include <vector>
-#include <deque>
 #include <iterator>
 #include <random>
 #include <functional>
