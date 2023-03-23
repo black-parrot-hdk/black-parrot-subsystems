@@ -111,13 +111,28 @@ module bp_me_axil_client
       mem_fwd_header_cast_o.payload.did    = did_i;
       mem_fwd_header_cast_o.addr           = addr_lo;
       mem_fwd_header_cast_o.msg_type       = w_lo ? e_bedrock_mem_uc_wr : e_bedrock_mem_uc_rd;
-      case (wmask_lo)
-        axil_mask_width_lp'('h1): mem_fwd_header_cast_o.size = e_bedrock_msg_size_1;
-        axil_mask_width_lp'('h3): mem_fwd_header_cast_o.size = e_bedrock_msg_size_2;
-        axil_mask_width_lp'('hF): mem_fwd_header_cast_o.size = e_bedrock_msg_size_4;
-        // axil_mask_width_lp'('hFF):
-        default: mem_fwd_header_cast_o.size = e_bedrock_msg_size_8;
-      endcase
+      if (~w_lo) begin
+        // reads are full width
+        mem_fwd_header_cast_o.size = bp_bedrock_msg_size_e'(lg_axil_mask_width_lp);
+      end else begin
+        case (wmask_lo)
+          axil_mask_width_lp'('h80)
+          ,axil_mask_width_lp'('h40)
+          ,axil_mask_width_lp'('h20)
+          ,axil_mask_width_lp'('h10)
+          ,axil_mask_width_lp'('h08)
+          ,axil_mask_width_lp'('h04)
+          ,axil_mask_width_lp'('h02): mem_fwd_header_cast_o.size = e_bedrock_msg_size_1;
+          axil_mask_width_lp'('hC0)
+          ,axil_mask_width_lp'('h30)
+          ,axil_mask_width_lp'('h0C)
+          ,axil_mask_width_lp'('h03): mem_fwd_header_cast_o.size = e_bedrock_msg_size_2;
+          axil_mask_width_lp'('hF0)
+          ,axil_mask_width_lp'('h0F): mem_fwd_header_cast_o.size = e_bedrock_msg_size_4;
+          // axil_mask_width_lp'('hFF):
+          default: mem_fwd_header_cast_o.size = e_bedrock_msg_size_8;
+        endcase
+      end
 
       mem_fwd_v_o = v_lo;
       ready_and_li = mem_fwd_ready_and_i;

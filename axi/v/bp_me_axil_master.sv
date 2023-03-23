@@ -17,7 +17,7 @@ module bp_me_axil_master
   // AXI WRITE DATA CHANNEL PARAMS
   , parameter axil_data_width_p = 32
   , parameter axil_addr_width_p  = 32
-  , localparam axi_mask_width_lp = (axil_data_width_p>>3)
+  , localparam axil_mask_width_lp = (axil_data_width_p>>3)
   )
  (//==================== GLOBAL SIGNALS =======================
   input                                        clk_i
@@ -45,7 +45,7 @@ module bp_me_axil_master
 
   // WRITE DATA CHANNEL SIGNALS
   , output logic [axil_data_width_p-1:0]       m_axil_wdata_o
-  , output logic [(axil_data_width_p>>3)-1:0]  m_axil_wstrb_o
+  , output logic [axil_mask_width_p-1:0]       m_axil_wstrb_o
   , output logic                               m_axil_wvalid_o
   , input                                      m_axil_wready_i
 
@@ -95,7 +95,11 @@ module bp_me_axil_master
   logic [axil_data_width_p-1:0] wdata_li;
   logic [axil_addr_width_p-1:0] addr_li;
   logic v_li, w_li, ready_and_lo;
-  logic [axi_mask_width_lp-1:0] wmask_li;
+  logic [axil_mask_width_lp-1:0] wmask_li;
+
+  localparam byte_offset_width_lp = `BSG_SAFE_CLOG2(axil_mask_width_p);
+  wire [byte_offset_width_lp-1:0] mask_shift = addr_li[0+:byte_offset_width_lp];
+
   always_comb
     begin
       wdata_li = mem_fwd_data_i;
@@ -107,15 +111,14 @@ module bp_me_axil_master
       header_v_li = mem_fwd_ready_and_o & mem_fwd_v_i;
 
       case (mem_fwd_header_cast_i.size)
-        e_bedrock_msg_size_1: wmask_li = (axil_data_width_p>>3)'('h1);
-        e_bedrock_msg_size_2: wmask_li = (axil_data_width_p>>3)'('h3);
-        e_bedrock_msg_size_4: wmask_li = (axil_data_width_p>>3)'('hF);
+        e_bedrock_msg_size_1: wmask_li = (axil_mask_width_p)'('h1) << mask_shift;
+        e_bedrock_msg_size_2: wmask_li = (axil_mask_width_p)'('h3) << mask_shift;
+        e_bedrock_msg_size_4: wmask_li = (axil_mask_width_p)'('hF) << mask_shift;
         // e_bedrock_msg_size_8:
-        default : wmask_li = (axil_data_width_p>>3)'('hFF);
+        default : wmask_li = (axil_mask_width_p)'('hFF);
       endcase
     end
 
-  localparam byte_offset_width_lp = `BSG_SAFE_CLOG2(axil_data_width_p>>3);
   localparam size_width_lp = `BSG_WIDTH(byte_offset_width_lp);
 
   wire [byte_offset_width_lp-1:0] resp_sel_li = mem_rev_header_cast_o.addr[0+:byte_offset_width_lp];
@@ -160,7 +163,7 @@ module bp_me_axil_master
 
      ,.*
      );
-  
+
 
 endmodule
 
