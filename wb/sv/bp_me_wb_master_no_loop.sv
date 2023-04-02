@@ -22,7 +22,8 @@ module bp_me_wb_master
     , parameter  block_width_p       = cce_block_width_p
     , parameter  return_fifo_els_p   = 4
     , localparam bus_bytes_lp        = data_width_p >> 3
-    , localparam wbone_addr_width_lp = paddr_width_p - `BSG_SAFE_CLOG2(bus_bytes_lp)
+    , localparam bus_bytes_log_lp    = `BSG_SAFE_CLOG2(bus_bytes_lp)
+    , localparam wbone_addr_width_lp = paddr_width_p - bus_bytes_log_lp
   )
   (   input                                      clk_i
     , input                                      reset_i
@@ -150,13 +151,14 @@ module bp_me_wb_master
   wire [size_width_lp-1:0] resp_size = mem_fwd_header_li.size > {size_width_lp{1'b1}}
                                           ? {size_width_lp{1'b1}}
                                           : mem_fwd_header_li.size;
+  wire [bus_bytes_log_lp-1:0] byte_offset = mem_fwd_addr_li[0+:bus_bytes_log_lp];
   logic [data_width_p-1:0] mem_rev_data_lo;
   bsg_bus_pack
     #(
       .in_width_p(data_width_p)
     )
     bus_pack(
-      .data_i(dat_i)
+      .data_i(dat_i >> (8 * byte_offset))
      ,.sel_i('0)
      ,.size_i(resp_size)
      ,.data_o(mem_rev_data_lo)
@@ -175,9 +177,9 @@ module bp_me_wb_master
     adr_o = mem_fwd_addr_li[paddr_width_p-1:`BSG_SAFE_CLOG2(bus_bytes_lp)];
     dat_o = mem_fwd_data_li;
     unique case (mem_fwd_header_li.size)
-      e_bedrock_msg_size_1: sel_o = (bus_bytes_lp)'('h1);
-      e_bedrock_msg_size_2: sel_o = (bus_bytes_lp)'('h3);
-      e_bedrock_msg_size_4: sel_o = (bus_bytes_lp)'('hF);
+      e_bedrock_msg_size_1: sel_o = (bus_bytes_lp)'('h1) << byte_offset;
+      e_bedrock_msg_size_2: sel_o = (bus_bytes_lp)'('h3) << byte_offset;
+      e_bedrock_msg_size_4: sel_o = (bus_bytes_lp)'('hF) << byte_offset;
       // >= e_bedrock_msg_size_8:
       default: sel_o = (bus_bytes_lp)'('hFF);
     endcase
