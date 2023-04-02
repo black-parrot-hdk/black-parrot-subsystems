@@ -158,8 +158,8 @@ module bp_me_wb_master
       .in_width_p(data_width_p)
     )
     bus_pack(
-      .data_i(dat_i >> (8 * byte_offset))
-     ,.sel_i('0)
+      .data_i(dat_i)
+     ,.sel_i(byte_offset)
      ,.size_i(resp_size)
      ,.data_o(mem_rev_data_lo)
     );
