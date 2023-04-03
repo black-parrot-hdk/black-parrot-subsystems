@@ -22,7 +22,8 @@ module bp_me_wb_master
     , parameter  block_width_p       = cce_block_width_p
     , parameter  return_fifo_els_p   = 4
     , localparam bus_bytes_lp        = data_width_p >> 3
-    , localparam wbone_addr_width_lp = paddr_width_p - `BSG_SAFE_CLOG2(bus_bytes_lp)
+    , localparam bus_bytes_log_lp    = `BSG_SAFE_CLOG2(bus_bytes_lp)
+    , localparam wbone_addr_width_lp = paddr_width_p - bus_bytes_log_lp
   )
   (   input                                      clk_i
     , input                                      reset_i
@@ -62,6 +63,7 @@ module bp_me_wb_master
   logic [paddr_width_p-1:0] mem_fwd_addr_li;
   logic [data_width_p-1:0] mem_fwd_data_li;
   logic mem_fwd_v_li;
+  logic mem_fwd_yumi_lo;
   logic mem_fwd_last_li;
   bp_me_stream_pump_in
     #(.bp_params_p(bp_params_p)
@@ -87,7 +89,7 @@ module bp_me_wb_master
      ,.fsm_addr_o(mem_fwd_addr_li)
      ,.fsm_data_o(mem_fwd_data_li)
      ,.fsm_v_o(mem_fwd_v_li)
-     ,.fsm_yumi_i(ack_i & cyc_o & stb_o)
+     ,.fsm_yumi_i(mem_fwd_yumi_lo)
      ,.fsm_new_o(/* unused */)
      ,.fsm_cnt_o(/* unused */)
      ,.fsm_last_o(mem_fwd_last_li)
@@ -95,6 +97,7 @@ module bp_me_wb_master
 
   // output pump
   logic mem_rev_ready_and_li;
+  logic mem_rev_v_lo;
   bp_me_stream_pump_out
     #(.bp_params_p(bp_params_p)
      ,.stream_data_width_p(data_width_p)
@@ -116,7 +119,7 @@ module bp_me_wb_master
      ,.fsm_header_i(mem_fwd_header_li)
      ,.fsm_addr_o(/* unused */)
      ,.fsm_data_i(mem_rev_data_lo)
-     ,.fsm_v_i(ack_i & cyc_o & stb_o)
+     ,.fsm_v_i(mem_rev_v_lo)
      ,.fsm_ready_and_o(mem_rev_ready_and_li)
      ,.fsm_cnt_o(/* unused */)
      ,.fsm_new_o(/* unused */)
@@ -148,9 +151,10 @@ module bp_me_wb_master
 
   // for BP, less than bus width data must be replicated
   localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(bus_bytes_lp));
-  wire [size_width_lp-1:0] resp_size_lo = mem_fwd_header_li.size > {size_width_lp{1'b1}}
-                                          ? {size_width_lp{1'b1}}
-                                          : mem_fwd_header_li.size;
+  wire [size_width_lp-1:0] resp_size = mem_fwd_header_li.size > {size_width_lp{1'b1}}
+                                       ? {size_width_lp{1'b1}}
+                                       : mem_fwd_header_li.size;
+  wire [bus_bytes_log_lp-1:0] byte_offset = mem_fwd_addr_li[0+:bus_bytes_log_lp];
   logic [data_width_p-1:0] mem_rev_data_lo;
   bsg_bus_pack
     #(
@@ -158,8 +162,8 @@ module bp_me_wb_master
     )
     bus_pack(
       .data_i(dat_i)
-     ,.sel_i('0)
-     ,.size_i(resp_size_lo)
+     ,.sel_i(byte_offset)
+     ,.size_i(resp_size)
      ,.data_o(mem_rev_data_lo)
     );
 
@@ -169,18 +173,27 @@ module bp_me_wb_master
     `BSG_MAX((1'b1 << mem_fwd_header_li.size) / bus_bytes_lp, 1'b1) - 1'b1;
   always_comb begin
     // WB handshake signals
-    cyc_o = mem_fwd_v_li & mem_rev_ready_and_li;
+    cyc_o = mem_fwd_v_li;
     stb_o = mem_fwd_v_li & mem_rev_ready_and_li;
+
+    // BP handshake signals
+    // Dequeue only when wishbone beat completes
+    mem_fwd_yumi_lo = ack_i & cyc_o & stb_o;
+    // Accept wishbone response only while we have a sending request
+    // NOTE: Although it is normally acceptable to use a ready-valid-and
+    //   consumer with ready-then-valid producer, bridging to a valid-yumi
+    //   producer (bp_me_stream_pump_in) creates a combinational loop
+    mem_rev_v_lo = mem_fwd_v_li & ack_i;
 
     // WB non-handshake signals
     adr_o = mem_fwd_addr_li[paddr_width_p-1:`BSG_SAFE_CLOG2(bus_bytes_lp)];
     dat_o = mem_fwd_data_li;
     unique case (mem_fwd_header_li.size)
-      e_bedrock_msg_size_1: sel_o = (bus_bytes_lp)'('h1);
-      e_bedrock_msg_size_2: sel_o = (bus_bytes_lp)'('h3);
-      e_bedrock_msg_size_4: sel_o = (bus_bytes_lp)'('hF);
+      e_bedrock_msg_size_1: sel_o = (bus_bytes_lp)'('h1) << byte_offset;
+      e_bedrock_msg_size_2: sel_o = (bus_bytes_lp)'('h3) << byte_offset;
+      e_bedrock_msg_size_4: sel_o = (bus_bytes_lp)'('hF) << byte_offset;
       // >= e_bedrock_msg_size_8:
-      default: sel_o = (bus_bytes_lp)'('hFF);
+      default: sel_o = (bus_bytes_lp)'('hFF) << byte_offset;
     endcase
     we_o = (mem_fwd_header_li.msg_type == e_bedrock_mem_uc_wr);
 
