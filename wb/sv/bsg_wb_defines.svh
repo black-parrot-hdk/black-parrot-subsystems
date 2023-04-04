@@ -4,6 +4,8 @@
   `define declare_bsg_wb_widths(addr_width_mp, data_width_mp) \
     , localparam wb_sel_width_lp     = data_width_mp >> 3 \
     , localparam wb_sel_width_log_lp = `BSG_SAFE_CLOG2(wb_sel_width_lp) \
-    , localparam wb_adr_width_lp     = paddr_width_p - wb_sel_width_log_lp
+    , localparam wb_adr_width_lp     = paddr_width_p - wb_sel_width_log_lp \
+    , localparam wb_cti_width_lp     = 3 \
+    , localparam wb_bte_width_lp     = 2
 
 `endif

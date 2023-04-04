@@ -48,8 +48,8 @@ module bp_me_wb_master
     , output logic                               stb_o
     , output logic [wb_sel_width_lp-1:0]         sel_o
     , output logic                               we_o
-    , output logic [2:0]                         cti_o
-    , output logic [1:0]                         bte_o
+    , output logic [wb_cti_width_lp-1:0]         cti_o
+    , output logic [wb_bte_width_lp-1:0]         bte_o
 
     , input  [data_width_p-1:0]                  dat_i
     , input                                      ack_i
