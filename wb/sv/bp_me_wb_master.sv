@@ -42,7 +42,7 @@ module bp_me_wb_master
     , output logic                               mem_rev_last_o
 
     // WB signals
-    , output logic [wb_addr_width_lp-1:0]        adr_o
+    , output logic [wb_adr_width_lp-1:0]         adr_o
     , output logic [data_width_p-1:0]            dat_o
     , output logic                               cyc_o
     , output logic                               stb_o

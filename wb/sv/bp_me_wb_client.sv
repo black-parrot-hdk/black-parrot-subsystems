@@ -43,7 +43,7 @@ module bp_me_wb_client
     , input                                      mem_rev_last_i
 
     // WB signals
-    , input  [wbone_addr_width_lp-1:0]           adr_i
+    , input  [wb_adr_width_lp-1:0]               adr_i
     , input  [data_width_p-1:0]                  dat_i
     , input                                      cyc_i
     , input                                      stb_i
@@ -60,7 +60,7 @@ module bp_me_wb_client
 
   // for BP, less than bus width data must be replicated
   localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p>>3));
-  wire [size_width_lp-1:0] cmd_size_lo = msg_size;
+  wire [size_width_lp-1:0] cmd_size = msg_size;
   bsg_bus_pack
     #(
       .in_width_p(data_width_p)
@@ -68,7 +68,7 @@ module bp_me_wb_client
     bus_pack(
       .data_i(dat_i)
      ,.sel_i('0)
-     ,.size_i(cmd_size_lo)
+     ,.size_i(cmd_size)
      ,.data_o(mem_fwd_data_o)
     );
 
