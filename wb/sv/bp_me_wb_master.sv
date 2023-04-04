@@ -10,20 +10,20 @@
 
 `include "bp_common_defines.svh"
 `include "bp_me_defines.svh"
+`include "bsg_wb_defines.svh"
 
 module bp_me_wb_master
   import bp_common_pkg::*;
   import bp_me_pkg::*;
+  import bsg_wb_pkg::*;
   #(parameter bp_params_e bp_params_p = e_bp_default_cfg
     `declare_bp_proc_params(bp_params_p)
     `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
+    `declare_bsg_wb_widths(paddr_width_p, data_width_p)
 
-    , parameter  data_width_p        = dword_width_gp
-    , parameter  block_width_p       = cce_block_width_p
-    , parameter  return_fifo_els_p   = 4
-    , localparam bus_bytes_lp        = data_width_p >> 3
-    , localparam bus_bytes_log_lp    = `BSG_SAFE_CLOG2(bus_bytes_lp)
-    , localparam wbone_addr_width_lp = paddr_width_p - bus_bytes_log_lp
+    , parameter data_width_p      = dword_width_gp
+    , parameter block_width_p     = cce_block_width_p
+    , parameter return_fifo_els_p = 4
   )
   (   input                                      clk_i
     , input                                      reset_i
@@ -42,11 +42,11 @@ module bp_me_wb_master
     , output logic                               mem_rev_last_o
 
     // WB signals
-    , output logic [wbone_addr_width_lp-1:0]     adr_o
+    , output logic [wb_addr_width_lp-1:0]        adr_o
     , output logic [data_width_p-1:0]            dat_o
     , output logic                               cyc_o
     , output logic                               stb_o
-    , output logic [bus_bytes_lp-1:0]            sel_o
+    , output logic [wb_sel_width_lp-1:0]         sel_o
     , output logic                               we_o
     , output logic [2:0]                         cti_o
     , output logic [1:0]                         bte_o
@@ -57,6 +57,8 @@ module bp_me_wb_master
 
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
   `bp_cast_i(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
+  `bp_cast_o(bsg_wb_cti, cti);
+  `bp_cast_o(bsg_wb_bte, bte);
 
   // input pump
   bp_bedrock_mem_fwd_header_s mem_fwd_header_li;
@@ -150,11 +152,11 @@ module bp_me_wb_master
     );
 
   // for BP, less than bus width data must be replicated
-  localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(bus_bytes_lp));
+  localparam size_width_lp = `BSG_WIDTH(wb_sel_width_log_lp);
   wire [size_width_lp-1:0] resp_size = mem_fwd_header_li.size > {size_width_lp{1'b1}}
                                        ? {size_width_lp{1'b1}}
                                        : mem_fwd_header_li.size;
-  wire [bus_bytes_log_lp-1:0] byte_offset = mem_fwd_addr_li[0+:bus_bytes_log_lp];
+  wire [wb_sel_width_log_lp-1:0] byte_offset = mem_fwd_addr_li[0+:wb_sel_width_log_lp];
   logic [data_width_p-1:0] mem_rev_data_lo;
   bsg_bus_pack
     #(
@@ -170,7 +172,7 @@ module bp_me_wb_master
   localparam stream_words_lp = block_width_p / data_width_p;
   localparam stream_cnt_width_lp = `BSG_SAFE_CLOG2(stream_words_lp);
   wire [stream_cnt_width_lp-1:0] stream_size =
-    `BSG_MAX((1'b1 << mem_fwd_header_li.size) / bus_bytes_lp, 1'b1) - 1'b1;
+    `BSG_MAX((1'b1 << mem_fwd_header_li.size) / wb_sel_width_lp, 1'b1) - 1'b1;
   always_comb begin
     // WB handshake signals
     cyc_o = mem_fwd_v_li;
@@ -186,35 +188,32 @@ module bp_me_wb_master
     mem_rev_v_lo = mem_fwd_v_li & ack_i;
 
     // WB non-handshake signals
-    adr_o = mem_fwd_addr_li[paddr_width_p-1:`BSG_SAFE_CLOG2(bus_bytes_lp)];
+    adr_o = mem_fwd_addr_li[paddr_width_p-1:wb_sel_width_log_lp];
     dat_o = mem_fwd_data_li;
     unique case (mem_fwd_header_li.size)
-      e_bedrock_msg_size_1: sel_o = (bus_bytes_lp)'('h1) << byte_offset;
-      e_bedrock_msg_size_2: sel_o = (bus_bytes_lp)'('h3) << byte_offset;
-      e_bedrock_msg_size_4: sel_o = (bus_bytes_lp)'('hF) << byte_offset;
+      e_bedrock_msg_size_1: sel_o = (wb_sel_width_lp)'('h1) << byte_offset;
+      e_bedrock_msg_size_2: sel_o = (wb_sel_width_lp)'('h3) << byte_offset;
+      e_bedrock_msg_size_4: sel_o = (wb_sel_width_lp)'('hF) << byte_offset;
       // >= e_bedrock_msg_size_8:
-      default: sel_o = (bus_bytes_lp)'('hFF) << byte_offset;
+      default: sel_o = (wb_sel_width_lp)'('hFF) << byte_offset;
     endcase
     we_o = (mem_fwd_header_li.msg_type == e_bedrock_mem_uc_wr);
 
     // WB registered feedback signals
     priority case (stream_size)
       // only 4, 8 and 16 beat wrapped bursts are supported by WB
-      (stream_cnt_width_lp)'('h3): bte_o = 2'b01;
-      (stream_cnt_width_lp)'('h7): bte_o = 2'b10;
-      (stream_cnt_width_lp)'('hF): bte_o = 2'b11;
-      // 2'b00 would encode a linear burst, but we only use wrapped bursts
-      default: bte_o = 2'b00;
+      (stream_cnt_width_lp)'('h3): bte_cast_o = e_wb_4_beat_wrap_burst;
+      (stream_cnt_width_lp)'('h7): bte_cast_o = e_wb_8_beat_wrap_burst;
+      (stream_cnt_width_lp)'('hF): bte_cast_o = e_wb_16_beat_wrap_burst;
+      default: bte_o = e_wb_linear_burst;
     endcase
-    if (bte_o == 2'b00)
-      // no burst, classic cycle
-      cti_o = 3'b000;
+    if (bte_o == e_wb_linear_burst)
+      // this would encode a linear burst, but we only use wrapped bursts
+      cti_o = e_wb_classic_cycle;
     else if (mem_fwd_last_li)
-      // end-of-burst
-      cti_o = 3'b111;
+      cti_o = e_wb_end_of_burst;
     else
-      // incrementing burst
-      cti_o = 3'b010;
+      cti_o = e_wb_inc_addr_burst;
   end
 
   // assertions
@@ -227,7 +226,7 @@ module bp_me_wb_master
 
   always_ff @(negedge clk_i) begin
     assert(reset_i !== '0 || ~mem_fwd_v_i
-           || mem_fwd_header_cast_i.addr[0+:`BSG_SAFE_CLOG2(bus_bytes_lp)] == '0)
+           || mem_fwd_header_cast_i.addr[0+:wb_sel_width_log_lp] == '0)
       else $error("Command address not aligned to bus width");
     assert(reset_i !== '0 || ~mem_fwd_v_i
            || mem_fwd_header_cast_i.msg_type inside {e_bedrock_mem_uc_wr, e_bedrock_mem_uc_rd})
