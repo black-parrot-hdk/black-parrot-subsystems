@@ -57,8 +57,6 @@ module bp_me_wb_master
 
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
   `bp_cast_i(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
-  `bp_cast_o(bsg_wb_cti, cti);
-  `bp_cast_o(bsg_wb_bte, bte);
 
   // input pump
   bp_bedrock_mem_fwd_header_s mem_fwd_header_li;
@@ -202,9 +200,9 @@ module bp_me_wb_master
     // WB registered feedback signals
     priority case (stream_size)
       // only 4, 8 and 16 beat wrapped bursts are supported by WB
-      (stream_cnt_width_lp)'('h3): bte_cast_o = e_wb_4_beat_wrap_burst;
-      (stream_cnt_width_lp)'('h7): bte_cast_o = e_wb_8_beat_wrap_burst;
-      (stream_cnt_width_lp)'('hF): bte_cast_o = e_wb_16_beat_wrap_burst;
+      (stream_cnt_width_lp)'('h3): bte_o = e_wb_4_beat_wrap_burst;
+      (stream_cnt_width_lp)'('h7): bte_o = e_wb_8_beat_wrap_burst;
+      (stream_cnt_width_lp)'('hF): bte_o = e_wb_16_beat_wrap_burst;
       default: bte_o = e_wb_linear_burst;
     endcase
     if (bte_o == e_wb_linear_burst)

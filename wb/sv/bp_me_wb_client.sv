@@ -56,7 +56,6 @@ module bp_me_wb_client
 
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
   `bp_cast_o(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
-  `bp_cast_i(bp_bedrock_mem_rev_header_s, mem_rev_header);
 
   // for BP, less than bus width data must be replicated
   localparam size_width_lp = wb_sel_width_log_lp;
