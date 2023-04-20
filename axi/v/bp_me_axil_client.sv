@@ -98,6 +98,7 @@ module bp_me_axil_client
      ,.*
      );
 
+  localparam lg_axil_mask_width_lp = `BSG_SAFE_CLOG2(axil_mask_width_lp);
   always_comb
     begin
       mem_fwd_data_o = wdata_lo;
