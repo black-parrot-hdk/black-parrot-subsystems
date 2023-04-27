@@ -1,0 +1,9 @@
+This folder contains RISC-V PLIC from OpenTitan. Run 'make' to
+generate all source files. They will all be placed under rtl/.
+
+PLIC configurations can be found in 'rv_plic.ipconfig.hjson'.
+
+What does the patch.txt do:
+1. Add workaround to avoid bugs in some older versions of Vivado.
+2. Remove unpacked arrays.
+3. Some minor changes to make the code work.
