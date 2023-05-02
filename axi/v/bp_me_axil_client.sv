@@ -111,6 +111,8 @@ module bp_me_axil_client
         // reads are full width
         mem_fwd_header_cast_o.size = bp_bedrock_msg_size_e'(lg_axil_mask_width_lp);
       end else begin
+        // TODO: check address aligned with write strobes and for error cases (including mask 'h00),
+        // reply with AXIL error response, and do not send BedRock message.
         case (wmask_lo)
           axil_mask_width_lp'('h80)
           ,axil_mask_width_lp'('h40)
@@ -118,14 +120,15 @@ module bp_me_axil_client
           ,axil_mask_width_lp'('h10)
           ,axil_mask_width_lp'('h08)
           ,axil_mask_width_lp'('h04)
-          ,axil_mask_width_lp'('h02): mem_fwd_header_cast_o.size = e_bedrock_msg_size_1;
+          ,axil_mask_width_lp'('h02)
+          ,axil_mask_width_lp'('h01): mem_fwd_header_cast_o.size = e_bedrock_msg_size_1;
           axil_mask_width_lp'('hC0)
           ,axil_mask_width_lp'('h30)
           ,axil_mask_width_lp'('h0C)
           ,axil_mask_width_lp'('h03): mem_fwd_header_cast_o.size = e_bedrock_msg_size_2;
           axil_mask_width_lp'('hF0)
           ,axil_mask_width_lp'('h0F): mem_fwd_header_cast_o.size = e_bedrock_msg_size_4;
-          // axil_mask_width_lp'('hFF):
+          axil_mask_width_lp'('hFF): mem_fwd_header_cast_o.size = e_bedrock_msg_size_8;
           default: mem_fwd_header_cast_o.size = e_bedrock_msg_size_8;
         endcase
       end
