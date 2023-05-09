@@ -1,0 +1,3 @@
+[submodule "debug/import/riscv-dbg"]
+	path = debug/import/riscv-dbg
+	url = https://github.com/pulp-platform/riscv-dbg
