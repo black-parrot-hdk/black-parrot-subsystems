@@ -13,10 +13,9 @@ module bp_me_axil_master
   `declare_bp_proc_params(bp_params_p)
   `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
 
-  , parameter io_data_width_p = (cce_type_p == e_cce_uce) ? uce_fill_width_p : bedrock_data_width_p
   // AXI WRITE DATA CHANNEL PARAMS
-  , parameter axil_data_width_p = 32
-  , parameter axil_addr_width_p  = 32
+  , parameter `BSG_INV_PARAM(axil_data_width_p)
+  , parameter `BSG_INV_PARAM(axil_addr_width_p)
   , localparam axi_mask_width_lp = (axil_data_width_p>>3)
   )
  (//==================== GLOBAL SIGNALS =======================
@@ -25,16 +24,14 @@ module bp_me_axil_master
 
   //==================== BP-STREAM SIGNALS ======================
   , input [mem_fwd_header_width_lp-1:0]        mem_fwd_header_i
-  , input [io_data_width_p-1:0]                mem_fwd_data_i
+  , input [bedrock_fill_width_p-1:0]           mem_fwd_data_i
   , input                                      mem_fwd_v_i
   , output logic                               mem_fwd_ready_and_o
-  , input                                      mem_fwd_last_i
 
   , output logic [mem_rev_header_width_lp-1:0] mem_rev_header_o
-  , output logic [io_data_width_p-1:0]         mem_rev_data_o
+  , output logic [bedrock_fill_width_p-1:0]    mem_rev_data_o
   , output logic                               mem_rev_v_o
   , input                                      mem_rev_ready_and_i
-  , output logic                               mem_rev_last_o
 
   //====================== AXI-4 LITE =========================
   // WRITE ADDRESS CHANNEL SIGNALS
@@ -66,9 +63,6 @@ module bp_me_axil_master
   , input                                      m_axil_rvalid_i
   , output logic                               m_axil_rready_o
   );
-
-  wire unused = &{mem_fwd_last_i};
-  assign mem_rev_last_o = mem_rev_v_o;
 
   // declaring i/o command and response struct type and size
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
@@ -122,7 +116,7 @@ module bp_me_axil_master
   wire [size_width_lp-1:0] resp_size_li = mem_rev_header_cast_o.size;
   logic [axil_data_width_p-1:0] rdata_lo;
   bsg_bus_pack
-   #(.in_width_p(axil_data_width_p), .out_width_p(io_data_width_p))
+   #(.in_width_p(axil_data_width_p), .out_width_p(bedrock_fill_width_p))
    resp_data_bus_pack
     (.data_i(rdata_lo)
      ,.sel_i(resp_sel_li)

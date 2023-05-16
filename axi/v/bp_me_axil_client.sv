@@ -24,16 +24,14 @@ module bp_me_axil_client
    , input [did_width_p-1:0]                    did_i
 
    , output logic [mem_fwd_header_width_lp-1:0] mem_fwd_header_o
-   , output logic [axil_data_width_p-1:0]       mem_fwd_data_o
+   , output logic [bedrock_fill_width_p-1:0]    mem_fwd_data_o
    , output logic                               mem_fwd_v_o
    , input                                      mem_fwd_ready_and_i
-   , output logic                               mem_fwd_last_o
 
    , input [mem_rev_header_width_lp-1:0]        mem_rev_header_i
-   , input [axil_data_width_p-1:0]              mem_rev_data_i
+   , input [bedrock_fill_width_p-1:0]           mem_rev_data_i
    , input                                      mem_rev_v_i
    , output logic                               mem_rev_ready_and_o
-   , input                                      mem_rev_last_i
 
    //====================== AXI-4 LITE =========================
    // WRITE ADDRESS CHANNEL SIGNALS
@@ -65,9 +63,6 @@ module bp_me_axil_client
    , output logic                               s_axil_rvalid_o
    , input                                      s_axil_rready_i
    );
-
-  wire unused = &{mem_rev_last_i};
-  assign mem_fwd_last_o = mem_fwd_v_o;
 
   // declaring i/o command and response struct type and size
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
