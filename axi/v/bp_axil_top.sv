@@ -5,18 +5,19 @@
 `include "bp_common_defines.svh"
 `include "bp_me_defines.svh"
 
-module bp_axi_lite_top
+module bp_axil_top
  import bp_common_pkg::*;
  import bp_me_pkg::*;
  // Only default config is currently supported
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
    `declare_bp_proc_params(bp_params_p)
 
+   // Default to bootrom PC
    , parameter boot_pc_p = 32'h0010000
 
    // AXI4-LITE PARAMS
-   , parameter axil_addr_width_p   = 32
-   , parameter axil_data_width_p   = 32
+   , parameter `BSG_INV_PARAM(axil_addr_width_p)
+   , parameter `BSG_INV_PARAM(axil_data_width_p)
    , localparam axil_mask_width_lp = axil_data_width_p>>3
 
    `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
@@ -59,11 +60,11 @@ module bp_axi_lite_top
   `declare_bp_cfg_bus_s(vaddr_width_p, hio_width_p, core_id_width_p, cce_id_width_p, lce_id_width_p);
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
 
-  bp_bedrock_mem_header_s [1:0] proc_fwd_header_lo;
-  logic [1:0][uce_fill_width_p-1:0] proc_fwd_data_lo;
+  bp_bedrock_mem_fwd_header_s [1:0] proc_fwd_header_lo;
+  logic [1:0][bedrock_fill_width_p-1:0] proc_fwd_data_lo;
   logic [1:0] proc_fwd_v_lo, proc_fwd_ready_and_li, proc_fwd_last_lo;
-  bp_bedrock_mem_header_s [1:0] proc_rev_header_li;
-  logic [1:0][uce_fill_width_p-1:0] proc_rev_data_li;
+  bp_bedrock_mem_rev_header_s [1:0] proc_rev_header_li;
+  logic [1:0][bedrock_fill_width_p-1:0] proc_rev_data_li;
   logic [1:0] proc_rev_v_li, proc_rev_ready_and_lo, proc_rev_last_li;
 
   bp_cfg_bus_s cfg_bus_li;
@@ -117,17 +118,15 @@ module bp_axi_lite_top
         (.clk_i(clk_i)
          ,.reset_i(reset_i)
 
-         ,.io_cmd_header_i(proc_fwd_header_lo[i])
-         ,.io_cmd_data_i(proc_fwd_data_lo[i])
-         ,.io_cmd_v_i(proc_fwd_v_lo[i])
-         ,.io_cmd_last_i(proc_fwd_last_lo[i])
-         ,.io_cmd_ready_and_o(proc_fwd_ready_and_li[i])
+         ,.mem_fwd_header_i(proc_fwd_header_lo[i])
+         ,.mem_fwd_data_i(proc_fwd_data_lo[i])
+         ,.mem_fwd_v_i(proc_fwd_v_lo[i])
+         ,.mem_fwd_ready_and_o(proc_fwd_ready_and_li[i])
 
-         ,.io_resp_header_o(proc_rev_header_li[i])
-         ,.io_resp_data_o(proc_rev_data_li[i])
-         ,.io_resp_v_o(proc_rev_v_li[i])
-         ,.io_resp_last_o(proc_rev_last_li[i])
-         ,.io_resp_ready_and_i(proc_rev_ready_and_lo[i])
+         ,.mem_rev_header_o(proc_rev_header_li[i])
+         ,.mem_rev_data_o(proc_rev_data_li[i])
+         ,.mem_rev_v_o(proc_rev_v_li[i])
+         ,.mem_rev_ready_and_i(proc_rev_ready_and_lo[i])
 
          ,.m_axil_awaddr_o(m_axil_awaddr_o[i])
          ,.m_axil_awprot_o(m_axil_awprot_o[i])
@@ -155,8 +154,8 @@ module bp_axi_lite_top
          );
     end
 
-  if (axil_data_width_p != uce_fill_width_p)
-    $error("AXIL data width and UCE fill width must match (probably 64b)");
+  if (axil_data_width_p != bedrock_fill_width_p)
+    $error("AXIL data width and Bedrock fill width must match (probably 64b)");
 
 endmodule
 
