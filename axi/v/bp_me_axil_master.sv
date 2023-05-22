@@ -13,10 +13,9 @@ module bp_me_axil_master
   `declare_bp_proc_params(bp_params_p)
   `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
 
-  , parameter io_data_width_p = (cce_type_p == e_cce_uce) ? uce_fill_width_p : bedrock_data_width_p
   // AXI WRITE DATA CHANNEL PARAMS
-  , parameter axil_data_width_p = 32
-  , parameter axil_addr_width_p  = 32
+  , parameter `BSG_INV_PARAM(axil_data_width_p)
+  , parameter `BSG_INV_PARAM(axil_addr_width_p)
   , localparam axi_mask_width_lp = (axil_data_width_p>>3)
   )
  (//==================== GLOBAL SIGNALS =======================
@@ -25,16 +24,14 @@ module bp_me_axil_master
 
   //==================== BP-STREAM SIGNALS ======================
   , input [mem_fwd_header_width_lp-1:0]        mem_fwd_header_i
-  , input [io_data_width_p-1:0]                mem_fwd_data_i
+  , input [bedrock_fill_width_p-1:0]           mem_fwd_data_i
   , input                                      mem_fwd_v_i
   , output logic                               mem_fwd_ready_and_o
-  , input                                      mem_fwd_last_i
 
   , output logic [mem_rev_header_width_lp-1:0] mem_rev_header_o
-  , output logic [io_data_width_p-1:0]         mem_rev_data_o
+  , output logic [bedrock_fill_width_p-1:0]    mem_rev_data_o
   , output logic                               mem_rev_v_o
   , input                                      mem_rev_ready_and_i
-  , output logic                               mem_rev_last_o
 
   //====================== AXI-4 LITE =========================
   // WRITE ADDRESS CHANNEL SIGNALS
@@ -67,29 +64,89 @@ module bp_me_axil_master
   , output logic                               m_axil_rready_o
   );
 
-  wire unused = &{mem_fwd_last_i};
-  assign mem_rev_last_o = mem_rev_v_o;
-
   // declaring i/o command and response struct type and size
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
   `bp_cast_i(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
   `bp_cast_o(bp_bedrock_mem_rev_header_s, mem_rev_header);
 
-  logic header_v_li, header_ready_lo;
-  logic header_v_lo, header_yumi_li;
-  bsg_one_fifo
-   #(.width_p($bits(bp_bedrock_mem_fwd_header_s)))
-   return_fifo
+  bp_bedrock_mem_fwd_header_s fsm_fwd_header_li;
+  logic [axil_data_width_p-1:0] fsm_fwd_data_li;
+  logic fsm_fwd_v_li, fsm_fwd_yumi_lo;
+  logic [paddr_width_p-1:0] fsm_fwd_stream_addr_li;
+  bp_me_stream_pump_in
+   #(.bp_params_p(bp_params_p)
+     ,.stream_data_width_p(bedrock_fill_width_p)
+     ,.block_width_p(bedrock_block_width_p)
+     ,.payload_width_p(mem_fwd_payload_width_lp)
+     ,.msg_stream_mask_p(mem_fwd_payload_mask_gp)
+     ,.fsm_stream_mask_p(mem_fwd_payload_mask_gp | mem_rev_payload_mask_gp)
+     )
+   fwd_pump_in
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
 
-     ,.data_i(mem_fwd_header_cast_i)
-     ,.v_i(header_v_li)
-     ,.ready_o(header_ready_lo)
+     ,.msg_header_i(mem_fwd_header_cast_i)
+     ,.msg_data_i(mem_fwd_data_i)
+     ,.msg_v_i(mem_fwd_v_i)
+     ,.msg_ready_and_o(mem_fwd_ready_and_o)
 
-     ,.data_o(mem_rev_header_cast_o)
-     ,.v_o(header_v_lo)
-     ,.yumi_i(header_yumi_li)
+     ,.fsm_header_o(fsm_fwd_header_li)
+     ,.fsm_addr_o(fsm_fwd_stream_addr_li)
+     ,.fsm_data_o(fsm_fwd_data_li)
+     ,.fsm_v_o(fsm_fwd_v_li)
+     ,.fsm_yumi_i(fsm_fwd_yumi_lo)
+     ,.fsm_cnt_o()
+     ,.fsm_new_o(fsm_fwd_new_li)
+     ,.fsm_last_o(fsm_fwd_last_li)
+     );
+
+
+  bp_bedrock_mem_rev_header_s fsm_rev_header_li;
+  logic [paddr_width_p-1:0] fsm_rev_addr_lo;
+  logic [l2_data_width_p-1:0] fsm_rev_data_li;
+  logic fsm_rev_v_li, fsm_rev_yumi_lo;
+  logic fsm_rev_new_lo, fsm_rev_last_lo;
+  logic stream_fifo_ready_and_lo;
+  bsg_two_fifo
+   #(.width_p($bits(bp_bedrock_mem_fwd_header_s)))
+   stream_fifo
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+
+     ,.data_i(fsm_fwd_header_li)
+     ,.v_i(fsm_fwd_yumi_lo & fsm_fwd_new_li)
+     ,.ready_o(stream_fifo_ready_and_lo)
+
+     ,.data_o(fsm_rev_header_li)
+     ,.v_o(stream_header_v_lo)
+     ,.yumi_i(fsm_rev_yumi_lo & fsm_rev_last_lo)
+     );
+
+  bp_me_stream_pump_out
+   #(.bp_params_p(bp_params_p)
+     ,.stream_data_width_p(axil_data_width_p)
+     ,.block_width_p(bedrock_block_width_p)
+     ,.payload_width_p(mem_rev_payload_width_lp)
+     ,.msg_stream_mask_p(mem_rev_payload_mask_gp)
+     ,.fsm_stream_mask_p(mem_fwd_payload_mask_gp | mem_rev_payload_mask_gp)
+     )
+   rev_pump_out
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+
+     ,.msg_header_o(mem_rev_header_cast_o)
+     ,.msg_data_o(mem_rev_data_o)
+     ,.msg_v_o(mem_rev_v_o)
+     ,.msg_ready_and_i(mem_rev_ready_and_i)
+
+     ,.fsm_header_i(fsm_rev_header_li)
+     ,.fsm_data_i(fsm_rev_data_li)
+     ,.fsm_addr_o(fsm_rev_addr_lo)
+     ,.fsm_v_i(fsm_rev_v_li)
+     ,.fsm_yumi_o(fsm_rev_yumi_lo)
+     ,.fsm_cnt_o(/* unused */)
+     ,.fsm_new_o(fsm_rev_new_lo)
+     ,.fsm_last_o(fsm_rev_last_lo)
      );
 
   logic [axil_data_width_p-1:0] wdata_li;
@@ -98,15 +155,13 @@ module bp_me_axil_master
   logic [axi_mask_width_lp-1:0] wmask_li;
   always_comb
     begin
-      wdata_li = mem_fwd_data_i;
-      addr_li = mem_fwd_header_cast_i.addr;
-      v_li = header_ready_lo & mem_fwd_v_i;
-      w_li = mem_fwd_header_cast_i.msg_type inside {e_bedrock_mem_wr, e_bedrock_mem_uc_wr};
-      mem_fwd_ready_and_o = ready_and_lo;
+      wdata_li = fsm_fwd_data_li;
+      addr_li = fsm_fwd_header_li.addr;
+      v_li = fsm_fwd_v_li;
+      w_li = fsm_fwd_header_li.msg_type inside {e_bedrock_mem_wr, e_bedrock_mem_uc_wr};
+      fsm_fwd_yumi_lo = fsm_fwd_v_li & ready_and_lo & stream_fifo_ready_and_lo;
 
-      header_v_li = mem_fwd_ready_and_o & mem_fwd_v_i;
-
-      case (mem_fwd_header_cast_i.size)
+      case (fsm_fwd_header_li.size)
         e_bedrock_msg_size_1: wmask_li = (axil_data_width_p>>3)'('h1);
         e_bedrock_msg_size_2: wmask_li = (axil_data_width_p>>3)'('h3);
         e_bedrock_msg_size_4: wmask_li = (axil_data_width_p>>3)'('hF);
@@ -118,25 +173,23 @@ module bp_me_axil_master
   localparam byte_offset_width_lp = `BSG_SAFE_CLOG2(axil_data_width_p>>3);
   localparam size_width_lp = `BSG_WIDTH(byte_offset_width_lp);
 
-  wire [byte_offset_width_lp-1:0] resp_sel_li = mem_rev_header_cast_o.addr[0+:byte_offset_width_lp];
-  wire [size_width_lp-1:0] resp_size_li = mem_rev_header_cast_o.size;
+  wire [byte_offset_width_lp-1:0] resp_sel_li = fsm_rev_header_li.addr[0+:byte_offset_width_lp];
+  wire [size_width_lp-1:0] resp_size_li = fsm_rev_header_li.size;
   logic [axil_data_width_p-1:0] rdata_lo;
   bsg_bus_pack
-   #(.in_width_p(axil_data_width_p), .out_width_p(io_data_width_p))
+   #(.in_width_p(axil_data_width_p), .out_width_p(bedrock_fill_width_p))
    resp_data_bus_pack
     (.data_i(rdata_lo)
      ,.sel_i(resp_sel_li)
      ,.size_i(resp_size_li)
-     ,.data_o(mem_rev_data_o)
+     ,.data_o(fsm_rev_data_li)
      );
 
-  logic v_lo, ready_and_li;
+  logic v_lo, yumi_li;
   always_comb
     begin
-      mem_rev_v_o = v_lo;
-      ready_and_li = mem_rev_ready_and_i;
-
-      header_yumi_li = header_v_lo & v_lo & ready_and_li;
+      fsm_rev_v_li = stream_header_v_lo & v_lo;
+      yumi_li = fsm_rev_yumi_lo;
     end
 
   bsg_axil_fifo_master
@@ -156,7 +209,7 @@ module bp_me_axil_master
 
      ,.data_o(rdata_lo)
      ,.v_o(v_lo)
-     ,.ready_and_i(ready_and_li)
+     ,.ready_and_i(yumi_li)
 
      ,.*
      );
