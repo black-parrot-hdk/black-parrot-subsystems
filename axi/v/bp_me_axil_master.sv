@@ -16,7 +16,7 @@ module bp_me_axil_master
   // AXI WRITE DATA CHANNEL PARAMS
   , parameter `BSG_INV_PARAM(axil_data_width_p)
   , parameter `BSG_INV_PARAM(axil_addr_width_p)
-  , localparam axi_mask_width_lp = (axil_data_width_p>>3)
+  , localparam axil_mask_width_lp = (axil_data_width_p>>3)
   )
  (//==================== GLOBAL SIGNALS =======================
   input                                        clk_i
@@ -42,7 +42,7 @@ module bp_me_axil_master
 
   // WRITE DATA CHANNEL SIGNALS
   , output logic [axil_data_width_p-1:0]       m_axil_wdata_o
-  , output logic [(axil_data_width_p>>3)-1:0]  m_axil_wstrb_o
+  , output logic [axil_mask_width_lp-1:0]      m_axil_wstrb_o
   , output logic                               m_axil_wvalid_o
   , input                                      m_axil_wready_i
 
@@ -70,7 +70,7 @@ module bp_me_axil_master
   `bp_cast_o(bp_bedrock_mem_rev_header_s, mem_rev_header);
 
   bp_bedrock_mem_fwd_header_s fsm_fwd_header_li;
-  logic [axil_data_width_p-1:0] fsm_fwd_data_li;
+  logic [bedrock_fill_width_p-1:0] fsm_fwd_data_li;
   logic fsm_fwd_v_li, fsm_fwd_yumi_lo;
   logic [paddr_width_p-1:0] fsm_fwd_stream_addr_li;
   bp_me_stream_pump_in
@@ -103,7 +103,7 @@ module bp_me_axil_master
 
   bp_bedrock_mem_rev_header_s fsm_rev_header_li;
   logic [paddr_width_p-1:0] fsm_rev_addr_lo;
-  logic [l2_data_width_p-1:0] fsm_rev_data_li;
+  logic [bedrock_fill_width_p-1:0] fsm_rev_data_li;
   logic fsm_rev_v_li, fsm_rev_yumi_lo;
   logic fsm_rev_new_lo, fsm_rev_last_lo;
   logic stream_fifo_ready_and_lo;
@@ -124,7 +124,7 @@ module bp_me_axil_master
 
   bp_me_stream_pump_out
    #(.bp_params_p(bp_params_p)
-     ,.stream_data_width_p(axil_data_width_p)
+     ,.stream_data_width_p(bedrock_fill_width_p)
      ,.block_width_p(bedrock_block_width_p)
      ,.payload_width_p(mem_rev_payload_width_lp)
      ,.msg_stream_mask_p(mem_rev_payload_mask_gp)
@@ -152,7 +152,11 @@ module bp_me_axil_master
   logic [axil_data_width_p-1:0] wdata_li;
   logic [axil_addr_width_p-1:0] addr_li;
   logic v_li, w_li, ready_and_lo;
-  logic [axi_mask_width_lp-1:0] wmask_li;
+  logic [axil_mask_width_lp-1:0] wmask_li;
+
+  localparam byte_offset_width_lp = `BSG_SAFE_CLOG2(axil_mask_width_lp);
+  wire [byte_offset_width_lp-1:0] mask_shift = addr_li[0+:byte_offset_width_lp];
+
   always_comb
     begin
       wdata_li = fsm_fwd_data_li;
@@ -162,15 +166,14 @@ module bp_me_axil_master
       fsm_fwd_yumi_lo = fsm_fwd_v_li & ready_and_lo & stream_fifo_ready_and_lo;
 
       case (fsm_fwd_header_li.size)
-        e_bedrock_msg_size_1: wmask_li = (axil_data_width_p>>3)'('h1);
-        e_bedrock_msg_size_2: wmask_li = (axil_data_width_p>>3)'('h3);
-        e_bedrock_msg_size_4: wmask_li = (axil_data_width_p>>3)'('hF);
+        e_bedrock_msg_size_1: wmask_li = (axil_mask_width_lp)'('h1) << mask_shift;
+        e_bedrock_msg_size_2: wmask_li = (axil_mask_width_lp)'('h3) << mask_shift;
+        e_bedrock_msg_size_4: wmask_li = (axil_mask_width_lp)'('hF) << mask_shift;
         // e_bedrock_msg_size_8:
-        default : wmask_li = (axil_data_width_p>>3)'('hFF);
+        default : wmask_li = (axil_mask_width_lp)'('hFF);
       endcase
     end
 
-  localparam byte_offset_width_lp = `BSG_SAFE_CLOG2(axil_data_width_p>>3);
   localparam size_width_lp = `BSG_WIDTH(byte_offset_width_lp);
 
   wire [byte_offset_width_lp-1:0] resp_sel_li = fsm_rev_header_li.addr[0+:byte_offset_width_lp];
@@ -213,7 +216,7 @@ module bp_me_axil_master
 
      ,.*
      );
-  
+
 
 endmodule
 
