@@ -165,19 +165,10 @@ module bp_me_axil_master
       w_li = fsm_fwd_header_li.msg_type inside {e_bedrock_mem_wr, e_bedrock_mem_uc_wr};
       fsm_fwd_yumi_lo = fsm_fwd_v_li & ready_and_lo & stream_fifo_ready_and_lo;
 
-<<<<<<< HEAD
       case (fsm_fwd_header_li.size)
-        e_bedrock_msg_size_1: wmask_li = (axil_mask_width_p)'('h1) << mask_shift;
-        e_bedrock_msg_size_2: wmask_li = (axil_mask_width_p)'('h3) << mask_shift;
-        e_bedrock_msg_size_4: wmask_li = (axil_mask_width_p)'('hF) << mask_shift;
-=======
-      header_v_li = mem_fwd_ready_and_o & mem_fwd_v_i;
-
-      case (mem_fwd_header_cast_i.size)
         e_bedrock_msg_size_1: wmask_li = (axil_mask_width_lp)'('h1) << mask_shift;
         e_bedrock_msg_size_2: wmask_li = (axil_mask_width_lp)'('h3) << mask_shift;
         e_bedrock_msg_size_4: wmask_li = (axil_mask_width_lp)'('hF) << mask_shift;
->>>>>>> fix typos
         // e_bedrock_msg_size_8:
         default : wmask_li = (axil_mask_width_lp)'('hFF);
       endcase
