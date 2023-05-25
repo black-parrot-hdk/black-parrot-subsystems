@@ -4,7 +4,7 @@ package bsg_wb_pkg;
      e_wb_classic_cycle    = 3'b000
     ,e_wb_const_addr_burst = 3'b001
     ,e_wb_inc_addr_burst   = 3'b010
-    ,e_wb_end_of_burst     = 3'b011
+    ,e_wb_end_of_burst     = 3'b111
   } bsg_wb_cti;
 
   typedef enum logic [1:0]
