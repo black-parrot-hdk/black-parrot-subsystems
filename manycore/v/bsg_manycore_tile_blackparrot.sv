@@ -68,8 +68,8 @@ module bsg_manycore_tile_blackparrot
    , input                                     rt_clk_i
    , input                                     reset_i
 
-   , input [x_cord_width_p-1:0]                global_x_i
-   , input [y_cord_width_p-1:0]                global_y_i
+   , input [3:0][x_cord_width_p-1:0]           global_x_i
+   , input [3:0][y_cord_width_p-1:0]           global_y_i
 
    , input [3:0][link_sif_width_lp-1:0]        link_sif_i
    , output logic [3:0][link_sif_width_lp-1:0] link_sif_o
@@ -81,13 +81,13 @@ module bsg_manycore_tile_blackparrot
   bp_cfg_bus_s cfg_bus_lo; 
 
   localparam num_proc_lp = 3;
-  localparam lg_num_proc_lp = `BSG_SAFE_CLOG2(3);
+  localparam lg_num_proc_lp = `BSG_SAFE_CLOG2(num_proc_lp);
   localparam num_dev_lp = 8;
   localparam lg_num_dev_lp = `BSG_SAFE_CLOG2(num_dev_lp);
 
-  wire [mem_noc_did_width_p-1:0]     my_did_li = '0;
-  wire [mem_noc_did_width_p-1:0]   host_did_li = '0;
-  wire [coh_noc_cord_width_p-1:0]  my_cord_li = global_y_i >> 2;
+  wire [mem_noc_did_width_p-1:0]  my_did_li = '0;
+  wire [mem_noc_did_width_p-1:0]  host_did_li = '0;
+  wire [coh_noc_cord_width_p-1:0] my_cord_li = global_y_i[0+:`BSG_SAFE_CLOG2(num_tiles_y_p)] >> 2;
 
   // {IO CMD, BE UCE, FE UCE}
   bp_bedrock_mem_fwd_header_s [num_proc_lp-1:0] proc_fwd_header_lo;
@@ -193,7 +193,12 @@ module bsg_manycore_tile_blackparrot
      ,.msg_ready_and_i(dev_fwd_ready_and_lo)
      );
 
-  // Select destination of revonses. Were there a way to transpose structs...
+
+  //CORE 0: 0 - I$, 1 - D$, 2 - IO
+  //CORE 1: 2 - I$, 3 - D$, 4 - IO
+  //CORE 0 I$ aliases to CORE 1 IO
+
+  // Select destination of responses. Were there a way to transpose structs...
   logic [num_dev_lp-1:0][lg_num_proc_lp-1:0] dev_rev_dst_lo;
   assign dev_rev_dst_lo[7] = dev_rev_header_lo[7].payload.lce_id[0+:lg_num_proc_lp];
   assign dev_rev_dst_lo[6] = dev_rev_header_lo[6].payload.lce_id[0+:lg_num_proc_lp];
@@ -284,8 +289,9 @@ module bsg_manycore_tile_blackparrot
 
   logic [pod_y_cord_width_p+pod_x_cord_width_p-1:0] dram_pod_lo;
   logic [addr_width_p-1:0] dram_offset_lo;
+  logic [x_cord_width_p+y_cord_width_p-1:0] my_cord_lo;
   logic [x_cord_width_p+y_cord_width_p-1:0] host_cord_lo;
-  bp_mc_bridge_csr
+  bp_cce_to_mc_bridge
    #(.bp_params_p(bp_params_p)
      ,.x_cord_width_p(x_cord_width_p)
      ,.y_cord_width_p(y_cord_width_p)
@@ -311,11 +317,12 @@ module bsg_manycore_tile_blackparrot
 
      ,.dram_pod_o(dram_pod_lo)
      ,.dram_offset_o(dram_offset_lo)
+     ,.my_cord_o(my_cord_lo)
      ,.host_cord_o(host_cord_lo)
      );
 
-  wire [x_cord_width_p-1:0] fifo_x_li = global_x_i;
-  wire [y_cord_width_p-1:0] fifo_y_li = global_y_i + 1'b0;
+  wire [x_cord_width_p-1:0] fifo_x_li = global_x_i[0];
+  wire [y_cord_width_p-1:0] fifo_y_li = global_y_i[0];
   bp_cce_to_mc_fifo
    #(.bp_params_p(bp_params_p)
      ,.x_cord_width_p(x_cord_width_p)
@@ -345,8 +352,8 @@ module bsg_manycore_tile_blackparrot
      ,.global_y_i(fifo_y_li)
      );
 
-  wire [x_cord_width_p-1:0] mmio_x_li = global_x_i;
-  wire [y_cord_width_p-1:0] mmio_y_li = global_y_i + 1'b1;
+  wire [x_cord_width_p-1:0] mmio_x_li = global_x_i[1];
+  wire [y_cord_width_p-1:0] mmio_y_li = global_y_i[1];
   bp_cce_to_mc_mmio
    #(.bp_params_p(bp_params_p)
      ,.x_cord_width_p(x_cord_width_p)
@@ -399,8 +406,8 @@ module bsg_manycore_tile_blackparrot
 
   for (genvar i = 0; i < 2; i++)
     begin : d
-      wire [x_cord_width_p-1:0] dram_x_li = global_x_i;
-      wire [y_cord_width_p-1:0] dram_y_li = global_y_i + 2'b10 + i;
+      wire [x_cord_width_p-1:0] dram_x_li = global_x_i[2+i];
+      wire [y_cord_width_p-1:0] dram_y_li = global_y_i[2+i];
       bp_cce_to_mc_dram
        #(.bp_params_p(bp_params_p)
          ,.x_cord_width_p(x_cord_width_p)
@@ -460,4 +467,6 @@ module bsg_manycore_tile_blackparrot
      );
 
 endmodule
+
+`BSG_ABSTRACT_MODULE(bsg_manycore_tile_blackparrot)
 

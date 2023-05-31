@@ -1,5 +1,6 @@
 
 `include "bp_common_defines.svh"
+`include "bsg_manycore_defines.vh"
 
 module bp_cce_to_mc_mmio
  import bp_common_pkg::*;
@@ -147,6 +148,8 @@ module bp_cce_to_mc_mmio
   wire [y_subcord_width_lp-1:0] mmio_vcache_y_subcord_lo = (mmio_vcache_y_pod_lo == '0) ? '1 : '0;
   wire [y_cord_width_p-1:0] mmio_vcache_y_cord_lo        = {mmio_vcache_y_pod_lo, mmio_vcache_y_subcord_lo};
 
+  wire [addr_width_p-1:0] host_epa_lo = mem_fwd_header_cast_i.addr[2+:addr_width_p];
+
   logic [(data_width_p>>3)-1:0] store_mask;
   always_comb
     case (mem_fwd_header_cast_i.size)
@@ -250,7 +253,7 @@ module bp_cce_to_mc_mmio
         end
       else // Send to host
         begin
-          packet_li.addr   = mem_fwd_header_cast_i.addr[2+:16]; // Select EPA for stores to manycore host
+          packet_li.addr   = host_epa_lo; // Select EPA for stores to manycore host
           packet_li.y_cord = host_y_i;
           packet_li.x_cord = host_x_i;
         end
@@ -269,9 +272,9 @@ module bp_cce_to_mc_mmio
             packet_li.payload.data = mem_fwd_data_i;
             packet_li.reg_id = bsg_manycore_reg_id_width_gp'(trans_id_lo);
             unique case (mem_fwd_header_cast_i.subop)
-              e_bedrock_amoadd:  packet_li.op_v2 = e_remote_amoadd;
-              e_bedrock_amoor:   packet_li.op_v2 = e_remote_amoor;
-              e_bedrock_amoswap: packet_li.op_v2 = e_remote_amoswap;
+              e_bedrock_amoadd:  packet_li.op_v2               = e_remote_amoadd;
+              e_bedrock_amoor:   packet_li.op_v2               = e_remote_amoor;
+              e_bedrock_amoswap: packet_li.op_v2               = e_remote_amoswap;
               default: packet_li.op_v2 = e_remote_amoswap; // Must never come here
             endcase
           end
@@ -324,7 +327,7 @@ module bp_cce_to_mc_mmio
       mem_fwd_header_cast_o.payload.did[0+:x_cord_width_p] = packet_lo.src_x_cord;
       mem_fwd_header_cast_o.payload.did[x_cord_width_p+:y_cord_width_p] = packet_lo.src_y_cord;
       mem_fwd_header_cast_o.payload.did[x_cord_width_p+y_cord_width_p+:5] = packet_lo.reg_id;
-      mem_fwd_header_cast_o.msg_type = (packet_lo.op_v2 inside {e_remote_load}) ? e_bedrock_mem_uc_rd : e_remote_store;
+      mem_fwd_header_cast_o.msg_type = (packet_lo.op_v2 inside {e_remote_load}) ? e_bedrock_mem_uc_rd : e_bedrock_mem_uc_wr;
       // TODO: we only support 32-bit loads and stores to BP configuration addresses
       mem_fwd_header_cast_o.size = e_bedrock_msg_size_4;
       mem_fwd_data_o = packet_lo.payload;
@@ -362,4 +365,6 @@ module bp_cce_to_mc_mmio
     end
 
 endmodule
+
+`BSG_ABSTRACT_MODULE(bp_cce_to_mc_mmio)
 

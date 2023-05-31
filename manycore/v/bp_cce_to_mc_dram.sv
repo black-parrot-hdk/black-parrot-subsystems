@@ -1,5 +1,6 @@
 
 `include "bp_common_defines.svh"
+`include "bsg_manycore_defines.vh"
 
 module bp_cce_to_mc_dram
  import bp_common_pkg::*;
@@ -201,7 +202,8 @@ module bp_cce_to_mc_dram
   logic [y_cord_width_p-1:0] dram_y_cord_lo;
   logic [addr_width_p-1:0] dram_epa_lo;
 
-  wire [data_width_p-1:0] dram_eva_li = {1'b1, fsm_fwd_addr_li[0+:data_width_p-1]} + dram_offset_i;
+  wire [data_width_p-2:0] dram_addr_li = fsm_fwd_addr_li + dram_offset_i;
+  wire [data_width_p-1:0] dram_eva_li  = {1'b1, dram_addr_li};
   // TODO: Need to stripe across mc_compute pods for pods > 1
   wire [pod_x_cord_width_p-1:0] dram_pod_x_li = dram_pod_i[0+:pod_x_cord_width_p];
   wire [pod_y_cord_width_p-1:0] dram_pod_y_li = dram_pod_i[pod_x_cord_width_p+:pod_y_cord_width_p];
@@ -310,3 +312,6 @@ module bp_cce_to_mc_dram
     end
 
 endmodule
+
+`BSG_ABSTRACT_MODULE(bp_cce_to_mc_dram)
+

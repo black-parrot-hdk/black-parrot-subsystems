@@ -2,7 +2,7 @@
 `include "bp_common_defines.svh"
 `include "bp_me_defines.svh"
 
-module bp_mc_bridge_csr
+module bp_cce_to_mc_bridge
  import bp_common_pkg::*;
  import bp_me_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
@@ -35,50 +35,58 @@ module bp_mc_bridge_csr
 
    , output logic [pod_cord_width_lp-1:0]           dram_pod_o
    , output logic [addr_width_p-1:0]                dram_offset_o
+   , output logic [cord_width_lp-1:0]               my_cord_o
    , output logic [cord_width_lp-1:0]               host_cord_o
    );
 
   localparam mc_bridge_reg_dram_offset_gp = (dev_addr_width_gp)'('h0_0000);
-  localparam mc_bridge_reg_dram_pod_gp    = (dev_addr_width_gp)'('h0_0004);
-  localparam mc_bridge_reg_host_cord_gp   = (dev_addr_width_gp)'('h0_0008);
+  localparam mc_bridge_reg_dram_pod_gp    = (dev_addr_width_gp)'('h0_0008);
+  localparam mc_bridge_reg_my_cord_gp     = (dev_addr_width_gp)'('h0_0010);
+  localparam mc_bridge_reg_host_cord_gp   = (dev_addr_width_gp)'('h0_0018);
   localparam mc_bridge_scratchpad_gp      = (dev_addr_width_gp)'('h0_1000);
 
-  logic dram_pod_r_v_li, dram_offset_r_v_li;
-  logic dram_pod_w_v_li, dram_offset_w_v_li;
+  logic scratchpad_r_v_li, scratchpad_w_v_li;
+  logic host_cord_r_v_li, host_cord_w_v_li;
+  logic my_cord_r_v_li, my_cord_w_v_li;
+  logic dram_pod_r_v_li, dram_pod_w_v_li;
+  logic dram_offset_r_v_li, dram_offset_w_v_li;
   logic [dev_addr_width_gp-1:0] addr_lo;
   logic [dword_width_gp-1:0] data_lo;
-  logic [3:0][dword_width_gp-1:0] data_li;
+  logic [4:0][dword_width_gp-1:0] data_li;
   bp_me_bedrock_register
    #(.bp_params_p(bp_params_p)
-     ,.els_p(4)
+     ,.els_p(5)
      ,.reg_data_width_p(dword_width_gp)
      ,.reg_addr_width_p(dev_addr_width_gp)
-     ,.base_addr_p({mc_bridge_scratchpad_gp, mc_bridge_reg_host_cord_gp, mc_bridge_reg_dram_pod_gp, mc_bridge_reg_dram_offset_gp})
+     ,.base_addr_p({mc_bridge_scratchpad_gp, mc_bridge_reg_host_cord_gp, mc_bridge_reg_my_cord_gp, mc_bridge_reg_dram_pod_gp, mc_bridge_reg_dram_offset_gp})
      )
    register
     (.*
-     ,.r_v_o({scratchpad_r_v_li, host_cord_r_v_li, dram_pod_r_v_li, dram_offset_r_v_li})
-     ,.w_v_o({scratchpad_w_v_li, host_cord_w_v_li, dram_pod_w_v_li, dram_offset_w_v_li})
+     ,.r_v_o({scratchpad_r_v_li, host_cord_r_v_li, my_cord_r_v_li, dram_pod_r_v_li, dram_offset_r_v_li})
+     ,.w_v_o({scratchpad_w_v_li, host_cord_w_v_li, my_cord_w_v_li, dram_pod_w_v_li, dram_offset_w_v_li})
      ,.addr_o(addr_lo)
      ,.size_o()
      ,.data_o(data_lo)
      ,.data_i(data_li)
      );
 
-  logic [addr_width_p-1:0] dram_offset_r;
+  logic [data_width_p-1:0] dram_offset_r;
   logic [pod_cord_width_lp-1:0] dram_pod_r;
+  logic [cord_width_lp-1:0] my_cord_r;
   logic [cord_width_lp-1:0] host_cord_r;
   always_ff @(posedge clk_i)
     if (reset_i)
       begin
         dram_offset_r <= '0;
         dram_pod_r <= '0;
+        my_cord_r <= '0;
         host_cord_r <= '0;
       end
     else
       begin
         dram_offset_r <= dram_offset_w_v_li ? data_lo : dram_offset_r;
         dram_pod_r <= dram_pod_w_v_li ? data_lo : dram_pod_r;
+        my_cord_r <= my_cord_w_v_li ? data_lo : my_cord_r;
         host_cord_r <= host_cord_w_v_li ? data_lo : host_cord_r;
       end
 
@@ -102,12 +110,16 @@ module bp_mc_bridge_csr
 
   assign data_li[0] = dram_offset_r;
   assign data_li[1] = dram_pod_r;
-  assign data_li[2] = host_cord_r;
-  assign data_li[3] = scratchpad_data_lo;
+  assign data_li[2] = my_cord_r;
+  assign data_li[3] = host_cord_r;
+  assign data_li[4] = scratchpad_data_lo;
 
   assign dram_offset_o = dram_offset_r;
   assign dram_pod_o = dram_pod_r;
   assign host_cord_o = host_cord_r;
+  assign my_cord_o = my_cord_r;
 
 endmodule
+
+`BSG_ABSTRACT_MODULE(bp_cce_to_mc_bridge)
 

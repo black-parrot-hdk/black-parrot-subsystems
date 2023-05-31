@@ -358,3 +358,6 @@ module bp_cce_to_mc_fifo
   assign returning_data_li = '0;
 
 endmodule
+
+`BSG_ABSTRACT_MODULE(bp_cce_to_mc_fifo)
+
