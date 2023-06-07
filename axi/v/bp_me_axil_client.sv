@@ -10,8 +10,8 @@ module bp_me_axil_client
   `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
 
   // AXI CHANNEL PARAMS
-  , parameter axil_data_width_p = 32
-  , parameter axil_addr_width_p = 32
+  , parameter `BSG_INV_PARAM(axil_data_width_p)
+  , parameter `BSG_INV_PARAM(axil_addr_width_p)
   , localparam axil_mask_width_lp = axil_data_width_p>>3
   )
 
