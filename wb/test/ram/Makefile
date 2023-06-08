@@ -1,5 +1,5 @@
 # Set up BP paths
-TOP = ../../../../black-parrot
+TOP =
 export BP_COMMON_DIR    := $(TOP)/bp_common
 export BP_FE_DIR        := $(TOP)/bp_fe
 export BP_BE_DIR        := $(TOP)/bp_be
@@ -30,7 +30,7 @@ VERILATOR_FLAGS += -O2 -x-assign 0
 # Warn abount lint issues; may not want this on less solid designs
 VERILATOR_FLAGS += -Wall -Wno-fatal
 # Make waveforms
-VERILATOR_FLAGS += --trace-fst
+VERILATOR_FLAGS += --trace
 # Check SystemVerilog assertions
 VERILATOR_FLAGS += --assert
 # Run make to compile model, with as many CPUs as are free
@@ -49,7 +49,7 @@ VERILATOR_FLAGS += -CFLAGS -I$(realpath ../cpp/)
 
 # Input files for Verilator
 VERILATOR_INPUT = -f flist.verilator
-VERILATOR_INPUT += bp_me_wb_ram.sv wb_ram.v
+VERILATOR_INPUT += bp_me_wb_ram.sv wb_ram.sv
 VERILATOR_INPUT += sim_main.cpp ../cpp/bp_me_wb_master_ctrl.cpp
 VERILATOR_INPUT += $(BASEJUMP_STL_DIR)/bsg_test/bsg_nonsynth_dpi_clock_gen.cpp
 
@@ -82,4 +82,4 @@ show-config:
 	$(VERILATOR) -V
 
 clean:
-	rm -rf obj_dir waveforms
+	rm -rf obj_dir waveforms logs

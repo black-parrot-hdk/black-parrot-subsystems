@@ -1,5 +1,6 @@
 `include "bp_common_defines.svh"
 `include "bp_me_defines.svh"
+`include "bsg_wb_defines.svh"
 
 module top
   import bp_common_pkg::*;
@@ -7,11 +8,10 @@ module top
   #(parameter bp_params_e bp_params_p = e_bp_default_cfg
     `declare_bp_proc_params(bp_params_p)
     `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
+    `declare_bsg_wb_widths(`BSG_SAFE_CLOG2(ram_size_lp), data_width_p)
 
-    , parameter  data_width_p        = dword_width_gp
-    , localparam ram_size_lp         = 4096
-    , localparam wbone_addr_width_lp =   `BSG_SAFE_CLOG2(ram_size_lp)
-                                       - `BSG_SAFE_CLOG2(data_width_p>>3)
+    , parameter  data_width_p    = dword_width_gp
+    , localparam ram_size_lp     = 2**12
 
     , localparam cycle_time_lp      = 4
     , localparam reset_cycles_lo_lp = 0
@@ -36,12 +36,14 @@ module top
   logic                               mem_rev_last_o;
 
   // WB signals
-  logic [wbone_addr_width_lp-1:0]     adr;
+  logic [wb_adr_width_lp-1:0]         adr;
   logic [data_width_p-1:0]            dat_mosi;
   logic                               stb;
   logic                               cyc;
-  logic [(data_width_p>>3)-1:0]       sel;
+  logic [wb_sel_width_lp-1:0]         sel;
   logic                               we;
+  logic [2:0]                         cti;
+  logic [1:0]                         bte;
 
   logic [data_width_p-1:0]            dat_miso;
   logic                               ack;
@@ -135,6 +137,8 @@ module top
      ,.stb_o(stb)
      ,.sel_o(sel)
      ,.we_o(we)
+     ,.cti_o(cti)
+     ,.bte_o(bte)
 
      ,.dat_i(dat_miso)
      ,.ack_i(ack)
@@ -145,18 +149,20 @@ module top
    */
   wb_ram
    #(
-     .DATA_WIDTH(data_width_p)
-    ,.ADDR_WIDTH(`BSG_SAFE_CLOG2(ram_size_lp))
+     .data_width_p(data_width_p)
+    ,.ram_size_p(ram_size_lp)
    )
    ram
-    ( .clk(clk)
-     ,.reset(reset)
-     ,.adr_i({adr, 3'b000})
+    ( .clk_i(clk)
+     ,.reset_i(reset)
+     ,.adr_i(adr)
      ,.dat_i(dat_mosi)
      ,.cyc_i(cyc)
      ,.stb_i(stb)
      ,.sel_i(sel)
      ,.we_i(we)
+     ,.cti_i(cti)
+     ,.bte_i(bte)
 
      ,.ack_o(ack)
      ,.dat_o(dat_miso)

@@ -10,16 +10,18 @@
 
 `include "bp_common_defines.svh"
 `include "bp_me_defines.svh"
+`include "bsg_wb_defines.svh"
 
 module bp_me_wb_client
   import bp_common_pkg::*;
   import bp_me_pkg::*;
+  import bsg_wb_pkg::*;
   #(parameter bp_params_e bp_params_p = e_bp_default_cfg
     `declare_bp_proc_params(bp_params_p)
     `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
+    `declare_bsg_wb_widths(paddr_width_p, data_width_p)
 
-    , parameter  data_width_p        = dword_width_gp
-    , localparam wbone_addr_width_lp = paddr_width_p - `BSG_SAFE_CLOG2(data_width_p>>3)
+    , parameter data_width_p = dword_width_gp
   )
   (   input                                      clk_i
     , input                                      reset_i
@@ -41,11 +43,11 @@ module bp_me_wb_client
     , input                                      mem_rev_last_i
 
     // WB signals
-    , input  [wbone_addr_width_lp-1:0]           adr_i
+    , input  [wb_adr_width_lp-1:0]               adr_i
     , input  [data_width_p-1:0]                  dat_i
     , input                                      cyc_i
     , input                                      stb_i
-    , input  [(data_width_p>>3)-1:0]             sel_i
+    , input  [wb_sel_width_lp-1:0]               sel_i
     , input                                      we_i
 
     , output logic [data_width_p-1:0]            dat_o
@@ -54,11 +56,11 @@ module bp_me_wb_client
 
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
   `bp_cast_o(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
-  `bp_cast_i(bp_bedrock_mem_rev_header_s, mem_rev_header);
 
   // for BP, less than bus width data must be replicated
-  localparam size_width_lp = `BSG_WIDTH(`BSG_SAFE_CLOG2(data_width_p>>3));
-  wire [size_width_lp-1:0] cmd_size_lo = msg_size;
+  localparam size_width_lp = wb_sel_width_log_lp;
+  bp_bedrock_msg_size_e msg_size;
+  wire [size_width_lp-1:0] cmd_size = msg_size;
   bsg_bus_pack
     #(
       .in_width_p(data_width_p)
@@ -66,39 +68,40 @@ module bp_me_wb_client
     bus_pack(
       .data_i(dat_i)
      ,.sel_i('0)
-     ,.size_i(cmd_size_lo)
+     ,.size_i(cmd_size)
      ,.data_o(mem_fwd_data_o)
     );
 
-  // state machine for handling BP and WB handshakes
-  typedef enum logic [1:0] {
-     e_reset     = 2'b00
-    ,e_ready     = 2'b01
-    ,e_wait_resp = 2'b10
-  } state_e;
-  state_e state_n, state_r;
-
-  bp_bedrock_msg_size_e msg_size;
+  logic mem_fwd_sent_n, mem_fwd_sent_r;
+  logic [data_width_p-1:0] dat_n;
+  logic ack_n;
   always_comb begin
-    state_n = state_r;
-
-    // default values for handshake signals
-    mem_fwd_v_o         = 1'b0;
-    mem_fwd_last_o      = 1'b1;
+    // BP handshake signals
+    mem_fwd_v_o         = cyc_i & stb_i & ~mem_fwd_sent_r;
     mem_rev_ready_and_o = 1'b1;
-    ack_o               = 1'b0;
+    mem_fwd_last_o      = 1'b1;
 
+    // check if BP command was already sent
+    mem_fwd_sent_n = mem_fwd_sent_r;
+    if (mem_fwd_v_o & mem_fwd_ready_and_i)
+      mem_fwd_sent_n = 1'b1;
+    else if (ack_o)
+      mem_fwd_sent_n = 1'b0;
+
+    // WB handshake signals
+    ack_n = mem_rev_v_i;
+  
     // BP non-handshake signals
     unique case (sel_i)
-      (data_width_p>>3)'('h1): msg_size = e_bedrock_msg_size_1;
-      (data_width_p>>3)'('h3): msg_size = e_bedrock_msg_size_2;
-      (data_width_p>>3)'('hF): msg_size = e_bedrock_msg_size_4;
-      // (data_width_p>>3)'('hFF):
+      (wb_sel_width_lp)'('h1): msg_size = e_bedrock_msg_size_1;
+      (wb_sel_width_lp)'('h3): msg_size = e_bedrock_msg_size_2;
+      (wb_sel_width_lp)'('hF): msg_size = e_bedrock_msg_size_4;
+      // (wb_sel_width_lp)'('hFF):
       default: msg_size = e_bedrock_msg_size_8;
     endcase
     mem_fwd_data_o                       = dat_i;
     mem_fwd_header_cast_o                = '0;
-    mem_fwd_header_cast_o.addr           = {adr_i, (`BSG_SAFE_CLOG2(data_width_p>>3))'('b0)};
+    mem_fwd_header_cast_o.addr           = {adr_i, (wb_sel_width_log_lp)'('b0)};
     mem_fwd_header_cast_o.size           = msg_size;
     mem_fwd_header_cast_o.payload.lce_id = lce_id_i;
     mem_fwd_header_cast_o.payload.did    = did_i;
@@ -107,46 +110,22 @@ module bp_me_wb_client
                                            : e_bedrock_mem_uc_rd;
 
     // WB non-handshake signals
-    dat_o = mem_rev_data_i;
-
-    unique case (state_r)
-      e_reset: begin
-        state_n = e_ready;
-      end
-
-      // wait for incoming WB command
-      e_ready: begin
-        mem_fwd_v_o = cyc_i & stb_i;
-
-        // ack if we immediately receive a BP response
-        ack_o = mem_fwd_v_o & mem_fwd_ready_and_i & mem_rev_v_i;
-
-        // for not immediately responded commands, go into a waiting state
-        state_n = mem_fwd_v_o & mem_fwd_ready_and_i & ~mem_rev_v_i
-                  ? e_wait_resp
-                  : state_r;
-      end
-
-      // wait for the BP client's response
-      e_wait_resp: begin
-        ack_o = mem_rev_v_i;
-
-        state_n = ack_o
-                  ? e_ready
-                  : state_r;
-      end
-
-      default: begin end
-    endcase
+    dat_n = mem_rev_data_i;
   end
 
   // advance to next state
   // synopsys sync_set_reset "reset_i"
   always_ff @(posedge clk_i) begin
-    if (reset_i)
-      state_r <= e_reset;
-    else
-      state_r <= state_n;
+    if (reset_i) begin
+      ack_o       <= '0;
+      dat_o       <= '0;
+      mem_fwd_sent_r <= '0;
+    end
+    else begin
+      ack_o       <= ack_n;
+      dat_o       <= dat_n;
+      mem_fwd_sent_r <= mem_fwd_sent_n;
+    end
   end
 
   // assertions
