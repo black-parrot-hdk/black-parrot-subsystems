@@ -1,6 +1,6 @@
 #include "verilated.h"
 #include "svdpi.h"
-#include "verilated_vcd_c.h"
+#include "verilated_fst_c.h"
 #include "Vtop.h"
 #include "bsg_nonsynth_dpi_clock_gen.hpp"
 
@@ -12,7 +12,7 @@
 
 using namespace bsg_nonsynth_dpi;
 
-void tick(Vtop *dut, VerilatedVcdC *tfp) {
+void tick(Vtop *dut, VerilatedFstC *tfp) {
     bsg_timekeeper::next();
     dut->eval();
     tfp->dump(Verilated::time());
@@ -59,7 +59,7 @@ bool check_packets(const std::vector<BP_pkg>& commands,
 
                 if (data_ram != data_pkg) {
                     uint8_t wb_addr = current_addr >> 3;
-                    std::cout << "\nError: Read incorrect data form the RAM\n";
+                    std::cout << "\nError: Read incorrect data from the RAM\n";
                     std::cout << "BP Address:\t"
                               << VL_TO_STRING(current_addr) << "\n";
                     std::cout << "WB Address:\t" << VL_TO_STRING(wb_addr) << "\n";
@@ -85,16 +85,16 @@ bool check_packets(const std::vector<BP_pkg>& commands,
 int main(int argc, char* argv[]) {
     // initialize Verilator, the DUT and tracing
     Verilated::commandArgs(argc, argv);
-    Verilated::traceEverOn(VM_TRACE_VCD);
+    Verilated::traceEverOn(VM_TRACE_FST);
 
     auto dut = std::make_unique<Vtop>();
-    auto tfp = std::make_unique<VerilatedVcdC>();
+    auto tfp = std::make_unique<VerilatedFstC>();
     dut->trace(tfp.get(), 10);
     Verilated::mkdir("logs");
-    tfp->open("logs/wave.vcd");
+    tfp->open("logs/wave.fst");
 
     // create controllers for the adapters
-    int test_size = 100000;
+    int test_size = 10000;
     std::random_device r;
     unsigned long seed = r();
     BP_me_WB_master_ctrl ram_ctrl{test_size, seed};

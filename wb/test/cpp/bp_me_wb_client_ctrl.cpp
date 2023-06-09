@@ -39,21 +39,18 @@ void BP_me_WB_client_ctrl::sim_read() {
         if (rx_cooldown == 0) {
             uint128_t command;
             if (f2d_cmd->rx(command)) {
+                cmd.data.clear();
+                resp.data.clear();
 
                 cmd.header = command >> 64;
-                cmd.data.push_back(command & 0xFFFFFFFFFFFFFFFF);
-                commands.push_back(cmd);
-                cmd.data.clear();
-
                 // construct a response with the same header
-                BP_pkg resp;
                 resp.header = cmd.header;
+                cmd.data.push_back(command & 0xFFFFFFFFFFFFFFFF);
 
                 // generate response data
-                std::vector<uint64_t> resp_data;
-                resp_data.push_back(replicate(dice(), resp.size));
-                resp.data = std::move(resp_data);
+                resp.data.push_back(replicate(dice(), resp.size));
 
+                commands.push_back(std::move(cmd));
                 responses.push_back(std::move(resp));
                 rx_cooldown = dice() % 16;
             }

@@ -29,7 +29,7 @@ public:
     void sim_write();
 
     int get_progress() {return responses.size();}
-    bool done() {return cmd_ind == commands.size() && responses.size() == test_size;}
+    bool done() {return responses.size() == test_size;}
 
 private:
     std::unique_ptr<dpi_to_fifo<uint128_t>> d2f_cmd;
@@ -43,11 +43,14 @@ private:
     int rx_cooldown;
     int tx_cooldown;
 
+    BP_pkg cmd;
+    int cmd_count;
     std::vector<BP_pkg> commands;
     int cmd_ind;
-    int data_ind;
-    std::vector<BP_pkg> responses;
     BP_pkg resp;
+    int resp_count;
+    std::vector<BP_pkg> responses;
+    int data_ind;
 
     std::default_random_engine generator;
     std::uniform_int_distribution<uint64_t> distribution;

@@ -8,7 +8,7 @@ export BP_TOP_DIR       := $(TOP)/bp_top
 export BP_EXTERNAL_DIR  := $(TOP)/external
 export BASEJUMP_STL_DIR := $(BP_EXTERNAL_DIR)/basejump_stl
 export HARDFLOAT_DIR    := $(BP_EXTERNAL_DIR)/HardFloat
-export BP_ME_WB_DIR     := ../../sv
+export BP_ME_WB_DIR     := ../../v
 
 # If $VERILATOR_ROOT isn't in the environment, we assume it is part of a
 # package install, and verilator is in your path. Otherwise find the
@@ -30,7 +30,9 @@ VERILATOR_FLAGS += -O2 -x-assign 0
 # Warn abount lint issues; may not want this on less solid designs
 VERILATOR_FLAGS += -Wall -Wno-fatal
 # Make waveforms
-VERILATOR_FLAGS += --trace
+VERILATOR_FLAGS += --trace-fst
+#VERILATOR_FLAGS += --trace-structs
+#VERILATOR_FLAGS += --trace-depth 15
 # Check SystemVerilog assertions
 VERILATOR_FLAGS += --assert
 # Run make to compile model, with as many CPUs as are free
@@ -49,7 +51,7 @@ VERILATOR_FLAGS += -CFLAGS -I$(realpath ../cpp/)
 
 # Input files for Verilator
 VERILATOR_INPUT = -f flist.verilator
-VERILATOR_INPUT += bp_me_wb_ram.sv wb_ram.sv
+VERILATOR_INPUT += top.sv wb_ram.sv
 VERILATOR_INPUT += sim_main.cpp ../cpp/bp_me_wb_master_ctrl.cpp
 VERILATOR_INPUT += $(BASEJUMP_STL_DIR)/bsg_test/bsg_nonsynth_dpi_clock_gen.cpp
 

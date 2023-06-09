@@ -15,19 +15,19 @@ module bp_axi_top
    `declare_bp_proc_params(bp_params_p)
 
    // AXI4-LITE PARAMS
-   , parameter m_axil_addr_width_p   = 32
-   , parameter m_axil_data_width_p   = 32
+   , parameter `BSG_INV_PARAM(m_axil_addr_width_p)
+   , parameter `BSG_INV_PARAM(m_axil_data_width_p)
    , localparam m_axil_mask_width_lp = m_axil_data_width_p>>3
 
-   , parameter s_axil_addr_width_p   = 32
-   , parameter s_axil_data_width_p   = 32
+   , parameter `BSG_INV_PARAM(s_axil_addr_width_p)
+   , parameter `BSG_INV_PARAM(s_axil_data_width_p)
    , localparam s_axil_mask_width_lp = s_axil_data_width_p>>3
 
-   , parameter axi_addr_width_p = 32
-   , parameter axi_data_width_p = 64
-   , parameter axi_id_width_p   = 6
-   , parameter axi_len_width_p  = 4
-   , parameter axi_size_width_p = 3
+   , parameter `BSG_INV_PARAM(axi_addr_width_p)
+   , parameter `BSG_INV_PARAM(axi_data_width_p)
+   , parameter `BSG_INV_PARAM(axi_id_width_p)
+   , parameter `BSG_INV_PARAM(axi_len_width_p)
+   , parameter `BSG_INV_PARAM(axi_size_width_p)
    , localparam axi_mask_width_lp = axi_data_width_p>>3
 
    `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)

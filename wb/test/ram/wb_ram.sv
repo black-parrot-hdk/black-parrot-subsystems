@@ -21,6 +21,12 @@ module wb_ram
     , output logic                    ack_o
   );
 
+  always_ff @(posedge clk_i) begin
+    if (cyc_i & stb_i & ack_o) begin
+      //$display("WE: %x ADR: %x DAT_I: %x DAT_O: %x", we_i, adr_i, dat_i, dat_o);
+    end
+  end
+
   // memory array
   logic [(2**adr_width)-1:0][data_width_p-1:0] mem;
   integer i;

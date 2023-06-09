@@ -19,17 +19,20 @@
 +incdir+$BP_TOP_DIR/src/include
 
 # Packages
-$BP_COMMON_DIR/src/include/bp_common_pkg.sv
+$BP_ME_WB_DIR/bp_common_test_pkg.sv
 $BP_ME_DIR/src/include/bp_me_pkg.sv
 
 # Bus pack
 $BP_COMMON_DIR/src/v/bsg_bus_pack.sv
 
 # BP me stream pumps
-$BP_ME_DIR/src/v/network/bp_me_stream_fifo.sv 
 $BP_ME_DIR/src/v/network/bp_me_stream_pump_control.sv
 $BP_ME_DIR/src/v/network/bp_me_stream_pump_in.sv
 $BP_ME_DIR/src/v/network/bp_me_stream_pump_out.sv
+$BP_ME_DIR/src/v/network/bp_me_stream_gearbox.sv
+$BP_ME_DIR/src/v/cce/bp_bedrock_size_to_len.sv
+$BP_COMMON_DIR/src/v/bsg_serial_in_parallel_out_passthrough_dynamic.v
+$BP_COMMON_DIR/src/v/bsg_parallel_in_serial_out_passthrough_dynamic.v
 
 # Adapters
 +incdir+$BP_ME_WB_DIR/
