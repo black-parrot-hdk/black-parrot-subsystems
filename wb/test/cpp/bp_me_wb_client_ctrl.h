@@ -43,6 +43,7 @@ private:
     std::vector<BP_pkg> commands;
     BP_pkg cmd;
     std::vector<BP_pkg> responses;
+    BP_pkg resp;
     int resp_ind;
 
     std::default_random_engine generator;

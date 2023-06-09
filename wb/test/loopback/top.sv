@@ -1,16 +1,21 @@
+
 `include "bp_common_defines.svh"
 `include "bp_me_defines.svh"
-`include "bsg_wb_defines.svh"
 
 module top
   import bp_common_pkg::*;
   import bp_me_pkg::*;
-  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
+  #(parameter bp_params_e bp_params_p = e_bp_test_unicore_half_cfg
     `declare_bp_proc_params(bp_params_p)
     `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
-    `declare_bsg_wb_widths(paddr_width_p, data_width_p)
 
-    , parameter  data_width_p        = dword_width_gp
+    , parameter wb_data_width_p = dword_width_gp
+    , parameter wb_addr_width_p = paddr_width_p
+
+    , localparam wb_mask_width_lp = wb_data_width_p >> 3
+    , localparam wb_sel_width_lp = `BSG_SAFE_CLOG2(wb_mask_width_lp)
+    , localparam wb_size_width_lp = `BSG_WIDTH(wb_sel_width_lp)
+    , localparam wb_adr_width_lp = paddr_width_p - wb_sel_width_lp
 
     , localparam cycle_time_lp      = 4
     , localparam reset_cycles_lo_lp = 0
@@ -23,39 +28,35 @@ module top
 
   // BP master signals
   logic [mem_fwd_header_width_lp-1:0] m_mem_fwd_header_i;
-  logic [data_width_p-1:0]            m_mem_fwd_data_i;
+  logic [wb_data_width_p-1:0]         m_mem_fwd_data_i;
   logic                               m_mem_fwd_v_i;
   logic                               m_mem_fwd_ready_and_o;
-  logic                               m_mem_fwd_last_i;
 
   logic [mem_rev_header_width_lp-1:0] m_mem_rev_header_o;
-  logic [data_width_p-1:0]            m_mem_rev_data_o;
+  logic [wb_data_width_p-1:0]         m_mem_rev_data_o;
   logic                               m_mem_rev_v_o;
   logic                               m_mem_rev_ready_and_i;
-  logic                               m_mem_rev_last_o;
 
   // BP client signals
   logic [mem_fwd_header_width_lp-1:0] c_mem_fwd_header_o;
-  logic [data_width_p-1:0]            c_mem_fwd_data_o;
+  logic [wb_data_width_p-1:0]         c_mem_fwd_data_o;
   logic                               c_mem_fwd_v_o;
   logic                               c_mem_fwd_ready_and_i;
-  logic                               c_mem_fwd_last_o;
 
   logic [mem_rev_header_width_lp-1:0] c_mem_rev_header_i;
-  logic [data_width_p-1:0]            c_mem_rev_data_i;
+  logic [wb_data_width_p-1:0]         c_mem_rev_data_i;
   logic                               c_mem_rev_v_i;
   logic                               c_mem_rev_ready_and_o;
-  logic                               c_mem_rev_last_i;
 
   // WB signals
   logic [wb_adr_width_lp-1:0]         adr;
-  logic [data_width_p-1:0]            dat_mosi;
+  logic [wb_data_width_p-1:0]         dat_mosi;
   logic                               stb;
   logic                               cyc;
-  logic [wb_sel_width_lp-1:0]         sel;
+  logic [wb_mask_width_lp-1:0]        sel;
   logic                               we;
 
-  logic [data_width_p-1:0]            dat_miso;
+  logic [wb_data_width_p-1:0]         dat_miso;
   logic                               ack;
 
   /*
@@ -84,9 +85,6 @@ module top
   /*
    * dpi module for sending commands to the master adapter
    */
-  logic [62:0] m_mem_fwd_header_li;
-  assign m_mem_fwd_header_i = {'0, m_mem_fwd_header_li};
-
   bsg_nonsynth_dpi_to_fifo
     #(
       .width_p(128)
@@ -99,7 +97,7 @@ module top
 
      ,.v_o(m_mem_fwd_v_i)
      ,.ready_i(m_mem_fwd_ready_and_o)
-     ,.data_o({m_mem_fwd_last_i, m_mem_fwd_header_li, m_mem_fwd_data_i})
+     ,.data_o({m_mem_fwd_header_i[0+:63], m_mem_fwd_data_i})
     );
 
   /*
@@ -117,15 +115,12 @@ module top
 
      ,.v_i(c_mem_fwd_v_o)
      ,.yumi_o(c_mem_fwd_ready_and_i)
-     ,.data_i({c_mem_fwd_header_o[0+:64], c_mem_fwd_data_o})
+     ,.data_i({c_mem_fwd_header_o[0+:63], c_mem_fwd_data_o})
     );
 
   /*
    * dpi module for sending responses to the client adapter
    */
-  logic [63:0] c_mem_rev_header_li;
-  assign c_mem_rev_header_i = {'0, c_mem_rev_header_li};
-
   bsg_nonsynth_dpi_to_fifo
     #(
       .width_p(128)
@@ -138,7 +133,7 @@ module top
 
      ,.v_o(c_mem_rev_v_i)
      ,.ready_i(c_mem_rev_ready_and_o)
-     ,.data_o({c_mem_rev_header_li, c_mem_rev_data_i})
+     ,.data_o({c_mem_rev_header_i[0+:63], c_mem_rev_data_i})
     );
 
   /*
@@ -156,14 +151,17 @@ module top
 
      ,.v_i(m_mem_rev_v_o)
      ,.yumi_o(m_mem_rev_ready_and_i)
-     ,.data_i({m_mem_rev_last_o, m_mem_rev_header_o[0+:63], m_mem_rev_data_o})
+     ,.data_i({m_mem_rev_header_o[0+:63], m_mem_rev_data_o})
     );
 
   /*
    * adapters
    */
   bp_me_wb_master
-   #(.bp_params_p(bp_params_p))
+   #(.bp_params_p(bp_params_p)
+     ,.wb_data_width_p(wb_data_width_p)
+     ,.wb_addr_width_p(wb_addr_width_p)
+     )
    bp_me_wb_master
     ( .clk_i(clk)
      ,.reset_i(reset)
@@ -172,13 +170,11 @@ module top
      ,.mem_fwd_data_i(m_mem_fwd_data_i)
      ,.mem_fwd_v_i(m_mem_fwd_v_i)
      ,.mem_fwd_ready_and_o(m_mem_fwd_ready_and_o)
-     ,.mem_fwd_last_i(m_mem_fwd_last_i)
 
      ,.mem_rev_header_o(m_mem_rev_header_o)
      ,.mem_rev_data_o(m_mem_rev_data_o)
      ,.mem_rev_v_o(m_mem_rev_v_o)
      ,.mem_rev_ready_and_i(m_mem_rev_ready_and_i)
-     ,.mem_rev_last_o(m_mem_rev_last_o)
 
      ,.adr_o(adr)
      ,.dat_o(dat_mosi)
@@ -194,7 +190,10 @@ module top
      );
 
   bp_me_wb_client
-   #(.bp_params_p(bp_params_p))
+   #(.bp_params_p(bp_params_p)
+     ,.wb_data_width_p(wb_data_width_p)
+     ,.wb_addr_width_p(wb_addr_width_p)
+     )
    bp_me_wb_client
     ( .clk_i(clk)
      ,.reset_i(reset)
@@ -206,13 +205,11 @@ module top
      ,.mem_fwd_data_o(c_mem_fwd_data_o)
      ,.mem_fwd_v_o(c_mem_fwd_v_o)
      ,.mem_fwd_ready_and_i(c_mem_fwd_ready_and_i)
-     ,.mem_fwd_last_o(/* always 1, unused */)
 
      ,.mem_rev_header_i(c_mem_rev_header_i)
      ,.mem_rev_data_i(c_mem_rev_data_i)
      ,.mem_rev_v_i(c_mem_rev_v_i)
      ,.mem_rev_ready_and_o(c_mem_rev_ready_and_o)
-     ,.mem_rev_last_i('1)
 
      ,.adr_i(adr)
      ,.dat_i(dat_mosi)
@@ -229,9 +226,11 @@ module top
    * assertions
    */
   initial begin
-    assert(data_width_p == 64)
+    assert(wb_data_width_p == 64)
       else $error("Testbench is to be used with 64 bit wide data");
-    assert(cce_block_width_p >= 512)
+    assert(bedrock_block_width_p >= 512)
       else $error("Testbench is to be used with at least 512 bit wide cache blocks");
   end
+
 endmodule
+

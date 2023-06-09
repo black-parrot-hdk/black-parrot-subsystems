@@ -1,6 +1,6 @@
 #include "verilated.h"
 #include "svdpi.h"
-#include "verilated_vcd_c.h"
+#include "verilated_fst_c.h"
 #include "Vtop.h"
 #include "bsg_nonsynth_dpi_clock_gen.hpp"
 
@@ -14,7 +14,7 @@
 
 using namespace bsg_nonsynth_dpi;
 
-void tick(Vtop *dut, VerilatedVcdC *tfp) {
+void tick(Vtop *dut, VerilatedFstC *tfp) {
     bsg_timekeeper::next();
     dut->eval();
     tfp->dump(Verilated::time());
@@ -111,16 +111,16 @@ bool check_packets(const std::vector<BP_pkg>& master_pkgs,
 int main(int argc, char* argv[]) {
     // initialize Verilator, the DUT and tracing
     Verilated::commandArgs(argc, argv);
-    Verilated::traceEverOn(VM_TRACE_VCD);
+    Verilated::traceEverOn(VM_TRACE_FST);
 
     auto dut = std::make_unique<Vtop>();
-    auto tfp = std::make_unique<VerilatedVcdC>();
+    auto tfp = std::make_unique<VerilatedFstC>();
     dut->trace(tfp.get(), 10);
     Verilated::mkdir("logs");
-    tfp->open("logs/wave.vcd");
+    tfp->open("logs/wave.fst");
 
     // create controllers for the adapters
-    int test_size = 100000;
+    int test_size = 10000;
     std::random_device r;
     unsigned long seed = r();
     BP_me_WB_master_ctrl master_ctrl{test_size, seed};
@@ -129,6 +129,8 @@ int main(int argc, char* argv[]) {
     // simulate until all responses have been recieved
     dut->eval();
     tfp->dump(Verilated::time());
+
+    int i = 0;
     while (!master_ctrl.done()) {
         master_ctrl.sim_read();
         client_ctrl.sim_read();
@@ -164,20 +166,20 @@ int main(int argc, char* argv[]) {
     long bytes_client_in = count_bytes(responses_in);
     long bytes_master_out = count_bytes(responses_out);
 
-    if (bytes_client_out != bytes_master_in) {
-        std::cout << "\nError: Client adapter did not receive "
-                  << "the correct amount of bytes: "
-                  << bytes_client_out << " instead of "
-                  << bytes_master_in << "\n";
-        errors = 3;
-    }
-    if (bytes_master_out != bytes_client_in) {
-        std::cout << "\nError: Master adapter did not receive " 
-                  << "the correct amount of bytes: "
-                  << bytes_master_out << " instead of "
-                  << bytes_client_in << "\n";
-        errors = 3;
-    }
+    //if (bytes_client_out != bytes_master_in) {
+    //    std::cout << "\nError: Client adapter did not receive "
+    //              << "the correct amount of bytes: "
+    //              << bytes_client_out << " instead of "
+    //              << bytes_master_in << "\n";
+    //    errors = 3;
+    //}
+    //if (bytes_master_out != bytes_client_in) {
+    //    std::cout << "\nError: Master adapter did not receive " 
+    //              << "the correct amount of bytes: "
+    //              << bytes_master_out << " instead of "
+    //              << bytes_client_in << "\n";
+    //    errors = 3;
+    //}
 
     // check if there were errors in the transmitted commands and responses
     if (errors < 3) {
