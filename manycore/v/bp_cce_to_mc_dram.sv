@@ -60,9 +60,9 @@ module bp_cce_to_mc_dram
   `bp_cast_o(bp_bedrock_mem_rev_header_s, mem_rev_header);
 
   bp_bedrock_mem_fwd_header_s fsm_fwd_header_li;
-  logic [paddr_width_p-1:0] fsm_fwd_addr_li;
   logic [word_width_gp-1:0] fsm_fwd_data_li;
   logic fsm_fwd_v_li, fsm_fwd_yumi_lo;
+  logic [paddr_width_p-1:0] fsm_fwd_addr_li;
   logic fsm_fwd_new_lo, fsm_fwd_critical_lo, fsm_fwd_last_lo;
   bp_me_stream_pump_in
    #(.bp_params_p(bp_params_p)
@@ -82,11 +82,10 @@ module bp_cce_to_mc_dram
      ,.msg_ready_and_o(mem_fwd_ready_and_o)
 
      ,.fsm_header_o(fsm_fwd_header_li)
-     ,.fsm_addr_o(fsm_fwd_addr_li)
      ,.fsm_data_o(fsm_fwd_data_li)
      ,.fsm_v_o(fsm_fwd_v_li)
      ,.fsm_yumi_i(fsm_fwd_yumi_lo)
-     ,.fsm_cnt_o()
+     ,.fsm_addr_o(fsm_fwd_addr_li)
      ,.fsm_new_o(fsm_fwd_new_lo)
      ,.fsm_critical_o(fsm_fwd_critical_lo)
      ,.fsm_last_o(fsm_fwd_last_lo)
@@ -119,7 +118,6 @@ module bp_cce_to_mc_dram
      ,.fsm_v_i(fsm_rev_v_lo)
      ,.fsm_yumi_o(fsm_rev_yumi_li)
      ,.fsm_addr_o(fsm_rev_addr_lo)
-     ,.fsm_cnt_o()
      ,.fsm_new_o(fsm_rev_new_lo)
      ,.fsm_critical_o(fsm_rev_critical_lo)
      ,.fsm_last_o(fsm_rev_last_lo)
