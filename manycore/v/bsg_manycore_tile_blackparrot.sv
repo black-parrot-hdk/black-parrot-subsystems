@@ -193,11 +193,6 @@ module bsg_manycore_tile_blackparrot
      ,.msg_ready_and_i(dev_fwd_ready_and_lo)
      );
 
-
-  //CORE 0: 0 - I$, 1 - D$, 2 - IO
-  //CORE 1: 2 - I$, 3 - D$, 4 - IO
-  //CORE 0 I$ aliases to CORE 1 IO
-
   // Select destination of responses. Were there a way to transpose structs...
   logic [num_dev_lp-1:0][lg_num_proc_lp-1:0] dev_rev_dst_lo;
   assign dev_rev_dst_lo[7] = dev_rev_header_lo[7].payload.lce_id[0+:lg_num_proc_lp];
@@ -321,39 +316,8 @@ module bsg_manycore_tile_blackparrot
      ,.host_cord_o(host_cord_lo)
      );
 
-  wire [x_cord_width_p-1:0] fifo_x_li = global_x_i[0];
-  wire [y_cord_width_p-1:0] fifo_y_li = global_y_i[0];
-  bp_cce_to_mc_fifo
-   #(.bp_params_p(bp_params_p)
-     ,.x_cord_width_p(x_cord_width_p)
-     ,.y_cord_width_p(y_cord_width_p)
-     ,.data_width_p(data_width_p)
-     ,.addr_width_p(addr_width_p)
-     ,.icache_block_size_in_words_p(icache_block_size_in_words_p)
-     )
-   fifo_link
-    (.clk_i(clk_i)
-     ,.reset_i(reset_i)
-
-     ,.mem_fwd_header_i(dev_fwd_header_li[3])
-     ,.mem_fwd_data_i(dev_fwd_data_li[3])
-     ,.mem_fwd_v_i(dev_fwd_v_li[3])
-     ,.mem_fwd_ready_and_o(dev_fwd_ready_and_lo[3])
-
-     ,.mem_rev_header_o(dev_rev_header_lo[3])
-     ,.mem_rev_data_o(dev_rev_data_lo[3])
-     ,.mem_rev_v_o(dev_rev_v_lo[3])
-     ,.mem_rev_ready_and_i(dev_rev_ready_and_li[3])
-
-     ,.link_sif_i(link_sif_i[0])
-     ,.link_sif_o(link_sif_o[0])
-
-     ,.global_x_i(fifo_x_li)
-     ,.global_y_i(fifo_y_li)
-     );
-
-  wire [x_cord_width_p-1:0] mmio_x_li = global_x_i[1];
-  wire [y_cord_width_p-1:0] mmio_y_li = global_y_i[1];
+  wire [x_cord_width_p-1:0] mmio_x_li = global_x_i[0];
+  wire [y_cord_width_p-1:0] mmio_y_li = global_y_i[0];
   bp_cce_to_mc_mmio
    #(.bp_params_p(bp_params_p)
      ,.x_cord_width_p(x_cord_width_p)
@@ -395,13 +359,44 @@ module bsg_manycore_tile_blackparrot
      ,.mem_rev_v_i(proc_rev_v_li[2])
      ,.mem_rev_ready_and_o(proc_rev_ready_and_lo[2])
 
-     ,.link_sif_i(link_sif_i[1])
-     ,.link_sif_o(link_sif_o[1])
+     ,.link_sif_i(link_sif_i[0])
+     ,.link_sif_o(link_sif_o[0])
 
      ,.host_x_i(host_cord_lo[0+:x_cord_width_p])
      ,.host_y_i(host_cord_lo[x_cord_width_p+:y_cord_width_p])
      ,.global_x_i(mmio_x_li)
      ,.global_y_i(mmio_y_li)
+     );
+
+  wire [x_cord_width_p-1:0] fifo_x_li = global_x_i[1];
+  wire [y_cord_width_p-1:0] fifo_y_li = global_y_i[1];
+  bp_cce_to_mc_fifo
+   #(.bp_params_p(bp_params_p)
+     ,.x_cord_width_p(x_cord_width_p)
+     ,.y_cord_width_p(y_cord_width_p)
+     ,.data_width_p(data_width_p)
+     ,.addr_width_p(addr_width_p)
+     ,.icache_block_size_in_words_p(icache_block_size_in_words_p)
+     )
+   fifo_link
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+
+     ,.mem_fwd_header_i(dev_fwd_header_li[3])
+     ,.mem_fwd_data_i(dev_fwd_data_li[3])
+     ,.mem_fwd_v_i(dev_fwd_v_li[3])
+     ,.mem_fwd_ready_and_o(dev_fwd_ready_and_lo[3])
+
+     ,.mem_rev_header_o(dev_rev_header_lo[3])
+     ,.mem_rev_data_o(dev_rev_data_lo[3])
+     ,.mem_rev_v_o(dev_rev_v_lo[3])
+     ,.mem_rev_ready_and_i(dev_rev_ready_and_li[3])
+
+     ,.link_sif_i(link_sif_i[1])
+     ,.link_sif_o(link_sif_o[1])
+
+     ,.global_x_i(fifo_x_li)
+     ,.global_y_i(fifo_y_li)
      );
 
   for (genvar i = 0; i < 2; i++)

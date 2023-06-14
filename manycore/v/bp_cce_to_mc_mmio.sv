@@ -336,7 +336,7 @@ module bp_cce_to_mc_mmio
       packet_yumi_li = mem_fwd_ready_and_i & mem_fwd_v_o;
 
       // Assumes alignment
-      in_epa_li = packet_lo.addr;
+      in_epa_li = packet_lo.addr << 2'b10;
       case (in_epa_li.dev)
         4'h1: mem_fwd_header_cast_o.addr = mc_host_dev_base_addr_gp + in_epa_li.addr;
         4'h2: mem_fwd_header_cast_o.addr = mc_cfg_dev_base_addr_gp + in_epa_li.addr;
