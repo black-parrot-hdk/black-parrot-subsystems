@@ -1,5 +1,6 @@
 
 `include "bp_common_defines.svh"
+`include "bsg_manycore_defines.vh"
 
 module bp_cce_to_mc_fifo
  import bp_common_pkg::*;
