@@ -24,7 +24,7 @@ module bsg_manycore_tile_blackparrot_mesh
    , parameter `BSG_INV_PARAM(num_tiles_y_p)
    , parameter `BSG_INV_PARAM(scratchpad_els_p)
    , parameter `BSG_INV_PARAM(rev_use_credits_p)
-   , parameter `BSG_INV_PARAM(rev_fifo_els_p)
+   , parameter `BSG_INV_PARAM(int rev_fifo_els_p[4:0])
 
    , localparam num_blackparrot_p = 1 // Only 1 supported
    , localparam veritical_not_horizontal_p = 0 // In a horizontal now
