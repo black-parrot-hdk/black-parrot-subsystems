@@ -154,8 +154,5 @@ module bp_axil_top
          );
     end
 
-  if (axil_data_width_p != bedrock_fill_width_p)
-    $error("AXIL data width and Bedrock fill width must match (probably 64b)");
-
 endmodule
 
