@@ -2,6 +2,11 @@
 `include "bp_common_defines.svh"
 `include "bp_me_defines.svh"
 
+// TODO: there is no ordering guarantee for BP rev network responses. For example,
+// if a stream of fwd messages target different devices or memory regions, the rev
+// responses may return out of order, resulting in incorrect data returns on read
+// response channel.
+
 module bp_me_axil_client
  import bp_common_pkg::*;
  import bp_me_pkg::*;
