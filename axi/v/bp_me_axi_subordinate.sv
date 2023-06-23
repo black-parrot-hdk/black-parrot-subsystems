@@ -1,11 +1,20 @@
+/*
+ * Name:
+ *   bp_me_axi_subordinate.sv
+ *
+ * Description:
+ *   This module converts AXI4 requests to BedRock Stream messages. It supports up to one
+ *   read and write from AXI at the same time. AXI provides no inter-channel ordering so the
+ *   sender must enforce ordering if desired. If a read and write request arrive at the same
+ *   time, they will be serialized and the requester should assume no determnistic ordering.
+ *
+ *
+ * Note: this module only works if the BedRock data width and AXI data widths are 64-bits
+ *
+ */
 
 `include "bp_common_defines.svh"
 `include "bp_me_defines.svh"
-
-// TODO: there is no ordering guarantee for BP rev network responses. For example,
-// if a stream of fwd messages target different devices or memory regions, the rev
-// responses may return out of order, resulting in incorrect data returns on read
-// response channel.
 
 module bp_me_axi_subordinate
  import bp_common_pkg::*;
@@ -14,13 +23,12 @@ module bp_me_axi_subordinate
   `declare_bp_proc_params(bp_params_p)
   `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
 
-  , parameter s_axi_data_width_p
-  , parameter s_axi_addr_width_p
+  , parameter s_axi_data_width_p = 64
+  , parameter s_axi_addr_width_p = 64
   , parameter s_axi_id_width_p = 1
   , parameter s_axi_user_width_p = 1
   , localparam s_axi_mask_width_lp = s_axi_data_width_p>>3
   )
-
   (//==================== GLOBAL SIGNALS =======================
    input                                        clk_i
    , input                                      reset_i
@@ -40,57 +48,56 @@ module bp_me_axi_subordinate
    , output logic                               mem_rev_ready_and_o
 
    //====================== AXI-4 =========================
-   , input [s_axi_addr_width_p-1:0]            s_axi_awaddr_i
-   , input                                     s_axi_awvalid_i
-   , output logic                              s_axi_awready_o
-   , input [s_axi_id_width_p-1:0]              s_axi_awid_i
-   , input                                     s_axi_awlock_i
-   , input [3:0]                               s_axi_awcache_i
-   , input [2:0]                               s_axi_awprot_i
-   , input [7:0]                               s_axi_awlen_i
-   , input [2:0]                               s_axi_awsize_i
-   , input [1:0]                               s_axi_awburst_i
-   , input [3:0]                               s_axi_awqos_i
-   , input [3:0]                               s_axi_awregion_i
-   , input [s_axi_user_width_p-1:0]            s_axi_awuser_i
+   , input [s_axi_addr_width_p-1:0]             s_axi_awaddr_i
+   , input                                      s_axi_awvalid_i
+   , output logic                               s_axi_awready_o
+   , input [s_axi_id_width_p-1:0]               s_axi_awid_i
+   , input                                      s_axi_awlock_i
+   , input [3:0]                                s_axi_awcache_i
+   , input [2:0]                                s_axi_awprot_i
+   , input [7:0]                                s_axi_awlen_i
+   , input [2:0]                                s_axi_awsize_i
+   , input [1:0]                                s_axi_awburst_i
+   , input [3:0]                                s_axi_awqos_i
+   , input [3:0]                                s_axi_awregion_i
+   , input [s_axi_user_width_p-1:0]             s_axi_awuser_i
 
-   , input [s_axi_data_width_p-1:0]            s_axi_wdata_i
-   , input                                     s_axi_wvalid_i
-   , output logic                              s_axi_wready_o
-   , input                                     s_axi_wlast_i
-   , input [s_axi_mask_width_lp-1:0]           s_axi_wstrb_i
-   , input [s_axi_user_width_p-1:0]            s_axi_wuser_i
+   , input [s_axi_data_width_p-1:0]             s_axi_wdata_i
+   , input                                      s_axi_wvalid_i
+   , output logic                               s_axi_wready_o
+   , input                                      s_axi_wlast_i
+   , input [s_axi_mask_width_lp-1:0]            s_axi_wstrb_i
+   , input [s_axi_user_width_p-1:0]             s_axi_wuser_i
 
-   , output logic                              s_axi_bvalid_o
-   , input                                     s_axi_bready_i
-   , output logic [s_axi_id_width_p-1:0]       s_axi_bid_o
-   , output logic [1:0]                        s_axi_bresp_o
-   , output logic [s_axi_user_width_p-1:0]     s_axi_buser_o
+   , output logic                               s_axi_bvalid_o
+   , input                                      s_axi_bready_i
+   , output logic [s_axi_id_width_p-1:0]        s_axi_bid_o
+   , output logic [1:0]                         s_axi_bresp_o
+   , output logic [s_axi_user_width_p-1:0]      s_axi_buser_o
 
-   , input [s_axi_addr_width_p-1:0]            s_axi_araddr_i
-   , input                                     s_axi_arvalid_i
-   , output logic                              s_axi_arready_o
-   , input [s_axi_id_width_p-1:0]              s_axi_arid_i
-   , input                                     s_axi_arlock_i
-   , input [3:0]                               s_axi_arcache_i
-   , input [2:0]                               s_axi_arprot_i
-   , input [7:0]                               s_axi_arlen_i
-   , input [2:0]                               s_axi_arsize_i
-   , input [1:0]                               s_axi_arburst_i
-   , input [3:0]                               s_axi_arqos_i
-   , input [3:0]                               s_axi_arregion_i
-   , input [s_axi_user_width_p-1:0]            s_axi_aruser_i
+   , input [s_axi_addr_width_p-1:0]             s_axi_araddr_i
+   , input                                      s_axi_arvalid_i
+   , output logic                               s_axi_arready_o
+   , input [s_axi_id_width_p-1:0]               s_axi_arid_i
+   , input                                      s_axi_arlock_i
+   , input [3:0]                                s_axi_arcache_i
+   , input [2:0]                                s_axi_arprot_i
+   , input [7:0]                                s_axi_arlen_i
+   , input [2:0]                                s_axi_arsize_i
+   , input [1:0]                                s_axi_arburst_i
+   , input [3:0]                                s_axi_arqos_i
+   , input [3:0]                                s_axi_arregion_i
+   , input [s_axi_user_width_p-1:0]             s_axi_aruser_i
 
-   , output logic [s_axi_data_width_p-1:0]     s_axi_rdata_o
-   , output logic                              s_axi_rvalid_o
-   , input                                     s_axi_rready_i
-   , output logic [s_axi_id_width_p-1:0]       s_axi_rid_o
-   , output logic                              s_axi_rlast_o
-   , output logic [1:0]                        s_axi_rresp_o
-   , output logic [s_axi_user_width_p-1:0]     s_axi_ruser_o
+   , output logic [s_axi_data_width_p-1:0]      s_axi_rdata_o
+   , output logic                               s_axi_rvalid_o
+   , input                                      s_axi_rready_i
+   , output logic [s_axi_id_width_p-1:0]        s_axi_rid_o
+   , output logic                               s_axi_rlast_o
+   , output logic [1:0]                         s_axi_rresp_o
+   , output logic [s_axi_user_width_p-1:0]      s_axi_ruser_o
    );
 
-  // declaring i/o command and response struct type and size
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
   `bp_cast_o(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
   `bp_cast_i(bp_bedrock_mem_rev_header_s, mem_rev_header);
