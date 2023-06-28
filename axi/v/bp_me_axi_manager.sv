@@ -23,7 +23,6 @@ module bp_me_axi_manager
   , parameter m_axi_data_width_p = 64
   , parameter m_axi_addr_width_p = 64
   , parameter m_axi_id_width_p = 1
-  , parameter m_axi_user_width_p = 1
   , localparam m_axi_mask_width_lp = (m_axi_data_width_p>>3)
   )
  (//==================== GLOBAL SIGNALS =======================
@@ -54,20 +53,17 @@ module bp_me_axi_manager
   , output logic [1:0]                        m_axi_awburst_o
   , output logic [3:0]                        m_axi_awqos_o
   , output logic [3:0]                        m_axi_awregion_o
-  , output logic [m_axi_user_width_p-1:0]     m_axi_awuser_o
 
   , output logic [m_axi_data_width_p-1:0]     m_axi_wdata_o
   , output logic                              m_axi_wvalid_o
   , input                                     m_axi_wready_i
   , output logic                              m_axi_wlast_o
   , output logic [m_axi_mask_width_lp-1:0]    m_axi_wstrb_o
-  , output logic [m_axi_user_width_p-1:0]     m_axi_wuser_o
 
   , input                                     m_axi_bvalid_i
   , output logic                              m_axi_bready_o
   , input [m_axi_id_width_p-1:0]              m_axi_bid_i
   , input [1:0]                               m_axi_bresp_i
-  , input [m_axi_user_width_p-1:0]            m_axi_buser_i
 
   , output logic [m_axi_addr_width_p-1:0]     m_axi_araddr_o
   , output logic                              m_axi_arvalid_o
@@ -81,7 +77,6 @@ module bp_me_axi_manager
   , output logic [1:0]                        m_axi_arburst_o
   , output logic [3:0]                        m_axi_arqos_o
   , output logic [3:0]                        m_axi_arregion_o
-  , output logic [m_axi_user_width_p-1:0]     m_axi_aruser_o
 
   , input [m_axi_data_width_p-1:0]            m_axi_rdata_i
   , input                                     m_axi_rvalid_i
@@ -89,10 +84,8 @@ module bp_me_axi_manager
   , input [m_axi_id_width_p-1:0]              m_axi_rid_i
   , input                                     m_axi_rlast_i
   , input [1:0]                               m_axi_rresp_i
-  , input [m_axi_user_width_p-1:0]            m_axi_ruser_i
   );
 
-  // declaring i/o command and response struct type and size
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
   `bp_cast_i(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
   `bp_cast_o(bp_bedrock_mem_rev_header_s, mem_rev_header);

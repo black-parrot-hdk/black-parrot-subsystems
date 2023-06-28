@@ -19,8 +19,8 @@ module bp_me_axi_pump
   ,localparam lg_axi_mask_width_lp = `BSG_SAFE_CLOG2(axi_mask_width_lp)
   )
  (//==================== GLOBAL SIGNALS =======================
-  input                                        aclk
-  , input                                      aresetn
+  input                                        clk_i
+  , input                                      reset_i
 
   , input                                      v_i
   , output logic                               ready_and_o
@@ -37,7 +37,6 @@ module bp_me_axi_pump
   , output logic                               last_o
   );
 
-  wire reset = ~aresetn;
   wire accept = (v_i & ready_and_o);
   wire send = (v_o & send_i);
   wire send_last = send & last_o;
@@ -50,8 +49,8 @@ module bp_me_axi_pump
   bsg_dff_reset_en
     #(.width_p(axi_addr_width_p+2+8+3))
     input_reg
-     (.clk_i(aclk)
-      ,.reset_i(reset)
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
       ,.en_i(accept)
       ,.data_i({axsize_i, axlen_i, axburst_i, axaddr_i})
       ,.data_o({axsize, axlen, axburst, axaddr})
@@ -67,8 +66,8 @@ module bp_me_axi_pump
       ,.disable_overflow_warning_p(1)
       )
     len_counter
-     (.clk_i(aclk)
-      ,.reset_i(reset)
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
       ,.clear_i(accept)
       ,.up_i(send)
       ,.count_o(count_r)
@@ -82,8 +81,8 @@ module bp_me_axi_pump
   bsg_dff_reset_en
     #(.width_p(axi_addr_width_p))
     address_reg
-     (.clk_i(aclk)
-      ,.reset_i(reset)
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
       ,.en_i(address_en)
       ,.data_i(address_n)
       ,.data_i(address_r);
@@ -161,8 +160,8 @@ module bp_me_axi_pump
   } state_e;
   state_e state_r, state_n;
 
-  always_ff @(posedge aclk) begin
-    if (reset) begin
+  always_ff @(posedge clk_i) begin
+    if (reset_i) begin
       state_r <= e_ready;
     end else begin
       state_r <= state_n;

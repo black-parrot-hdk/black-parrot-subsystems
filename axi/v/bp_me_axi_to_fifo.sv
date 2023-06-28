@@ -7,6 +7,13 @@
  *   read and write channels are serialized to the output fifo interface and responses are expected
  *   to return in-order.
  *
+ * Constraints and Assumptions:
+ *   - data width must be 64-bits
+ *   - address must be naturally aligned to request size (axsize)
+ *   - 8, 16, and 32-bit requests must have axlen equal to 1
+ *   - requests with axsize of 64-bits may have axlen greater than 1
+ *
+ *
  */
 
 `include "bsg_defines.v"
@@ -16,7 +23,6 @@ module bp_me_axi_to_fifo
  #(parameter s_axi_data_width_p = 64
   , parameter s_axi_addr_width_p = 64
   , parameter s_axi_id_width_p = 1
-  , parameter s_axi_user_width_p = 1
   , localparam s_axi_mask_width_lp = s_axi_data_width_p>>3
   )
   (//==================== GLOBAL SIGNALS =======================
@@ -48,20 +54,17 @@ module bp_me_axi_to_fifo
    , input [1:0]                                s_axi_awburst_i
    , input [3:0]                                s_axi_awqos_i
    , input [3:0]                                s_axi_awregion_i
-   , input [s_axi_user_width_p-1:0]             s_axi_awuser_i
 
    , input [s_axi_data_width_p-1:0]             s_axi_wdata_i
    , input                                      s_axi_wvalid_i
    , output logic                               s_axi_wready_o
    , input                                      s_axi_wlast_i
    , input [s_axi_mask_width_lp-1:0]            s_axi_wstrb_i
-   , input [s_axi_user_width_p-1:0]             s_axi_wuser_i
 
    , output logic                               s_axi_bvalid_o
    , input                                      s_axi_bready_i
    , output logic [s_axi_id_width_p-1:0]        s_axi_bid_o
    , output logic [1:0]                         s_axi_bresp_o
-   , output logic [s_axi_user_width_p-1:0]      s_axi_buser_o
 
    , input [s_axi_addr_width_p-1:0]             s_axi_araddr_i
    , input                                      s_axi_arvalid_i
@@ -75,7 +78,6 @@ module bp_me_axi_to_fifo
    , input [1:0]                                s_axi_arburst_i
    , input [3:0]                                s_axi_arqos_i
    , input [3:0]                                s_axi_arregion_i
-   , input [s_axi_user_width_p-1:0]             s_axi_aruser_i
 
    , output logic [s_axi_data_width_p-1:0]      s_axi_rdata_o
    , output logic                               s_axi_rvalid_o
@@ -83,23 +85,64 @@ module bp_me_axi_to_fifo
    , output logic [s_axi_id_width_p-1:0]        s_axi_rid_o
    , output logic                               s_axi_rlast_o
    , output logic [1:0]                         s_axi_rresp_o
-   , output logic [s_axi_user_width_p-1:0]      s_axi_ruser_o
    );
 
-  // read return interface fifo
-  logic v_li, yumi_lo;
-  logic [s_axi_data_width_p-1:0] data_li;
-  bsg_two_fifo
-    #(.width_p(s_axi_data_width_p))
-    read_return_fifo
+  // B channel returns awid
+  // R channel returs arid
+
+
+  // Read Channel
+
+  logic ar_pump_ready_and_lo;
+  logic ar_pump_v_lo, ar_pump_send_li, ar_pump_first_o, ar_pump_last_o;
+  logic [s_axi_addr_width_p-1:0] ar_pump_addr_lo;
+  logic [s_axi_mask_width_lp-1:0] ar_pump_mask_lo;
+  bp_me_axi_pump
+    #(.axi_data_width_p(s_axi_data_width_p)
+      ,.axi_addr_width_p(s_axi_addr_width_p)
+      )
+    ar_pump
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
-      ,.data_i(data_i)
-      ,.v_i(v_i)
-      ,.ready_o(ready_and_o)
-      ,.data_o(data_li)
-      ,.v_o(v_li)
-      ,.yumi_i(yumi_lo)
+      ,.v_i(s_axi_arvalid_i)
+      ,.ready_and_o(ar_pump_ready_and_lo)
+      ,.axaddr_i(s_axi_araddr_i)
+      ,.axburst_i(s_axi_arburst_i)
+      ,.axlen_i(s_axi_arlen_i)
+      ,.axsize_i(s_axi_arsize_i)
+      ,.v_o(ar_pump_v_lo)
+      ,.send_i(ar_pump_send_li)
+      ,.addr_o(ar_pump_addr_lo)
+      ,.mask_o(ar_pump_mask_lo)
+      ,.first_o(ar_pump_first_lo)
+      ,.last_o(ar_pump_last_lo)
+      );
+
+  // Write Channel
+
+  logic aw_pump_ready_and_lo;
+  logic aw_pump_v_lo, aw_pump_send_li, aw_pump_first_o, aw_pump_last_o;
+  logic [s_axi_addr_width_p-1:0] aw_pump_addr_lo;
+  logic [s_axi_mask_width_lp-1:0] aw_pump_mask_lo;
+  bp_me_axi_pump
+    #(.axi_data_width_p(s_axi_data_width_p)
+      ,.axi_addr_width_p(s_axi_addr_width_p)
+      )
+    aw_pump
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      ,.v_i(s_axi_awvalid_i)
+      ,.ready_and_o(aw_pump_ready_and_lo)
+      ,.axaddr_i(s_axi_awaddr_i)
+      ,.axburst_i(s_axi_awburst_i)
+      ,.axlen_i(s_axi_awlen_i)
+      ,.axsize_i(s_axi_awsize_i)
+      ,.v_o(aw_pump_v_lo)
+      ,.send_i(aw_pump_send_li)
+      ,.addr_o(aw_pump_addr_lo)
+      ,.mask_o(aw_pump_mask_lo)
+      ,.first_o(aw_pump_first_lo)
+      ,.last_o(aw_pump_last_lo)
       );
 
   // AR channel fifo
@@ -116,7 +159,63 @@ module bp_me_axi_to_fifo
       ,.yumi_i()
       );
 
-  assign s_axi_rdata_o = data_li;
+  // AW channel fifo
+  bsg_two_fifo
+    #(.width_p(s_axi_addr_width_p+s_axi_id_width_p+s_axi_user_width_p))
+    read_return_fifo
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      ,.data_i({s_axi_arid_i, s_axi_aruser_i})
+      ,.v_i()
+      ,.ready_o()
+      ,.data_o({s_axi_rid_o, s_axi_ruser_o})
+      ,.v_o()
+      ,.yumi_i()
+      );
+
+  // W channel fifo
+  bsg_two_fifo
+    #(.width_p(s_axi_addr_width_p+s_axi_id_width_p+s_axi_user_width_p))
+    read_return_fifo
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      ,.data_i({s_axi_arid_i, s_axi_aruser_i})
+      ,.v_i()
+      ,.ready_o()
+      ,.data_o({s_axi_rid_o, s_axi_ruser_o})
+      ,.v_o()
+      ,.yumi_i()
+      );
+
+  // B channel fifo
+  bsg_two_fifo
+    #(.width_p(s_axi_addr_width_p+s_axi_id_width_p+s_axi_user_width_p))
+    read_return_fifo
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      ,.data_i({s_axi_arid_i, s_axi_aruser_i})
+      ,.v_i()
+      ,.ready_o()
+      ,.data_o({s_axi_rid_o, s_axi_ruser_o})
+      ,.v_o()
+      ,.yumi_i()
+      );
+
+  // read return interface fifo
+  logic v_li, yumi_lo;
+  logic [s_axi_data_width_p-1:0] data_li;
+  bsg_two_fifo
+    #(.width_p(s_axi_data_width_p))
+    read_return_fifo
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      ,.data_i(data_i)
+      ,.v_i(v_i)
+      ,.ready_o(ready_and_o)
+      ,.data_o(data_li)
+      ,.v_o(v_li)
+      ,.yumi_i(yumi_lo)
+      );
 
 
 ///////////////////////////////////////////////////////////////////////////////////

@@ -1,6 +1,14 @@
-
-// This module wraps a BP core with AXI interfaces. For an example usage
-//   see https://github.com/black-parrot-hdk/zynq-parrot
+/*
+ * Name:
+ *   bp_axi4_top.sv
+ *
+ * Description:
+ *   This module wraps a BP processor with AXI4 interfaces on both of its I/O interfaces
+ *   and the memory interface. Ordering and flow control of traffic is enforced by
+ *   the bp_me_axi_manager|subordinate modules.
+ *
+ * Note: this wrapper only works if the AXI data widths and bedrock_fill_width_p are 64-bits.
+ */
 
 `include "bp_common_defines.svh"
 `include "bp_me_defines.svh"
@@ -10,26 +18,22 @@ module bp_axi4_top
  import bp_me_pkg::*;
  import bsg_cache_pkg::*;
  import bsg_axi_pkg::*;
- // see bp_common/src/include/bp_common_aviary_pkgdef.svh for a list of configurations that you can try!
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
    `declare_bp_proc_params(bp_params_p)
 
    , parameter `BSG_INV_PARAM(m_axi_addr_width_p)
    , parameter `BSG_INV_PARAM(m_axi_data_width_p)
    , parameter `BSG_INV_PARAM(m_axi_id_width_p)
-   , parameter `BSG_INV_PARAM(m_axi_user_width_p)
    , localparam m_axi_mask_width_lp = m_axi_data_width_p>>3
 
    , parameter `BSG_INV_PARAM(s_axi_addr_width_p)
    , parameter `BSG_INV_PARAM(s_axi_data_width_p)
    , parameter `BSG_INV_PARAM(s_axi_id_width_p)
-   , parameter `BSG_INV_PARAM(s_axi_user_width_p)
    , localparam s_axi_mask_width_lp = s_axi_data_width_p>>3
 
    , parameter `BSG_INV_PARAM(m01_axi_addr_width_p)
    , parameter `BSG_INV_PARAM(m01_axi_data_width_p)
    , parameter `BSG_INV_PARAM(m01_axi_id_width_p)
-   , parameter `BSG_INV_PARAM(m01_axi_user_width_p)
    , localparam m01_axi_mask_width_lp = m01_axi_data_width_p>>3
 
    `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
@@ -38,6 +42,9 @@ module bp_axi4_top
    input                                       clk_i
    , input                                     reset_i
    , input                                     rt_clk_i
+
+   , input [did_width_p-1:0]                   my_did_i
+   , input [did_width_p-1:0]                   host_did_i
 
    //======================== Outgoing I/O ========================
    , output logic [m_axi_addr_width_p-1:0]     m_axi_awaddr_o
@@ -52,20 +59,17 @@ module bp_axi4_top
    , output logic [1:0]                        m_axi_awburst_o
    , output logic [3:0]                        m_axi_awqos_o
    , output logic [3:0]                        m_axi_awregion_o
-   , output logic [m_axi_user_width_p-1:0]     m_axi_awuser_o
 
    , output logic [m_axi_data_width_p-1:0]     m_axi_wdata_o
    , output logic                              m_axi_wvalid_o
    , input                                     m_axi_wready_i
    , output logic                              m_axi_wlast_o
    , output logic [m_axi_mask_width_lp-1:0]    m_axi_wstrb_o
-   , output logic [m_axi_user_width_p-1:0]     m_axi_wuser_o
 
    , input                                     m_axi_bvalid_i
    , output logic                              m_axi_bready_o
    , input [m_axi_id_width_p-1:0]              m_axi_bid_i
    , input [1:0]                               m_axi_bresp_i
-   , input [m_axi_user_width_p-1:0]            m_axi_buser_i
 
    , output logic [m_axi_addr_width_p-1:0]     m_axi_araddr_o
    , output logic                              m_axi_arvalid_o
@@ -79,7 +83,6 @@ module bp_axi4_top
    , output logic [1:0]                        m_axi_arburst_o
    , output logic [3:0]                        m_axi_arqos_o
    , output logic [3:0]                        m_axi_arregion_o
-   , output logic [m_axi_user_width_p-1:0]     m_axi_aruser_o
 
    , input [m_axi_data_width_p-1:0]            m_axi_rdata_i
    , input                                     m_axi_rvalid_i
@@ -87,7 +90,6 @@ module bp_axi4_top
    , input [m_axi_id_width_p-1:0]              m_axi_rid_i
    , input                                     m_axi_rlast_i
    , input [1:0]                               m_axi_rresp_i
-   , input [m_axi_user_width_p-1:0]            m_axi_ruser_i
 
    //======================== Incoming I/O ========================
    , input [s_axi_addr_width_p-1:0]            s_axi_awaddr_i
@@ -102,20 +104,17 @@ module bp_axi4_top
    , input [1:0]                               s_axi_awburst_i
    , input [3:0]                               s_axi_awqos_i
    , input [3:0]                               s_axi_awregion_i
-   , input [s_axi_user_width_p-1:0]            s_axi_awuser_i
 
    , input [s_axi_data_width_p-1:0]            s_axi_wdata_i
    , input                                     s_axi_wvalid_i
    , output logic                              s_axi_wready_o
    , input                                     s_axi_wlast_i
    , input [s_axi_mask_width_lp-1:0]           s_axi_wstrb_i
-   , input [s_axi_user_width_p-1:0]            s_axi_wuser_i
 
    , output logic                              s_axi_bvalid_o
    , input                                     s_axi_bready_i
    , output logic [s_axi_id_width_p-1:0]       s_axi_bid_o
    , output logic [1:0]                        s_axi_bresp_o
-   , output logic [s_axi_user_width_p-1:0]     s_axi_buser_o
 
    , input [s_axi_addr_width_p-1:0]            s_axi_araddr_i
    , input                                     s_axi_arvalid_i
@@ -129,7 +128,6 @@ module bp_axi4_top
    , input [1:0]                               s_axi_arburst_i
    , input [3:0]                               s_axi_arqos_i
    , input [3:0]                               s_axi_arregion_i
-   , input [s_axi_user_width_p-1:0]            s_axi_aruser_i
 
    , output logic [s_axi_data_width_p-1:0]     s_axi_rdata_o
    , output logic                              s_axi_rvalid_o
@@ -137,7 +135,6 @@ module bp_axi4_top
    , output logic [s_axi_id_width_p-1:0]       s_axi_rid_o
    , output logic                              s_axi_rlast_o
    , output logic [1:0]                        s_axi_rresp_o
-   , output logic [s_axi_user_width_p-1:0]     s_axi_ruser_o
 
    //======================== Outgoing Memory ========================
    , output logic [m01_axi_addr_width_p-1:0]   m01_axi_awaddr_o
@@ -152,20 +149,17 @@ module bp_axi4_top
    , output logic [1:0]                        m01_axi_awburst_o
    , output logic [3:0]                        m01_axi_awqos_o
    , output logic [3:0]                        m01_axi_awregion_o
-   , output logic [m01_axi_user_width_p-1:0]   m01_axi_awuser_o
 
    , output logic [m01_axi_data_width_p-1:0]   m01_axi_wdata_o
    , output logic                              m01_axi_wvalid_o
    , input                                     m01_axi_wready_i
    , output logic                              m01_axi_wlast_o
    , output logic [m01_axi_mask_width_lp-1:0]  m01_axi_wstrb_o
-   , output logic [m01_axi_user_width_p-1:0]   m01_axi_wuser_o
 
    , input                                     m01_axi_bvalid_i
    , output logic                              m01_axi_bready_o
    , input [m01_axi_id_width_p-1:0]            m01_axi_bid_i
    , input [1:0]                               m01_axi_bresp_i
-   , input [m01_axi_user_width_p-1:0]          m01_axi_buser_i
 
    , output logic [m01_axi_addr_width_p-1:0]   m01_axi_araddr_o
    , output logic                              m01_axi_arvalid_o
@@ -179,7 +173,6 @@ module bp_axi4_top
    , output logic [1:0]                        m01_axi_arburst_o
    , output logic [3:0]                        m01_axi_arqos_o
    , output logic [3:0]                        m01_axi_arregion_o
-   , output logic [m01_axi_user_width_p-1:0]   m01_axi_aruser_o
 
    , input [m01_axi_data_width_p-1:0]          m01_axi_rdata_i
    , input                                     m01_axi_rvalid_i
@@ -187,7 +180,6 @@ module bp_axi4_top
    , input [m01_axi_id_width_p-1:0]            m01_axi_rid_i
    , input                                     m01_axi_rlast_i
    , input [1:0]                               m01_axi_rresp_i
-   , input [m01_axi_user_width_p-1:0]          m01_axi_ruser_i
    );
 
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
@@ -221,9 +213,8 @@ module bp_axi4_top
      ,.rt_clk_i(rt_clk_i)
      ,.reset_i(reset_i)
 
-     // Irrelevant for current AXI wrapper
-     ,.my_did_i('0)
-     ,.host_did_i('0)
+     ,.my_did_i(my_did_i)
+     ,.host_did_i(host_did_i)
 
      // Outgoing I/O
      ,.mem_fwd_header_o(mem_fwd_header_lo)
@@ -266,7 +257,6 @@ module bp_axi4_top
      ,.s_axi_data_width_p(s_axi_data_width_p)
      ,.s_axi_addr_width_p(s_axi_addr_width_p)
      ,.s_axi_id_width_p(s_axi_id_width_p)
-     ,.s_axi_user_width_p(s_axi_user_width_p)
      )
    axi2io
     (.clk_i(clk_i)
@@ -292,7 +282,6 @@ module bp_axi4_top
      ,.m_axi_data_width_p(m_axi_data_width_p)
      ,.m_axi_addr_width_p(m_axi_addr_width_p)
      ,.m_axi_id_width_p(m_axi_id_width_p)
-     ,.m_axi_user_width_p(m_axi_user_width_p)
      )
    io2axi
     (.clk_i(clk_i)
