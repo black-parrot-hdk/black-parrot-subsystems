@@ -10,7 +10,6 @@ module bp_piton_tile
  import bp_fe_pkg::*;
  import bp_be_pkg::*;
  import bp_me_pkg::*;
- import bsg_noc_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_unicore_parrotpiton_cfg // Warning: Change this at your own peril!
    `declare_bp_proc_params(bp_params_p)
    `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
@@ -311,12 +310,19 @@ module bp_piton_tile
      );
 
   // Synchronize back to negedge clk
-  bsg_dlatch
-   #(.width_p($bits(bp_l15_pce_ret_s)+2), .i_know_this_is_a_bad_idea_p(1))
-   negedge_latch
+  bsg_two_fifo
+   #(.width_p($bits(bp_l15_pce_ret_s)))
+   negedge_fifo
     (.clk_i(negedge_clk)
-     ,.data_i({l15_pce_ret_li[1], l15_pce_ret_v_li[1], _l15_pce_ret_ready_and_lo[1]})
-     ,.data_o({_l15_pce_ret_li[1], _l15_pce_ret_v_li[1], l15_pce_ret_ready_and_lo[1]})
+     ,.reset_i(reset_i)
+
+     ,.data_i(l15_pce_ret_li[1])
+     ,.v_i(l15_pce_ret_v_li[1])
+     ,.ready_o(l15_pce_ret_ready_and_lo[1])
+
+     ,.data_o(_l15_pce_ret_li[1])
+     ,.v_o(_l15_pce_ret_v_li[1])
+     ,.yumi_i(_l15_pce_ret_ready_and_lo[1] & _l15_pce_ret_v_li[1])
      );
 
   // PCE -> L1.5 - Arbitration logic

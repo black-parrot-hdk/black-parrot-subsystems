@@ -441,17 +441,6 @@ module bp_pce
         end
     end
 
-  always_ff @(negedge clk_i) begin
-    //if (is_ifill_ret_nc | is_load_ret_nc | is_amo_op_ret)
-    //  $display("[NC] TYPE: %s SIZE: %x ADDR: %x DATA: [%x][%x]", cache_req_lo.msg_type.name(), cache_req_lo.size, cache_req_lo.addr, l15_pce_ret_li.data_1, l15_pce_ret_li.data_0);
-
-    if (is_amo_op_ret && cache_req_lo.subop == e_req_amosc)
-      $display("[SC] TYPE: %s SIZE: %x ADDR: %x DATA: [%x][%x]", cache_req_lo.msg_type.name(), cache_req_lo.size, cache_req_lo.addr, l15_pce_ret_li.data_1, l15_pce_ret_li.data_0);
-
-    if (is_amo_lr_ret && cache_req_lo.subop == e_req_amolr)
-      $display("[LR] TYPE: %s SIZE: %x ADDR: %x DATA: [%x][%x]", cache_req_lo.msg_type.name(), cache_req_lo.size, cache_req_lo.addr, l15_pce_ret_li.data_1, l15_pce_ret_li.data_0);
-  end
-
   // synopsys sync_set_reset "reset_i"
   always_ff @(posedge clk_i)
     if (reset_i)
