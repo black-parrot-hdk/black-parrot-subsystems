@@ -163,8 +163,8 @@ module bp_axi_top
      ,.reset_i(reset_i)
 
      // Irrelevant for current AXI wrapper
-     ,.my_did_i('0)
-     ,.host_did_i('0)
+     ,.my_did_i(1'b1)
+     ,.host_did_i('1)
 
      // Outgoing I/O
      ,.mem_fwd_header_o(mem_fwd_header_lo)
