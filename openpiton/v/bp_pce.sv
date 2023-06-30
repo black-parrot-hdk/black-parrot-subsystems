@@ -37,12 +37,13 @@ module bp_pce
   // Cache side
   , input [cache_req_width_lp-1:0]                 cache_req_i
   , input                                          cache_req_v_i
-  , output logic                                   cache_req_ready_and_o
+  , output logic                                   cache_req_yumi_o
   , output logic                                   cache_req_busy_o
   , input [cache_req_metadata_width_lp-1:0]        cache_req_metadata_i
   , input                                          cache_req_metadata_v_i
-  , output logic                                   cache_req_complete_o
+  , output logic [paddr_width_p-1:0]               cache_req_addr_o
   , output logic                                   cache_req_critical_o
+  , output logic                                   cache_req_last_o
   , output logic                                   cache_req_credits_full_o
   , output logic                                   cache_req_credits_empty_o
 
@@ -83,6 +84,7 @@ module bp_pce
 
   logic cache_req_done, cache_req_v_lo;
   bp_cache_req_s cache_req_lo;
+  logic cache_req_ready_and_lo;
   bsg_two_fifo
    #(.width_p($bits(bp_cache_req_s)))
    cache_req_fifo
@@ -91,12 +93,14 @@ module bp_pce
 
      ,.v_i(cache_req_v_i)
      ,.data_i(cache_req_cast_i)
-     ,.ready_o(cache_req_ready_and_o)
+     ,.ready_o(cache_req_ready_and_lo)
 
      ,.v_o(cache_req_v_lo)
      ,.data_o(cache_req_lo)
      ,.yumi_i(cache_req_done)
      );
+  assign cache_req_yumi_o = cache_req_ready_and_lo & cache_req_v_i;
+  assign cache_req_addr_o = cache_req_lo.addr;
 
   bp_cache_req_metadata_s cache_req_metadata_lo;
   bsg_two_fifo
@@ -169,7 +173,7 @@ module bp_pce
   wire is_load_ret_nc  = l15_pce_ret_v_li & (l15_pce_ret_li.rtntype == e_load_ret) & l15_pce_ret_li.noncacheable;
   wire is_ifill_ret    = l15_pce_ret_v_li & (l15_pce_ret_li.rtntype == e_ifill_ret) & ~l15_pce_ret_li.noncacheable;
   wire is_load_ret     = l15_pce_ret_v_li & (l15_pce_ret_li.rtntype == e_load_ret) & ~l15_pce_ret_li.noncacheable;
-  wire is_amo_lr_ret = l15_pce_ret_v_li & (l15_pce_ret_li.rtntype == e_atomic_ret) & l15_pce_ret_li.atomic & !l15_pce_ret_li.noncacheable;
+  wire is_amo_lr_ret   = l15_pce_ret_v_li & (l15_pce_ret_li.rtntype == e_atomic_ret) & l15_pce_ret_li.atomic & !l15_pce_ret_li.noncacheable;
   // Fetch + Op atomics also set the noncacheable bit as 1
   wire is_amo_op_ret   = l15_pce_ret_v_li & (l15_pce_ret_li.rtntype == e_atomic_ret) & l15_pce_ret_li.atomic & l15_pce_ret_li.noncacheable;
 
@@ -183,9 +187,6 @@ module bp_pce
   wire amo_lr_v_r     = cache_req_v_lo & cache_req_lo.msg_type inside {e_uc_amo} & cache_req_lo.subop inside {e_req_amolr};
   wire amo_sc_v_r     = cache_req_v_lo & cache_req_lo.msg_type inside {e_uc_amo} & cache_req_lo.subop inside {e_req_amosc};
   wire amo_op_v_r     = cache_req_v_lo & cache_req_lo.msg_type inside {e_uc_amo} & cache_req_lo.subop inside {e_req_amoswap, e_req_amoadd, e_req_amoxor, e_req_amoand, e_req_amoor, e_req_amomin, e_req_amomax, e_req_amominu, e_req_amomaxu};
-
-  // Don't send complete_o on non-blocking requests
-  assign cache_req_complete_o = cache_req_done & ~(uc_store_v_r | noret_amo_v_r | wt_store_v_r);
 
   // We can't accept any more requests
   assign cache_req_credits_full_o  =  cache_req_v_lo & ~pce_l15_req_ready_and_i;
@@ -260,6 +261,8 @@ module bp_pce
         //e_size_32B:
         default: fill_data_packed = fill_data;
       endcase
+      // LR comes as a cacheline fill, so we don't pack data according to size
+      if (is_amo_lr_ret) fill_data_packed = {fill_width_p/128{fill_data[0+:128]}};
     end
 
   // This is definitely over-provisioned, exponential?
@@ -294,6 +297,7 @@ module bp_pce
       stat_mem_pkt_v_o    = '0;
 
       cache_req_done = '0;
+      cache_req_last_o = '0;
 
       cache_req_critical_o = '0;
 
@@ -321,6 +325,7 @@ module bp_pce
             index_up = tag_mem_pkt_yumi_i & stat_mem_pkt_yumi_i;
 
             cache_req_done = is_clear & (index_done & index_up);
+            cache_req_last_o = cache_req_done;
 
             state_n = (index_done & index_up) ? e_ready : state_r;
           end
@@ -333,8 +338,8 @@ module bp_pce
                 pce_l15_req_cast_o.size     = req_size;
                 pce_l15_req_cast_o.amo_op   = amo_type;
                 pce_l15_req_cast_o.l1rplway = (pce_id_p == 1)
-                                              ? {cache_req_lo.addr[11], cache_req_metadata_lo.hit_or_repl_way}
-                                              : cache_req_metadata_lo.hit_or_repl_way;
+                  ? {cache_req_lo.addr[11], cache_req_metadata_lo.hit_or_repl_way}
+                  : cache_req_metadata_lo.hit_or_repl_way;
 
             if (wt_store_v_r | uc_store_v_r | noret_amo_v_r)
               begin
@@ -357,8 +362,8 @@ module bp_pce
                 pce_l15_req_cast_o.rqtype = (pce_id_p == 1) ? e_load_req : e_imiss_req;
                 pce_l15_req_cast_o.nc = 1'b0;
                 pce_l15_req_cast_o.address = (pce_id_p == 1)
-                                             ? {cache_req_lo.addr[paddr_width_p-1:4], 4'b0}
-                                             : {cache_req_lo.addr[paddr_width_p-1:5], 5'b0};
+                  ? {cache_req_lo.addr[paddr_width_p-1:4], 4'b0}
+                  : {cache_req_lo.addr[paddr_width_p-1:5], 5'b0};
 
                 state_n = (pce_l15_req_ready_and_i & pce_l15_req_v_o) ? e_read_wait : state_r;
               end
@@ -366,7 +371,7 @@ module bp_pce
               begin
                 pce_l15_req_cast_o.rqtype = e_amo_req;
                 // Fetch + Op atomics need to have the nc bit set
-                pce_l15_req_cast_o.nc = 1'b1;
+                pce_l15_req_cast_o.nc = amo_op_v_r | amo_sc_v_r;
                 pce_l15_req_cast_o.address = cache_req_lo.addr;
 
                 state_n = (pce_l15_req_ready_and_i & pce_l15_req_v_o) ? e_read_wait : state_r;
@@ -383,12 +388,12 @@ module bp_pce
 
         e_read_wait:
           begin
-            // OP returns cacheable for lrsc for some reason
-            if (l15_pce_ret_li.noncacheable)
+            // LR comes as a cacheline fill, so we don't treat it as non-cacheable
+            if (l15_pce_ret_li.noncacheable | is_amo_lr_ret)
               begin
                 data_mem_pkt_cast_o.opcode = e_cache_data_mem_uncached;
                 data_mem_pkt_cast_o.data = fill_data_packed;
-                data_mem_pkt_v_o = is_ifill_ret_nc | is_load_ret_nc | is_amo_op_ret;
+                data_mem_pkt_v_o = is_ifill_ret_nc | is_load_ret_nc | is_amo_op_ret | is_amo_lr_ret;
 
                 l15_pce_ret_yumi_lo = data_mem_pkt_yumi_i;
               end
@@ -401,20 +406,21 @@ module bp_pce
                 data_mem_pkt_cast_o.data = fill_data_packed;
                 // Checking for return types here since we could also have
                 // invalidations coming in at anytime
-                data_mem_pkt_v_o = is_ifill_ret | is_load_ret | is_amo_lr_ret;
+                data_mem_pkt_v_o = is_ifill_ret | is_load_ret;
 
                 tag_mem_pkt_cast_o.opcode = e_cache_tag_mem_set_tag;
                 tag_mem_pkt_cast_o.index = cache_req_lo.addr[block_offset_width_lp+:index_width_lp];
                 tag_mem_pkt_cast_o.way_id = cache_req_metadata_lo.hit_or_repl_way;
                 tag_mem_pkt_cast_o.tag = cache_req_lo.addr[block_offset_width_lp+index_width_lp+:ctag_width_p];
                 tag_mem_pkt_cast_o.state = is_ifill_ret ? e_COH_S : e_COH_M;
-                tag_mem_pkt_v_o = is_ifill_ret | is_load_ret | is_amo_lr_ret;
+                tag_mem_pkt_v_o = is_ifill_ret | is_load_ret;
 
                 l15_pce_ret_yumi_lo = data_mem_pkt_yumi_i & tag_mem_pkt_yumi_i;
               end
 
             cache_req_critical_o = data_mem_pkt_v_o;
-            cache_req_done = l15_pce_ret_yumi_lo;
+            cache_req_last_o = load_resp_v_li;
+            cache_req_done = load_resp_v_li & l15_pce_ret_yumi_lo;
 
             state_n = cache_req_done ? e_ready : state_r;
           end
@@ -428,12 +434,12 @@ module bp_pce
       if (inval_v_li | clear_v_li)
         begin
           tag_mem_pkt_cast_o.index = (pce_id_p == 1)
-                                           ? {l15_pce_ret_li.inval_way[1], l15_pce_ret_li.inval_address_15_4[6:0]}
-                                           : l15_pce_ret_li.inval_address_15_4[7:1];
+            ? {l15_pce_ret_li.inval_way[1], l15_pce_ret_li.inval_address_15_4[6:0]}
+            : l15_pce_ret_li.inval_address_15_4[7:1];
           tag_mem_pkt_cast_o.opcode = clear_v_li ? e_cache_tag_mem_set_clear : e_cache_tag_mem_set_state;
           tag_mem_pkt_cast_o.way_id = (pce_id_p == 1)
-                                            ? l15_pce_ret_li.inval_way[0]
-                                            : l15_pce_ret_li.inval_way;
+            ? l15_pce_ret_li.inval_way[0]
+            : l15_pce_ret_li.inval_way;
           tag_mem_pkt_cast_o.state  = e_COH_I;
           tag_mem_pkt_v_o = l15_pce_ret_v_li & ~cache_lock;
 
