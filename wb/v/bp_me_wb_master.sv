@@ -93,7 +93,7 @@ module bp_me_wb_master
   // output pump
   bp_bedrock_mem_rev_header_s fsm_rev_header_li;
   logic [wb_data_width_p-1:0] fsm_rev_data_li;
-  logic fsm_rev_v_li, fsm_rev_yumi_lo;
+  logic fsm_rev_v_li, fsm_rev_ready_and_lo;
   logic [paddr_width_p-1:0] fsm_rev_addr_lo;
   logic fsm_rev_new_lo, fsm_rev_critical_lo, fsm_rev_last_lo;
   bp_me_stream_pump_out
@@ -116,7 +116,7 @@ module bp_me_wb_master
      ,.fsm_header_i(fsm_rev_header_li)
      ,.fsm_data_i(fsm_rev_data_li)
      ,.fsm_v_i(fsm_rev_v_li)
-     ,.fsm_yumi_o(fsm_rev_yumi_lo)
+     ,.fsm_ready_and_o(fsm_rev_ready_and_lo)
      ,.fsm_addr_o(fsm_rev_addr_lo)
      ,.fsm_new_o(fsm_rev_new_lo)
      ,.fsm_critical_o(fsm_rev_critical_lo)
@@ -140,7 +140,7 @@ module bp_me_wb_master
 
      ,.data_o({fsm_rev_header_li, wb_rev_data_li})
      ,.v_o(fsm_rev_v_li)
-     ,.yumi_i(fsm_rev_yumi_lo)
+     ,.yumi_i(fsm_rev_ready_and_lo & fsm_rev_v_li)
     );
 
   // for BP, less than bus width data must be replicated
