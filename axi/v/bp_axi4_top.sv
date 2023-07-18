@@ -272,6 +272,8 @@ module bp_axi4_top
      ,.mem_rev_v_i(mem_rev_v_lo)
      ,.mem_rev_ready_and_o(mem_rev_ready_and_li)
 
+     // TODO: what should these be?
+     // probably works for unicore configs
      ,.lce_id_i(lce_id_width_p'('b10))
      ,.did_i(did_width_p'('1))
      ,.*
@@ -300,16 +302,14 @@ module bp_axi4_top
      ,.*
      );
 
-  // If necessary, downsize to axi data width. This could be done in bsg_cache_to_axi,
-  //   but punt for now
-  logic [num_cce_p*l2_banks_p-1:0][axi_data_width_p-1:0] axi_dma_data_lo;
+  logic [num_cce_p*l2_banks_p-1:0][m01_axi_data_width_p-1:0] axi_dma_data_lo;
   logic [num_cce_p*l2_banks_p-1:0] axi_dma_data_v_lo, axi_dma_data_ready_and_li;
-  logic [num_cce_p*l2_banks_p-1:0][axi_data_width_p-1:0] axi_dma_data_li;
+  logic [num_cce_p*l2_banks_p-1:0][m01_axi_data_width_p-1:0] axi_dma_data_li;
   logic [num_cce_p*l2_banks_p-1:0] axi_dma_data_v_li, axi_dma_data_yumi_lo;
   for (genvar i = 0; i < num_cce_p*l2_banks_p; i++)
     begin : narrow
       bsg_serial_in_parallel_out_full
-       #(.width_p(axi_data_width_p), .els_p(l2_fill_width_p/axi_data_width_p))
+       #(.width_p(m01_axi_data_width_p), .els_p(l2_fill_width_p/m01_axi_data_width_p))
        dma_piso
         (.clk_i(clk_i)
          ,.reset_i(reset_i)
@@ -324,7 +324,7 @@ module bp_axi4_top
          );
 
       bsg_parallel_in_serial_out
-       #(.width_p(axi_data_width_p), .els_p(l2_fill_width_p/axi_data_width_p))
+       #(.width_p(m01_axi_data_width_p), .els_p(l2_fill_width_p/m01_axi_data_width_p))
        dma_sipo
         (.clk_i(clk_i)
          ,.reset_i(reset_i)
@@ -341,13 +341,13 @@ module bp_axi4_top
 
   bsg_cache_to_axi
    #(.addr_width_p(daddr_width_p)
-     ,.data_width_p(axi_data_width_p)
+     ,.data_width_p(m01_axi_data_width_p)
      ,.mask_width_p(l2_block_size_in_words_p)
-     ,.block_size_in_words_p(l2_block_width_p/axi_data_width_p)
+     ,.block_size_in_words_p(l2_block_width_p/m01_axi_data_width_p)
      ,.num_cache_p(num_cce_p*l2_banks_p)
-     ,.axi_data_width_p(axi_data_width_p)
-     ,.axi_id_width_p(axi_id_width_p)
-     ,.axi_burst_len_p(l2_block_width_p/axi_data_width_p)
+     ,.axi_data_width_p(m01_axi_data_width_p)
+     ,.axi_id_width_p(m01_axi_id_width_p)
+     ,.axi_burst_len_p(l2_block_width_p/m01_axi_data_width_p)
      ,.axi_burst_type_p(e_axi_burst_incr)
      )
    cache2axi
@@ -366,50 +366,55 @@ module bp_axi4_top
      ,.dma_data_v_i(axi_dma_data_v_li)
      ,.dma_data_yumi_o(axi_dma_data_yumi_lo)
 
-     ,.axi_awid_o(m_axi_awid_o)
-     ,.axi_awaddr_addr_o(m_axi_awaddr_o)
-     ,.axi_awlen_o(m_axi_awlen_o)
-     ,.axi_awsize_o(m_axi_awsize_o)
-     ,.axi_awburst_o(m_axi_awburst_o)
-     ,.axi_awcache_o(m_axi_awcache_o)
-     ,.axi_awprot_o(m_axi_awprot_o)
-     ,.axi_awlock_o(m_axi_awlock_o)
-     ,.axi_awvalid_o(m_axi_awvalid_o)
-     ,.axi_awready_i(m_axi_awready_i)
+     ,.axi_awid_o(m01_axi_awid_o)
+     ,.axi_awaddr_addr_o(m01_axi_awaddr_o)
+     ,.axi_awlen_o(m01_axi_awlen_o)
+     ,.axi_awsize_o(m01_axi_awsize_o)
+     ,.axi_awburst_o(m01_axi_awburst_o)
+     ,.axi_awcache_o(m01_axi_awcache_o)
+     ,.axi_awprot_o(m01_axi_awprot_o)
+     ,.axi_awlock_o(m01_axi_awlock_o)
+     ,.axi_awvalid_o(m01_axi_awvalid_o)
+     ,.axi_awready_i(m01_axi_awready_i)
 
-     ,.axi_wdata_o(m_axi_wdata_o)
-     ,.axi_wstrb_o(m_axi_wstrb_o)
-     ,.axi_wlast_o(m_axi_wlast_o)
-     ,.axi_wvalid_o(m_axi_wvalid_o)
-     ,.axi_wready_i(m_axi_wready_i)
+     ,.axi_wdata_o(m01_axi_wdata_o)
+     ,.axi_wstrb_o(m01_axi_wstrb_o)
+     ,.axi_wlast_o(m01_axi_wlast_o)
+     ,.axi_wvalid_o(m01_axi_wvalid_o)
+     ,.axi_wready_i(m01_axi_wready_i)
 
-     ,.axi_bid_i(m_axi_bid_i)
-     ,.axi_bresp_i(m_axi_bresp_i)
-     ,.axi_bvalid_i(m_axi_bvalid_i)
-     ,.axi_bready_o(m_axi_bready_o)
+     ,.axi_bid_i(m01_axi_bid_i)
+     ,.axi_bresp_i(m01_axi_bresp_i)
+     ,.axi_bvalid_i(m01_axi_bvalid_i)
+     ,.axi_bready_o(m01_axi_bready_o)
 
-     ,.axi_arid_o(m_axi_arid_o)
-     ,.axi_araddr_addr_o(m_axi_araddr_o)
-     ,.axi_arlen_o(m_axi_arlen_o)
-     ,.axi_arsize_o(m_axi_arsize_o)
-     ,.axi_arburst_o(m_axi_arburst_o)
-     ,.axi_arcache_o(m_axi_arcache_o)
-     ,.axi_arprot_o(m_axi_arprot_o)
-     ,.axi_arlock_o(m_axi_arlock_o)
-     ,.axi_arvalid_o(m_axi_arvalid_o)
-     ,.axi_arready_i(m_axi_arready_i)
+     ,.axi_arid_o(m01_axi_arid_o)
+     ,.axi_araddr_addr_o(m01_axi_araddr_o)
+     ,.axi_arlen_o(m01_axi_arlen_o)
+     ,.axi_arsize_o(m01_axi_arsize_o)
+     ,.axi_arburst_o(m01_axi_arburst_o)
+     ,.axi_arcache_o(m01_axi_arcache_o)
+     ,.axi_arprot_o(m01_axi_arprot_o)
+     ,.axi_arlock_o(m01_axi_arlock_o)
+     ,.axi_arvalid_o(m01_axi_arvalid_o)
+     ,.axi_arready_i(m01_axi_arready_i)
 
-     ,.axi_rid_i(m_axi_rid_i)
-     ,.axi_rdata_i(m_axi_rdata_i)
-     ,.axi_rresp_i(m_axi_rresp_i)
-     ,.axi_rlast_i(m_axi_rlast_i)
-     ,.axi_rvalid_i(m_axi_rvalid_i)
-     ,.axi_rready_o(m_axi_rready_o)
+     ,.axi_rid_i(m01_axi_rid_i)
+     ,.axi_rdata_i(m01_axi_rdata_i)
+     ,.axi_rresp_i(m01_axi_rresp_i)
+     ,.axi_rlast_i(m01_axi_rlast_i)
+     ,.axi_rvalid_i(m01_axi_rvalid_i)
+     ,.axi_rready_o(m01_axi_rready_o)
 
      // Unused
      ,.axi_awaddr_cache_id_o()
      ,.axi_araddr_cache_id_o()
      );
+
+  assign m01_axi_awqos_o = '0;
+  assign m01_axi_awregion_o = '0;
+  assign m01_axi_arqos_o = '0;
+  assign m01_axi_arregion_o = '0;
 
 endmodule
 
