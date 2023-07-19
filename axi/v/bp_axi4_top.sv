@@ -7,7 +7,18 @@
  *   and the memory interface. Ordering and flow control of traffic is enforced by
  *   the bp_me_axi_manager|subordinate modules.
  *
- * Note: this wrapper only works if the AXI data widths and bedrock_fill_width_p are 64-bits.
+ * Constraints:
+ *   This wrapper supports 8, 16, 32, and 64-bit AXI I/O operations on AXI interfaces
+ *   with 64-bit data channel width. Only one inbound or outbound I/O operation is
+ *   processed at a time (i.e., all I/O is serialized) to guarantee correctness.
+ *
+ *   bedrock_fill_width_p and m|s_axi_data_width_p must all be 64-bits
+ *   Incoming I/O (s_axi_*) transactions must be no larger than 64-bits in a single
+ *   transfer and the address must be naturally aligned to the request size. The I/O
+ *   converters do not check or enforce this condition, the sender must guarantee it.
+ *   Outbound I/O (m_axi_*) generates transactions no larger than 64-bits with a single
+ *   data transfer using naturally aligned addresses and the INCR burst type.
+ *
  */
 
 `include "bp_common_defines.svh"
@@ -272,8 +283,7 @@ module bp_axi4_top
      ,.mem_rev_v_i(mem_rev_v_lo)
      ,.mem_rev_ready_and_o(mem_rev_ready_and_li)
 
-     // TODO: what should these be?
-     // probably works for unicore configs
+     // IDs for the I/O sender
      ,.lce_id_i(lce_id_width_p'('b10))
      ,.did_i(did_width_p'('1))
      ,.*

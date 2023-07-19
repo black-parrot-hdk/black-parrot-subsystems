@@ -166,8 +166,8 @@ module bp_me_axi_manager
       ,.data_o({wdata_sent, waddr_sent})
       );
 
-  localparam byte_offset_width_lp = `BSG_SAFE_CLOG2(m_axi_mask_width_lp);
-  wire [byte_offset_width_lp-1:0] mask_shift = mem_fwd_header_li.addr[0+:byte_offset_width_lp];
+  localparam lg_m_axi_mask_width_lp = `BSG_SAFE_CLOG2(m_axi_mask_width_lp);
+  wire [lg_m_axi_mask_width_lp-1:0] mask_shift = mem_fwd_header_li.addr[0+:lg_m_axi_mask_width_lp];
 
   always_comb begin
     state_n = state_r;
