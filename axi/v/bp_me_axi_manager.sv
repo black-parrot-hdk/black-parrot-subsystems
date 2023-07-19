@@ -93,27 +93,47 @@ module bp_me_axi_manager
   , input [1:0]                                m_axi_rresp_i
   );
 
+  wire unused = &{m_axi_bid_i, m_axi_bresp_i, m_axi_rid_i, m_axi_rlast_i, m_axi_rresp_i};
+
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
   `bp_cast_i(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
   `bp_cast_o(bp_bedrock_mem_rev_header_s, mem_rev_header);
 
-  wire unused = &{m_axi_bid_i, m_axi_bresp_i, m_axi_rid_i, m_axi_rlast_i, m_axi_rresp_i};
-
-  wire mem_fwd_write = (mem_fwd_header_cast_i.msg_type inside {e_bedrock_mem_wr, e_bedrock_mem_uc_wr});
-
   bp_bedrock_mem_fwd_header_s mem_fwd_header_li;
   logic [bedrock_fill_width_p-1:0] mem_fwd_data_li;
-  bsg_dff_reset_en
-    #(.width_p(mem_fwd_header_width_lp+bedrock_fill_width_p)
-      ,.reset_val_p(0)
-      )
-    mem_fwd_reg
+  logic mem_fwd_v_li, mem_fwd_yumi_lo;
+
+  bsg_one_fifo
+    #(.width_p(mem_fwd_header_width_lp+bedrock_fill_width_p))
+    mem_fwd_buffer
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
-      ,.en_i(mem_fwd_v_i & mem_fwd_ready_and_o)
+      ,.v_i(mem_fwd_v_i)
+      ,.ready_o(mem_fwd_ready_and_o)
       ,.data_i({mem_fwd_data_i, mem_fwd_header_cast_i})
+      ,.v_o(mem_fwd_v_li)
+      ,.yumi_i(mem_fwd_yumi_lo)
       ,.data_o({mem_fwd_data_li, mem_fwd_header_li})
       );
+
+  wire mem_fwd_write = (mem_fwd_header_li.msg_type inside {e_bedrock_mem_wr, e_bedrock_mem_uc_wr});
+
+  logic mem_rev_v_lo, mem_rev_ready_and_li;
+
+  bsg_one_fifo
+    #(.width_p(mem_rev_header_width_lp+bedrock_fill_width_p))
+    mem_rev_buffer
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      ,.v_i(mem_rev_v_lo)
+      ,.ready_o(mem_rev_ready_and_li)
+      ,.data_i({m_axi_rdata_i, mem_fwd_header_li})
+      ,.v_o(mem_rev_v_o)
+      ,.yumi_i(mem_rev_v_o & mem_rev_ready_and_i)
+      ,.data_o({mem_rev_data_o, mem_rev_header_cast_o})
+      );
+
+  assign mem_fwd_yumi_lo = mem_rev_v_lo & mem_rev_ready_and_li;
 
   typedef enum logic [2:0] {
     e_ready
@@ -152,11 +172,7 @@ module bp_me_axi_manager
   always_comb begin
     state_n = state_r;
 
-    mem_fwd_ready_and_o = 1'b0;
-
-    mem_rev_header_cast_o = mem_fwd_header_li;
-    mem_rev_data_o = m_axi_rdata_i;
-    mem_rev_v_o = 1'b0;
+    mem_rev_v_lo = 1'b0;
 
     wdata_set = 1'b0;
     wdata_clear = 1'b0;
@@ -208,10 +224,9 @@ module bp_me_axi_manager
     case (state_r)
       // capture mem_fwd and data
       e_ready: begin
-        mem_fwd_ready_and_o = 1'b1;
         waddr_clear = 1'b1;
         wdata_clear = 1'b1;
-        state_n = mem_fwd_v_i
+        state_n = mem_fwd_v_li
                   ? mem_fwd_write
                     ? e_write
                     : e_read
@@ -229,8 +244,8 @@ module bp_me_axi_manager
       end
       // sink write response and send mem_rev
       e_wresp: begin
-        m_axi_bready_o = mem_rev_ready_and_i;
-        mem_rev_v_o = m_axi_bvalid_i;
+        m_axi_bready_o = mem_rev_ready_and_li;
+        mem_rev_v_lo = m_axi_bvalid_i;
         state_n = (m_axi_bvalid_i & m_axi_bready_o)
                   ? e_ready
                   : state_r;
@@ -244,8 +259,8 @@ module bp_me_axi_manager
       end
       // sink read data and send mem_rev
       e_rdata: begin
-        m_axi_rready_o = mem_rev_ready_and_i;
-        mem_rev_v_o = m_axi_rvalid_i;
+        m_axi_rready_o = mem_rev_ready_and_li;
+        mem_rev_v_lo = m_axi_rvalid_i;
         state_n = (m_axi_rvalid_i & m_axi_rready_o)
                   ? e_ready
                   : state_r;
