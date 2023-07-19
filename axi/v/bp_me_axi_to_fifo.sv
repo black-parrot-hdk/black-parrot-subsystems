@@ -112,7 +112,7 @@ module bp_me_axi_to_fifo
   logic [s_axi_mask_width_lp-1:0] wstrb_li;
   logic wvalid_li, wyumi_lo;
   bsg_one_fifo
-    #(.width_p(s_axi_data_width_p+s_axi_mask_width_p))
+    #(.width_p(s_axi_data_width_p+s_axi_mask_width_lp))
     w_fifo
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
