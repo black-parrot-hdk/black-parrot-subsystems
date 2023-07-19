@@ -161,9 +161,29 @@ module bp_me_axi_to_fifo
       ,.data_o({response_w_li, response_data_li})
       );
 
+  typedef enum logic { e_send, e_receive } state_e;
+  state_e state_r, state_n;
+
+  wire is_send = (state_r == e_send);
+  wire is_receive = (state_r == e_receive);
+
+  always_ff @(posedge clk_i) begin
+    if (reset_i) begin
+      state_r <= e_send;
+    end else begin
+      state_r <= state_n;
+    end
+  end
+
+  assign state_n = (is_send & v_o & ready_and_i)
+                   ? e_receive
+                   : (is_receive & response_yumi_lo)
+                     ? e_send
+                     : state_r;
+
   // send to client if valid request from AXI and response fifo has capacity
   // prioritize reads over writes
-  assign v_o = ready_and_o & (arvalid_li | (awvalid_li & wvalid_li));
+  assign v_o = is_send & ready_and_o & (arvalid_li | (awvalid_li & wvalid_li));
   assign addr_o = arvalid_li ? araddr_li : awaddr_li;
   assign data_o = wdata_li;
   assign w_o = ~arvalid_li;
