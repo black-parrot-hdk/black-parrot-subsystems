@@ -93,7 +93,7 @@ module bp_cce_to_mc_dram
 
   bp_bedrock_mem_rev_header_s fsm_rev_header_lo;
   logic [word_width_gp-1:0] fsm_rev_data_lo;
-  logic fsm_rev_v_lo, fsm_rev_yumi_li;
+  logic fsm_rev_v_lo, fsm_rev_ready_and_li;
   logic [paddr_width_p-1:0] fsm_rev_addr_lo;
   logic fsm_rev_new_lo, fsm_rev_critical_lo, fsm_rev_last_lo;
   bp_me_stream_pump_out
@@ -116,7 +116,7 @@ module bp_cce_to_mc_dram
      ,.fsm_header_i(fsm_rev_header_lo)
      ,.fsm_data_i(fsm_rev_data_lo)
      ,.fsm_v_i(fsm_rev_v_lo)
-     ,.fsm_yumi_o(fsm_rev_yumi_li)
+     ,.fsm_ready_and_o(fsm_rev_ready_and_li)
      ,.fsm_addr_o(fsm_rev_addr_lo)
      ,.fsm_new_o(fsm_rev_new_lo)
      ,.fsm_critical_o(fsm_rev_critical_lo)
@@ -306,7 +306,7 @@ module bp_cce_to_mc_dram
       fsm_rev_header_lo = dram_rev_header_lo;
       fsm_rev_data_lo = dram_rev_data_lo;
       fsm_rev_v_lo = dram_rev_v_lo;
-      dram_rev_yumi_li = fsm_rev_yumi_li;
+      dram_rev_yumi_li = fsm_rev_ready_and_li & fsm_rev_v_lo;
     end
 
 endmodule
