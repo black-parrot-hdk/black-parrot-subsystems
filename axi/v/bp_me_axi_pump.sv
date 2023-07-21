@@ -34,6 +34,7 @@ module bp_me_axi_pump
   , output logic [axi_addr_width_p-1:0]        addr_o
   , output logic [axi_mask_width_lp-1:0]       mask_o
   , output logic [2:0]                         size_o
+  , output logic [7:0]                         len_o
   , output logic                               first_o
   , output logic                               last_o
   );
@@ -61,7 +62,7 @@ module bp_me_axi_pump
   // clears to zero when capturing a new transaction
   // counts up every send
   logic [7:0] count_r;
-  bsg_counter_clear_en
+  bsg_counter_clear_up
     #(.max_val_p(255)
       ,.init_val_p(0)
       ,.disable_overflow_warning_p(1)
@@ -86,7 +87,8 @@ module bp_me_axi_pump
       ,.reset_i(reset_i)
       ,.en_i(address_en)
       ,.data_i(address_n)
-      ,.data_i(address_r);
+      ,.data_o(address_r)
+      );
 
   wire [axi_addr_width_p-1:0] start_addr = axaddr;
   wire [6:0] number_bytes = (7'b1 << axsize);
@@ -133,6 +135,7 @@ module bp_me_axi_pump
   wire [axi_addr_width_p-1:0] upper_wrap_boundary = lower_wrap_boundary + dtsize;
 
   wire [axi_addr_width_p-1:0] aligned_addr_incr = aligned_addr + number_bytes;
+  wire do_wrap = (aligned_addr_incr >= upper_wrap_boundary);
 
   // compute lower_byte_lane and upper_byte_lane and mask_o
   // data_bus_bytes == number of 8-bit byte lanes in the bus == axi_mask_width_lp
@@ -179,6 +182,7 @@ module bp_me_axi_pump
     first_o = (count_r == '0);
     last_o = (axlen == count_r);
     size_o = axsize;
+    len_o = axlen;
     // register control
     address_en = 1'b0;
     address_n = '0;
