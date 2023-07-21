@@ -33,6 +33,7 @@ module bp_me_axi_pump
   , input                                      send_i
   , output logic [axi_addr_width_p-1:0]        addr_o
   , output logic [axi_mask_width_lp-1:0]       mask_o
+  , output logic [2:0]                         size_o
   , output logic                               first_o
   , output logic                               last_o
   );
@@ -177,6 +178,7 @@ module bp_me_axi_pump
     v_o = 1'b0;
     first_o = (count_r == '0);
     last_o = (axlen == count_r);
+    size_o = axsize;
     // register control
     address_en = 1'b0;
     address_n = '0;
