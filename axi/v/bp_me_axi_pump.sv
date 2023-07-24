@@ -90,7 +90,6 @@ module bp_me_axi_pump
       ,.data_o(address_r)
       );
 
-  wire [axi_addr_width_p-1:0] start_addr = axaddr;
   wire [6:0] number_bytes = (7'b1 << axsize);
   wire is_incr = (axburst == 2'b01);
   wire is_wrap = (axburst == 2'b10);
