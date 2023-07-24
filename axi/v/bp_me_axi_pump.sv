@@ -125,7 +125,7 @@ module bp_me_axi_pump
   // dtsize = number_bytes * burst_length = burst_length << log2(number_bytes)
   // and log2(number_bytes) = axsize
   // equivalently, dtsize = 1 << lg_burst_length << axsize
-  wire [12:0] dtsize = burst_length << axsize;
+  wire [12:0] dtsize = 13'(burst_length) << axsize;
 
   // compute lower_wrap_boundary and upper_wrap_boundary
   // lower_wrap_boundary = int(addr/dtsize) * dtsize
