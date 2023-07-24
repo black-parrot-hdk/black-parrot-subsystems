@@ -97,12 +97,12 @@ module bp_me_axi_pump
   wire is_aligned = (aligned_addr == address_r);
 
   wire [8:0] burst_length = axburst + 9'b1;
-  // WRAP mode requires computing wrap boundaries, but restricts axburst to 1, 3, 7, 15
+  // WRAP mode requires computing wrap boundaries, but restricts axlen to 1, 3, 7, 15
   // this computation can be transformed to a simple lookup instead of a dynamic
   // log2 computation as we only care about it for the limited cases of WRAP mode
   logic [2:0] lg_burst_length;
   always_comb begin
-    case (axburst)
+    case (axlen)
       'd1: begin
         lg_burst_length = 'd1;
       end
