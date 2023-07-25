@@ -96,12 +96,62 @@ module bp_me_axi_subordinate
   `bp_cast_o(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
   `bp_cast_i(bp_bedrock_mem_rev_header_s, mem_rev_header);
 
+  bp_bedrock_mem_rev_header_s mem_rev_fifo_header_li;
+  logic [s_axi_data_width_p-1:0] mem_rev_fifo_data_li;
+  logic mem_rev_fifo_v_li, mem_rev_fifo_ready_and_lo;
+
+  bp_me_stream_gearbox
+    #(.bp_params_p(bp_params_p)
+      ,.buffered_p(1)
+      ,.in_data_width_p(bedrock_fill_width_p)
+      ,.out_data_width_p(s_axi_data_width_p)
+      ,.payload_width_p(mem_rev_payload_width_lp)
+      ,.stream_mask_p(mem_rev_stream_mask_gp)
+      )
+    mem_rev_gearbox
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      ,.msg_header_i(mem_rev_header_cast_i)
+      ,.msg_data_i(mem_rev_data_i)
+      ,.msg_v_i(mem_rev_v_i)
+      ,.msg_ready_and_o(mem_rev_ready_and_o)
+      ,.msg_header_o(mem_rev_fifo_header_li)
+      ,.msg_data_o(mem_rev_fifo_data_li)
+      ,.msg_v_o(mem_rev_fifo_v_li)
+      ,.msg_ready_param_i(mem_rev_fifo_ready_and_lo)
+      );
+
+  logic mem_fwd_fifo_v_lo, mem_fwd_fifo_ready_and_li;
+  logic [s_axi_data_width_p-1:0] mem_fwd_fifo_data_lo;
+  bp_bedrock_mem_fwd_header_s mem_fwd_fifo_header_lo;
+
+  bp_me_stream_gearbox
+    #(.bp_params_p(bp_params_p)
+      ,.buffered_p(1)
+      ,.in_data_width_p(s_axi_data_width_p)
+      ,.out_data_width_p(bedrock_fill_width_p)
+      ,.payload_width_p(mem_fwd_payload_width_lp)
+      ,.stream_mask_p(mem_fwd_stream_mask_gp)
+      )
+    mem_fwd_gearbox
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      ,.msg_header_i(mem_fwd_fifo_header_lo)
+      ,.msg_data_i(mem_fwd_fifo_data_lo)
+      ,.msg_v_i(mem_fwd_fifo_v_lo)
+      ,.msg_ready_and_o(mem_fwd_fifo_ready_and_li)
+      ,.msg_header_o(mem_fwd_header_cast_o)
+      ,.msg_data_o(mem_fwd_data_o)
+      ,.msg_v_o(mem_fwd_v_o)
+      ,.msg_ready_param_i(mem_fwd_ready_and_i)
+      );
+
   logic [s_axi_data_width_p-1:0] wdata_lo;
   logic [s_axi_addr_width_p-1:0] addr_lo;
   logic w_lo;
   logic [2:0] size_lo;
 
-  wire mem_rev_w_li = (mem_rev_header_cast_i.msg_type == e_bedrock_mem_uc_wr);
+  wire mem_rev_fifo_w_li = (mem_rev_fifo_header_li.msg_type == e_bedrock_mem_uc_wr);
   bp_me_axi_to_fifo
    #(.s_axi_data_width_p(s_axi_data_width_p)
      ,.s_axi_addr_width_p(s_axi_addr_width_p)
@@ -113,28 +163,28 @@ module bp_me_axi_subordinate
 
      ,.data_o(wdata_lo)
      ,.addr_o(addr_lo)
-     ,.v_o(mem_fwd_v_o)
+     ,.v_o(mem_fwd_fifo_v_lo)
      ,.w_o(w_lo)
      ,.wmask_o() // unused
      ,.size_o(size_lo)
-     ,.ready_and_i(mem_fwd_ready_and_i)
+     ,.ready_and_i(mem_fwd_fifo_ready_and_li)
 
-     ,.data_i(mem_rev_data_i)
-     ,.v_i(mem_rev_v_i)
-     ,.w_i(mem_rev_w_li)
-     ,.ready_and_o(mem_rev_ready_and_o)
+     ,.data_i(mem_rev_fifo_data_li)
+     ,.v_i(mem_rev_fifo_v_li)
+     ,.w_i(mem_rev_fifo_w_li)
+     ,.ready_and_o(mem_rev_fifo_ready_and_lo)
 
      ,.*
      );
 
   always_comb begin
-    mem_fwd_data_o = wdata_lo;
-    mem_fwd_header_cast_o = '0;
-    mem_fwd_header_cast_o.payload.lce_id = lce_id_i;
-    mem_fwd_header_cast_o.payload.did    = did_i;
-    mem_fwd_header_cast_o.addr           = addr_lo;
-    mem_fwd_header_cast_o.msg_type       = w_lo ? e_bedrock_mem_uc_wr : e_bedrock_mem_uc_rd;
-    mem_fwd_header_cast_o.size           = bp_bedrock_msg_size_e'(size_lo);
+    mem_fwd_fifo_data_lo = wdata_lo;
+    mem_fwd_fifo_header_lo = '0;
+    mem_fwd_fifo_header_lo.payload.lce_id = lce_id_i;
+    mem_fwd_fifo_header_lo.payload.did    = did_i;
+    mem_fwd_fifo_header_lo.addr           = addr_lo;
+    mem_fwd_fifo_header_lo.msg_type       = w_lo ? e_bedrock_mem_uc_wr : e_bedrock_mem_uc_rd;
+    mem_fwd_fifo_header_lo.size           = bp_bedrock_msg_size_e'(size_lo);
   end
 
 endmodule

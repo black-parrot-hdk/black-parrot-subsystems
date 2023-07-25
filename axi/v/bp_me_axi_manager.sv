@@ -99,18 +99,43 @@ module bp_me_axi_manager
   `bp_cast_i(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
   `bp_cast_o(bp_bedrock_mem_rev_header_s, mem_rev_header);
 
+  bp_bedrock_mem_fwd_header_s mem_fwd_fifo_header_li;
+  logic [m_axi_data_width_p-1:0] mem_fwd_fifo_data_li;
+  logic mem_fwd_fifo_v_li, mem_fwd_fifo_ready_and_lo;
+
+  bp_me_stream_gearbox
+    #(.bp_params_p(bp_params_p)
+      ,.buffered_p(1)
+      ,.in_data_width_p(bedrock_fill_width_p)
+      ,.out_data_width_p(m_axi_data_width_p)
+      ,.payload_width_p(mem_fwd_payload_width_lp)
+      ,.stream_mask_p(mem_fwd_stream_mask_gp)
+      )
+    mem_fwd_gearbox
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      ,.msg_header_i(mem_fwd_header_cast_i)
+      ,.msg_data_i(mem_fwd_data_i)
+      ,.msg_v_i(mem_fwd_v_i)
+      ,.msg_ready_and_o(mem_fwd_ready_and_o)
+      ,.msg_header_o(mem_fwd_fifo_header_li)
+      ,.msg_data_o(mem_fwd_fifo_data_li)
+      ,.msg_v_o(mem_fwd_fifo_v_li)
+      ,.msg_ready_param_i(mem_fwd_fifo_ready_and_lo)
+      );
+
   bp_bedrock_mem_fwd_header_s mem_fwd_header_li;
-  logic [bedrock_fill_width_p-1:0] mem_fwd_data_li;
+  logic [m_axi_data_width_p-1:0] mem_fwd_data_li;
   logic mem_fwd_v_li, mem_fwd_yumi_lo;
 
-  bsg_one_fifo
-    #(.width_p(mem_fwd_header_width_lp+bedrock_fill_width_p))
+  bsg_two_fifo
+    #(.width_p(mem_fwd_header_width_lp+m_axi_data_width_p))
     mem_fwd_buffer
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
-      ,.v_i(mem_fwd_v_i)
-      ,.ready_o(mem_fwd_ready_and_o)
-      ,.data_i({mem_fwd_data_i, mem_fwd_header_cast_i})
+      ,.v_i(mem_fwd_fifo_v_li)
+      ,.ready_o(mem_fwd_fifo_ready_and_lo)
+      ,.data_i({mem_fwd_fifo_data_li, mem_fwd_fifo_header_li})
       ,.v_o(mem_fwd_v_li)
       ,.yumi_i(mem_fwd_yumi_lo)
       ,.data_o({mem_fwd_data_li, mem_fwd_header_li})
@@ -120,17 +145,42 @@ module bp_me_axi_manager
 
   logic mem_rev_v_lo, mem_rev_ready_and_li;
 
+  logic mem_rev_fifo_v_lo, mem_rev_fifo_ready_and_li;
+  logic [m_axi_data_width_p-1:0] mem_rev_fifo_data_lo;
+  bp_bedrock_mem_rev_header_s mem_rev_fifo_header_lo;
+
   bsg_one_fifo
-    #(.width_p(mem_rev_header_width_lp+bedrock_fill_width_p))
+    #(.width_p(mem_rev_header_width_lp+m_axi_data_width_p))
     mem_rev_buffer
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
       ,.v_i(mem_rev_v_lo)
       ,.ready_o(mem_rev_ready_and_li)
       ,.data_i({m_axi_rdata_i, mem_fwd_header_li})
-      ,.v_o(mem_rev_v_o)
-      ,.yumi_i(mem_rev_v_o & mem_rev_ready_and_i)
-      ,.data_o({mem_rev_data_o, mem_rev_header_cast_o})
+      ,.v_o(mem_rev_fifo_v_lo)
+      ,.yumi_i(mem_rev_fifo_v_lo & mem_rev_fifo_ready_and_li)
+      ,.data_o({mem_rev_fifo_data_lo, mem_rev_fifo_header_lo})
+      );
+
+  bp_me_stream_gearbox
+    #(.bp_params_p(bp_params_p)
+      ,.buffered_p(1)
+      ,.in_data_width_p(m_axi_data_width_p)
+      ,.out_data_width_p(bedrock_fill_width_p)
+      ,.payload_width_p(mem_rev_payload_width_lp)
+      ,.stream_mask_p(mem_rev_stream_mask_gp)
+      )
+    mem_rev_gearbox
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      ,.msg_header_i(mem_rev_fifo_header_lo)
+      ,.msg_data_i(mem_rev_fifo_data_lo)
+      ,.msg_v_i(mem_rev_fifo_v_lo)
+      ,.msg_ready_and_o(mem_rev_fifo_ready_and_li)
+      ,.msg_header_o(mem_rev_header_cast_o)
+      ,.msg_data_o(mem_rev_data_o)
+      ,.msg_v_o(mem_rev_v_o)
+      ,.msg_ready_param_i(mem_rev_ready_and_i)
       );
 
   assign mem_fwd_yumi_lo = mem_rev_v_lo & mem_rev_ready_and_li;
