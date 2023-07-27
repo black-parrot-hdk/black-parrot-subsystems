@@ -362,8 +362,8 @@ module bsg_manycore_tile_blackparrot
      ,.link_sif_i(link_sif_i[0])
      ,.link_sif_o(link_sif_o[0])
 
-     ,.host_x_i(host_cord_lo[0+:x_cord_width_p])
-     ,.host_y_i(host_cord_lo[x_cord_width_p+:y_cord_width_p])
+     ,.host_x_i(host_cord_lo[y_cord_width_p+:x_cord_width_p])
+     ,.host_y_i(host_cord_lo[0+:y_cord_width_p])
      ,.global_x_i(mmio_x_li)
      ,.global_y_i(mmio_y_li)
      );

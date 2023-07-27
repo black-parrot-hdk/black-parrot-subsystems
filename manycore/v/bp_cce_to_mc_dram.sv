@@ -202,9 +202,8 @@ module bp_cce_to_mc_dram
 
   wire [data_width_p-2:0] dram_addr_li = fsm_fwd_addr_li + dram_offset_i;
   wire [data_width_p-1:0] dram_eva_li  = {1'b1, dram_addr_li};
-  // TODO: Need to stripe across mc_compute pods for pods > 1
-  wire [pod_x_cord_width_p-1:0] dram_pod_x_li = dram_pod_i[0+:pod_x_cord_width_p];
-  wire [pod_y_cord_width_p-1:0] dram_pod_y_li = dram_pod_i[pod_x_cord_width_p+:pod_y_cord_width_p];
+  wire [pod_y_cord_width_p-1:0] dram_pod_y_li = dram_pod_i[0+:pod_y_cord_width_p];
+  wire [pod_x_cord_width_p-1:0] dram_pod_x_li = dram_pod_i[pod_y_cord_width_p+:pod_x_cord_width_p];
   bsg_manycore_dram_hash_function
    #(.data_width_p(data_width_p)
      ,.addr_width_p(addr_width_p)

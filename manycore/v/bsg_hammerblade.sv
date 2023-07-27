@@ -8,6 +8,7 @@ module bsg_hammerblade
  import bsg_manycore_pkg::*;
  import bsg_tag_pkg::*;
  import bp_common_pkg::*;
+ import bsg_manycore_network_cfg_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_unicore_hammerblade_cfg
    `declare_bp_proc_params(bp_params_p)
    , parameter `BSG_INV_PARAM(scratchpad_els_p)
@@ -20,6 +21,7 @@ module bsg_hammerblade
    , parameter `BSG_INV_PARAM(y_cord_width_p)
    , parameter `BSG_INV_PARAM(addr_width_p)
    , parameter `BSG_INV_PARAM(data_width_p)
+   , parameter `BSG_INV_PARAM(ruche_factor_X_p)
 
    , parameter `BSG_INV_PARAM(num_subarray_x_p)
    , parameter `BSG_INV_PARAM(num_subarray_y_p)
@@ -57,88 +59,150 @@ module bsg_hammerblade
    , parameter `BSG_INV_PARAM(rev_use_credits_p)
    , parameter `BSG_INV_PARAM(rev_fifo_els_p)
 
+   , parameter `BSG_INV_PARAM(bsg_manycore_network_cfg_p)
+
    , localparam manycore_link_sif_width_lp =
        `bsg_manycore_link_sif_width(addr_width_p, data_width_p, x_cord_width_p, y_cord_width_p)
    , localparam wh_link_sif_width_lp = `bsg_ready_and_link_sif_width(wh_flit_width_p)
    )
-  (input                                                          clk_i
-   , input                                                        reset_i
-   , input                                                        rt_clk_i
+  (input                                                                                             clk_i
+   , input                                                                                           reset_i
+   , input                                                                                           rt_clk_i
 
-   , input [manycore_link_sif_width_lp-1:0]                       io_link_sif_i
-   , output logic [manycore_link_sif_width_lp-1:0]                io_link_sif_o
+   , input [manycore_link_sif_width_lp-1:0]                                                          io_link_sif_i
+   , output logic [manycore_link_sif_width_lp-1:0]                                                   io_link_sif_o
 
-   , input [S:N][E:W][wh_link_sif_width_lp-1:0]                   wh_link_sif_i
-   , output logic [S:N][E:W][wh_link_sif_width_lp-1:0]            wh_link_sif_o
+   , input [S:N][E:W][num_vcache_rows_p-1:0][wh_ruche_factor_p-1:0][wh_link_sif_width_lp-1:0]        wh_link_sif_i
+   , output logic [S:N][E:W][num_vcache_rows_p-1:0][wh_ruche_factor_p-1:0][wh_link_sif_width_lp-1:0] wh_link_sif_o
 
-   , input bsg_tag_s                                              pod_tags_i
+   , input bsg_tag_s                                                                                 pod_tags_i
    );
 
-
   // instantiate manycore
-  `declare_bsg_manycore_link_sif_s(addr_width_p,data_width_p,x_cord_width_p,y_cord_width_p);
-  `declare_bsg_manycore_ruche_x_link_sif_s(addr_width_p,data_width_p,x_cord_width_p,y_cord_width_p);
+  `declare_bsg_manycore_link_sif_s(addr_width_p, data_width_p, x_cord_width_p, y_cord_width_p);
+  `declare_bsg_manycore_ruche_x_link_sif_s(addr_width_p, data_width_p, x_cord_width_p, y_cord_width_p);
   `declare_bsg_ready_and_link_sif_s(wh_flit_width_p, wh_link_sif_s);
-  bsg_manycore_link_sif_s [S:N][num_tiles_x_p-1:0] ver_link_sif_li;
-  bsg_manycore_link_sif_s [S:N][num_tiles_x_p-1:0] ver_link_sif_lo;
-  bsg_manycore_link_sif_s [E:W][num_tiles_y_p-1:0] hor_link_sif_li;
-  bsg_manycore_link_sif_s [E:W][num_tiles_y_p-1:0] hor_link_sif_lo;
-  wh_link_sif_s [E:W][S:N] wh_link_sif_li;
-  wh_link_sif_s [E:W][S:N] wh_link_sif_lo;
+  bsg_manycore_link_sif_s [S:N][num_tiles_x_p-1:0] ver_link_sif_li, ver_link_sif_lo;
+  bsg_manycore_link_sif_s [E:W][num_tiles_y_p-1:0] hor_link_sif_li, hor_link_sif_lo;
+  bsg_manycore_ruche_x_link_sif_s [E:W][num_pods_y_p-1:0][num_tiles_y_p-1:0] ruche_link_li, ruche_link_lo;
+  wh_link_sif_s [E:W][S:N][num_vcache_rows_p-1:0][wh_ruche_factor_p-1:0] wh_link_sif_li, wh_link_sif_lo;
 
-  bsg_manycore_pod_mesh_array
-   #(.num_tiles_x_p(num_tiles_x_p)
-     ,.num_tiles_y_p(num_tiles_y_p)
-     ,.pod_x_cord_width_p(pod_x_cord_width_p)
-     ,.pod_y_cord_width_p(pod_y_cord_width_p)
-     ,.x_cord_width_p(x_cord_width_p)
-     ,.y_cord_width_p(y_cord_width_p)
-     ,.addr_width_p(addr_width_p)
-     ,.data_width_p(data_width_p)
-     ,.barrier_ruche_factor_X_p(barrier_ruche_factor_X_p)
-     ,.num_subarray_x_p(num_subarray_x_p)
-     ,.num_subarray_y_p(num_subarray_y_p)
+  if (bsg_manycore_network_cfg_p == e_network_half_ruche_x)
+    begin : ruche
+      bsg_manycore_pod_ruche_array
+       #(.num_tiles_x_p(num_tiles_x_p)
+         ,.num_tiles_y_p(num_tiles_y_p)
+         ,.pod_x_cord_width_p(pod_x_cord_width_p)
+         ,.pod_y_cord_width_p(pod_y_cord_width_p)
+         ,.x_cord_width_p(x_cord_width_p)
+         ,.y_cord_width_p(y_cord_width_p)
+         ,.addr_width_p(addr_width_p)
+         ,.data_width_p(data_width_p)
+         ,.ruche_factor_X_p(ruche_factor_X_p)
+         ,.barrier_ruche_factor_X_p(barrier_ruche_factor_X_p)
+         ,.num_subarray_x_p(num_subarray_x_p)
+         ,.num_subarray_y_p(num_subarray_y_p)
 
-     ,.dmem_size_p(dmem_size_p)
-     ,.icache_entries_p(icache_entries_p)
-     ,.icache_tag_width_p(icache_tag_width_p)
-     ,.icache_block_size_in_words_p(icache_block_size_in_words_p)
+         ,.dmem_size_p(dmem_size_p)
+         ,.icache_entries_p(icache_entries_p)
+         ,.icache_tag_width_p(icache_tag_width_p)
+         ,.icache_block_size_in_words_p(icache_block_size_in_words_p)
 
-     ,.num_vcache_rows_p(num_vcache_rows_p)
-     ,.vcache_addr_width_p(vcache_addr_width_p)
-     ,.vcache_data_width_p(vcache_data_width_p)
-     ,.vcache_ways_p(vcache_ways_p)
-     ,.vcache_sets_p(vcache_sets_p)
-     ,.vcache_block_size_in_words_p(vcache_block_size_in_words_p)
-     ,.vcache_size_p(vcache_size_p)
-     ,.vcache_dma_data_width_p(vcache_dma_data_width_p)
-     ,.vcache_word_tracking_p(vcache_word_tracking_p)
+         ,.num_vcache_rows_p(num_vcache_rows_p)
+         ,.vcache_addr_width_p(vcache_addr_width_p)
+         ,.vcache_data_width_p(vcache_data_width_p)
+         ,.vcache_ways_p(vcache_ways_p)
+         ,.vcache_sets_p(vcache_sets_p)
+         ,.vcache_block_size_in_words_p(vcache_block_size_in_words_p)
+         ,.vcache_size_p(vcache_size_p)
+         ,.vcache_dma_data_width_p(vcache_dma_data_width_p)
+         ,.vcache_word_tracking_p(vcache_word_tracking_p)
 
-     ,.wh_ruche_factor_p(wh_ruche_factor_p)
-     ,.wh_cid_width_p(wh_cid_width_p)
-     ,.wh_flit_width_p(wh_flit_width_p)
-     ,.wh_cord_width_p(wh_cord_width_p)
-     ,.wh_len_width_p(wh_len_width_p)
+         ,.wh_ruche_factor_p(wh_ruche_factor_p)
+         ,.wh_cid_width_p(wh_cid_width_p)
+         ,.wh_flit_width_p(wh_flit_width_p)
+         ,.wh_cord_width_p(wh_cord_width_p)
+         ,.wh_len_width_p(wh_len_width_p)
 
-     ,.num_pods_y_p(num_pods_y_p)
-     ,.num_pods_x_p(num_pods_x_p)
+         ,.num_pods_y_p(num_pods_y_p)
+         ,.num_pods_x_p(num_pods_x_p)
 
-     ,.reset_depth_p(reset_depth_p)
-     )
-   manycore
-    (.clk_i(clk_i)
+         ,.reset_depth_p(reset_depth_p)
+         )
+       manycore
+        (.clk_i(clk_i)
 
-     ,.ver_link_sif_i(ver_link_sif_li)
-     ,.ver_link_sif_o(ver_link_sif_lo)
+         ,.ver_link_sif_i(ver_link_sif_li)
+         ,.ver_link_sif_o(ver_link_sif_lo)
 
-     ,.wh_link_sif_i(wh_link_sif_li)
-     ,.wh_link_sif_o(wh_link_sif_lo)
+         ,.wh_link_sif_i(wh_link_sif_li)
+         ,.wh_link_sif_o(wh_link_sif_lo)
 
-     ,.hor_link_sif_i(hor_link_sif_li)
-     ,.hor_link_sif_o(hor_link_sif_lo)
+         ,.hor_link_sif_i(hor_link_sif_li)
+         ,.hor_link_sif_o(hor_link_sif_lo)
 
-     ,.pod_tags_i(pod_tags_i)
-     );
+         ,.ruche_link_i(ruche_link_li)
+         ,.ruche_link_o(ruche_link_lo)
+
+         ,.pod_tags_i(pod_tags_i)
+         );
+    end
+  else
+    begin : mesh
+      bsg_manycore_pod_mesh_array
+       #(.num_tiles_x_p(num_tiles_x_p)
+         ,.num_tiles_y_p(num_tiles_y_p)
+         ,.pod_x_cord_width_p(pod_x_cord_width_p)
+         ,.pod_y_cord_width_p(pod_y_cord_width_p)
+         ,.x_cord_width_p(x_cord_width_p)
+         ,.y_cord_width_p(y_cord_width_p)
+         ,.addr_width_p(addr_width_p)
+         ,.data_width_p(data_width_p)
+         ,.barrier_ruche_factor_X_p(barrier_ruche_factor_X_p)
+         ,.num_subarray_x_p(num_subarray_x_p)
+         ,.num_subarray_y_p(num_subarray_y_p)
+
+         ,.dmem_size_p(dmem_size_p)
+         ,.icache_entries_p(icache_entries_p)
+         ,.icache_tag_width_p(icache_tag_width_p)
+         ,.icache_block_size_in_words_p(icache_block_size_in_words_p)
+
+         ,.num_vcache_rows_p(num_vcache_rows_p)
+         ,.vcache_addr_width_p(vcache_addr_width_p)
+         ,.vcache_data_width_p(vcache_data_width_p)
+         ,.vcache_ways_p(vcache_ways_p)
+         ,.vcache_sets_p(vcache_sets_p)
+         ,.vcache_block_size_in_words_p(vcache_block_size_in_words_p)
+         ,.vcache_size_p(vcache_size_p)
+         ,.vcache_dma_data_width_p(vcache_dma_data_width_p)
+         ,.vcache_word_tracking_p(vcache_word_tracking_p)
+
+         ,.wh_ruche_factor_p(wh_ruche_factor_p)
+         ,.wh_cid_width_p(wh_cid_width_p)
+         ,.wh_flit_width_p(wh_flit_width_p)
+         ,.wh_cord_width_p(wh_cord_width_p)
+         ,.wh_len_width_p(wh_len_width_p)
+
+         ,.num_pods_y_p(num_pods_y_p)
+         ,.num_pods_x_p(num_pods_x_p)
+
+         ,.reset_depth_p(reset_depth_p)
+         )
+       manycore
+        (.clk_i(clk_i)
+
+         ,.ver_link_sif_i(ver_link_sif_li)
+         ,.ver_link_sif_o(ver_link_sif_lo)
+
+         ,.wh_link_sif_i(wh_link_sif_li)
+         ,.wh_link_sif_o(wh_link_sif_lo)
+
+         ,.hor_link_sif_i(hor_link_sif_li)
+         ,.hor_link_sif_o(hor_link_sif_lo)
+
+         ,.pod_tags_i(pod_tags_i)
+         );
+    end
 
   // IO ROUTER
   bsg_manycore_link_sif_s [num_tiles_x_p-1:0][S:P] io_link_sif_li;
@@ -263,65 +327,94 @@ module bsg_hammerblade
         end
     end
 
-  // Special logic for 2x2 because we need to hang off the edge of the manycore
-  if (num_tiles_x_p == 2 && num_tiles_y_p == 2)
-    begin : bp
-      logic [3:0][x_cord_width_p-1:0] bp_global_x_li;
-      logic [0:0][y_cord_width_p-1:0] bp_global_y_li;
+
+  // RUCHE LINK TIEOFF (west)
+  for (genvar j = 0; j < num_pods_y_p; j++) begin
+    for (genvar k = 0; k < num_tiles_y_p; k++) begin
+      // if ruche factor is even, tieoff with '1
+      // if ruche factor is odd,  tieoff with '0
+      assign ruche_link_li[W][j][k] = (ruche_factor_X_p % 2 == 0) ? '1 : '0;
+    end
+  end
+
+  // RUCHE LINK TIEOFF (east)
+  for (genvar j = 0; j < num_pods_y_p; j++) begin
+    for (genvar k = 0; k < num_tiles_y_p; k++) begin
+      // always tieoff with '0;
+      assign ruche_link_li[E][j][k] = '0;
+    end
+  end
+
+  logic [3:0][x_cord_width_p-1:0] bp_global_x_li;
+  logic [0:0][y_cord_width_p-1:0] bp_global_y_li;
+  bsg_manycore_link_sif_s [S:N][3:0] bp_ver_link_sif_li;
+  bsg_manycore_link_sif_s [S:N][3:0] bp_ver_link_sif_lo;
+  bsg_manycore_link_sif_s [E:W][0:0] bp_hor_link_sif_li;
+  bsg_manycore_link_sif_s [E:W][0:0] bp_hor_link_sif_lo;
+  bsg_manycore_tile_blackparrot_mesh
+   #(.bp_params_p(bp_params_p)
+     ,.x_cord_width_p(x_cord_width_p)
+     ,.y_cord_width_p(y_cord_width_p)
+     ,.pod_x_cord_width_p(pod_x_cord_width_p)
+     ,.pod_y_cord_width_p(pod_y_cord_width_p)
+     ,.data_width_p(data_width_p)
+     ,.addr_width_p(addr_width_p)
+     ,.icache_block_size_in_words_p(icache_block_size_in_words_p)
+     ,.num_vcache_rows_p(num_vcache_rows_p)
+     ,.vcache_block_size_in_words_p(vcache_block_size_in_words_p)
+     ,.vcache_size_p(vcache_size_p)
+     ,.vcache_sets_p(vcache_sets_p)
+     ,.num_tiles_x_p(num_tiles_x_p)
+     ,.num_tiles_y_p(num_tiles_y_p)
+     ,.scratchpad_els_p(scratchpad_els_p)
+     ,.rev_use_credits_p(rev_use_credits_p)
+     ,.rev_fifo_els_p(rev_fifo_els_p)
+     )
+   blackparrot_mesh
+    (.clk_i(clk_i)
+     ,.rt_clk_i(rt_clk_i)
+     ,.reset_i(reset_i)
+
+     ,.global_x_i(bp_global_x_li)
+     ,.global_y_i(bp_global_y_li)
+
+     ,.hor_link_sif_i(bp_hor_link_sif_li)
+     ,.hor_link_sif_o(bp_hor_link_sif_lo)
+
+     ,.ver_link_sif_i(bp_ver_link_sif_li)
+     ,.ver_link_sif_o(bp_ver_link_sif_lo)
+     );
+
+  if (num_tiles_x_p > 2)
+    begin : no_stub
+      assign bp_ver_link_sif_li[N][0+:4] = ver_link_sif_lo[S][0+:4];
+      assign ver_link_sif_li[S][0+:4] = bp_ver_link_sif_lo[N][0+:4];
+
+      assign bp_ver_link_sif_li[S] = '0;
+      assign bp_hor_link_sif_li = '0;
+
+      assign bp_global_x_li[0] = (1 << x_subcord_width_lp) | (0);
+      assign bp_global_x_li[1] = (1 << x_subcord_width_lp) | (1);
+      assign bp_global_x_li[2] = (1 << x_subcord_width_lp) | (2);
+      assign bp_global_x_li[3] = (1 << x_subcord_width_lp) | (3);
+
+      assign bp_global_y_li[0] = (3 << y_subcord_width_lp) | (0);
+    end
+  else
+    begin : stub
+      assign bp_ver_link_sif_li[N][0+:2] = ver_link_sif_lo[S][0+:2];
+      assign bp_ver_link_sif_li[N][2+:2] = '0;
+      assign ver_link_sif_li[S][0+:2] = bp_ver_link_sif_lo[N][0+:2];
+
+      assign bp_ver_link_sif_li[S] = '0;
+      assign bp_hor_link_sif_li = '0;
+
       assign bp_global_x_li[0] = (1 << x_subcord_width_lp) | (0);
       assign bp_global_x_li[1] = (1 << x_subcord_width_lp) | (1);
       assign bp_global_x_li[2] = (2 << x_subcord_width_lp) | (0);
       assign bp_global_x_li[3] = (2 << x_subcord_width_lp) | (1);
 
       assign bp_global_y_li[0] = (3 << y_subcord_width_lp) | (0);
-
-      bsg_manycore_link_sif_s [S:N][3:0] bp_ver_link_sif_li;
-      bsg_manycore_link_sif_s [S:N][3:0] bp_ver_link_sif_lo;
-      bsg_manycore_link_sif_s [E:W][0:0] bp_hor_link_sif_li;
-      bsg_manycore_link_sif_s [E:W][0:0] bp_hor_link_sif_lo;
-      bsg_manycore_tile_blackparrot_mesh
-       #(.bp_params_p(bp_params_p)
-         ,.x_cord_width_p(x_cord_width_p)
-         ,.y_cord_width_p(y_cord_width_p)
-         ,.pod_x_cord_width_p(pod_x_cord_width_p)
-         ,.pod_y_cord_width_p(pod_y_cord_width_p)
-         ,.data_width_p(data_width_p)
-         ,.addr_width_p(addr_width_p)
-         ,.icache_block_size_in_words_p(icache_block_size_in_words_p)
-         ,.num_vcache_rows_p(num_vcache_rows_p)
-         ,.vcache_block_size_in_words_p(vcache_block_size_in_words_p)
-         ,.vcache_size_p(vcache_size_p)
-         ,.vcache_sets_p(vcache_sets_p)
-         ,.num_tiles_x_p(num_tiles_x_p)
-         ,.num_tiles_y_p(num_tiles_y_p)
-         ,.scratchpad_els_p(scratchpad_els_p)
-         ,.rev_use_credits_p(rev_use_credits_p)
-         ,.rev_fifo_els_p(rev_fifo_els_p)
-         )
-       blackparrot_mesh
-        (.clk_i(clk_i)
-         ,.rt_clk_i(rt_clk_i)
-         ,.reset_i(reset_i)
-
-         ,.global_x_i(bp_global_x_li)
-         ,.global_y_i(bp_global_y_li)
-
-         ,.hor_link_sif_i(bp_hor_link_sif_li)
-         ,.hor_link_sif_o(bp_hor_link_sif_lo)
-
-         ,.ver_link_sif_i(bp_ver_link_sif_li)
-         ,.ver_link_sif_o(bp_ver_link_sif_lo)
-         );
-      assign bp_ver_link_sif_li[N][0+:2] = ver_link_sif_lo[S];
-      assign ver_link_sif_li[S] = bp_ver_link_sif_lo[N][0+:2];
-
-      assign bp_ver_link_sif_li[N][2+:2] = '0;
-      assign bp_ver_link_sif_li[S] = '0;
-      assign bp_hor_link_sif_li = '0;
-    end
-  else
-    begin : bp
-      $error("Configurations other than 2x2 are not currently supported");
     end
 
   assign io_link_sif_o = io_link_sif_lo[0][P];
