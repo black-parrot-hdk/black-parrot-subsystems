@@ -292,9 +292,19 @@ module bp_cce_to_mc_mmio
 
       mem_rev_v_o = mmio_rev_v_lo;
       mem_rev_header_cast_o = mmio_rev_header_lo;
-      mem_rev_data_o = mmio_rev_data_lo;
       mmio_rev_yumi_li = mem_rev_ready_and_i & mem_rev_v_o;
     end
+
+  localparam sel_width_lp = `BSG_SAFE_CLOG2(dword_width_gp>>3);
+  localparam size_width_lp = `BSG_SAFE_CLOG2(sel_width_lp);
+  bsg_bus_pack
+   #(.in_width_p(data_width_p), .out_width_p(bedrock_fill_width_p))
+   fwd_bus_pack
+    (.data_i(mmio_rev_data_lo)
+     ,.sel_i('0) // We are aligned
+     ,.size_i(mem_rev_header_cast_o.size[0+:size_width_lp])
+     ,.data_o(mem_rev_data_o)
+     );
 
   //////////////////////////////////////////////
   // Incoming packet

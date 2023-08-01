@@ -1,6 +1,7 @@
 
 `include "bp_common_defines.svh"
 `include "bsg_manycore_defines.vh"
+`include "bsg_manycore_endpoint_to_fifos.vh"
 
 module bp_cce_to_mc_fifo
  import bp_common_pkg::*;
@@ -39,40 +40,25 @@ module bp_cce_to_mc_fifo
 
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
   `declare_bp_memory_map(paddr_width_p, daddr_width_p);
-  `declare_bsg_manycore_packet_s(addr_width_p, data_width_p, x_cord_width_p, y_cord_width_p);
   `bp_cast_i(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
   `bp_cast_o(bp_bedrock_mem_rev_header_s, mem_rev_header);
 
-  // TODO: This should be set in bsg_replicant
-  typedef struct packed
-  {
-    logic [15:0] reserved;
-    logic [31:0] addr;
-    logic [7:0]  op_v2;
-    logic [7:0]  reg_id;
-    logic [31:0] payload;
-    logic [7:0]  y_src;
-    logic [7:0]  x_src;
-    logic [7:0]  y_dst;
-    logic [7:0]  x_dst;
-  }  host_request_packet_s;
+  localparam x_cord_width_pad_lp = `BSG_CDIV(x_cord_width_p, 8) * 8;
+  localparam y_cord_width_pad_lp = `BSG_CDIV(y_cord_width_p, 8) * 8;
+  localparam addr_width_pad_lp   = `BSG_CDIV(addr_width_p, 8) * 8;
+  localparam data_width_pad_lp   = `BSG_CDIV(data_width_p, 8) * 8;
+  `declare_bsg_manycore_packet_s(addr_width_p, data_width_p, x_cord_width_p, y_cord_width_p);
+  `declare_bsg_manycore_packet_aligned_s(128, addr_width_pad_lp, data_width_pad_lp, x_cord_width_pad_lp, y_cord_width_pad_lp);
 
-  typedef struct packed
-  {
-    logic [63:0] reserved;
-    logic [7:0]  op_v2;
-    logic [31:0] payload;
-    logic [7:0]  reg_id;
-    logic [7:0]  y_dst;
-    logic [7:0]  x_dst;
-  }  host_response_packet_s;
-
-  localparam mc_link_bp_req_fifo_addr_gp     = 20'h0_0100;
-  localparam mc_link_bp_req_credits_addr_gp  = 20'h0_0200;
-  localparam mc_link_bp_resp_fifo_addr_gp    = 20'h0_0300;
-  localparam mc_link_bp_resp_entries_addr_gp = 20'h0_0400;
-  localparam mc_link_mc_req_fifo_addr_gp     = 20'h0_0500;
-  localparam mc_link_mc_req_entries_addr_gp  = 20'h0_0600;
+  localparam mc_link_bp_req_fifo_addr_gp      = 20'h0_1000;
+  localparam mc_link_bp_req_credits_addr_gp   = 20'h0_2000;
+  localparam mc_link_mc_resp_fifo_addr_gp     = 20'h0_3000;
+  localparam mc_link_mc_resp_entries_addr_gp  = 20'h0_4000;
+  localparam mc_link_mc_req_fifo_addr_gp      = 20'h0_5000;
+  localparam mc_link_mc_req_entries_addr_gp   = 20'h0_6000;
+  localparam mc_link_bp_resp_fifo_addr_gp     = 20'h0_7000;
+  localparam mc_link_bp_resp_credits_addr_gp  = 20'h0_8000;
+  localparam mc_link_endpoint_credits_addr_gp = 20'h0_9000;
 
   bp_bedrock_mem_fwd_header_s mem_fwd_header_li;
   logic [bedrock_fill_width_p-1:0] mem_fwd_data_li;
@@ -93,24 +79,24 @@ module bp_cce_to_mc_fifo
      );
   wire [dev_addr_width_gp-1:0] dev_addr_li = mem_fwd_header_li.addr;
 
-  logic                                 in_v_lo;
-  logic [data_width_p-1:0]              in_data_lo;
-  logic [(data_width_p>>3)-1:0]         in_mask_lo;
-  logic [addr_width_p-1:0]              in_addr_lo;
-  logic                                 in_we_lo;
-  bsg_manycore_load_info_s              in_load_info_lo;
-  logic [x_cord_width_p-1:0]            in_src_x_cord_lo;
-  logic [y_cord_width_p-1:0]            in_src_y_cord_lo;
+  logic                                    in_v_lo;
+  logic [data_width_p-1:0]                 in_data_lo;
+  logic [(data_width_p>>3)-1:0]            in_mask_lo;
+  logic [addr_width_p-1:0]                 in_addr_lo;
+  logic                                    in_we_lo;
+  bsg_manycore_load_info_s                 in_load_info_lo;
+  logic [x_cord_width_p-1:0]               in_src_x_cord_lo;
+  logic [y_cord_width_p-1:0]               in_src_y_cord_lo;
   logic                                    in_yumi_li;
 
-  logic [data_width_p-1:0]              returning_data_li;
+  logic [data_width_p-1:0]                 returning_data_li;
   logic                                    returning_v_li;
 
   logic                                    out_v_li;
   bsg_manycore_packet_s                    out_packet_li;
   logic                                    out_ready_lo;
 
-  logic [data_width_p-1:0]              returned_data_r_lo;
+  logic [data_width_p-1:0]                 returned_data_r_lo;
   logic [bsg_manycore_reg_id_width_gp-1:0] returned_reg_id_r_lo;
   logic                                    returned_v_r_lo, returned_yumi_li;
   bsg_manycore_return_packet_type_e        returned_pkt_type_r_lo;
@@ -184,15 +170,15 @@ module bp_cce_to_mc_fifo
   // Host Interface
   //////////////////////////////////////////////
   logic bp_to_mc_v_li, bp_to_mc_ready_lo;
-  host_request_packet_s bp_to_mc_lo;
+  bsg_manycore_packet_aligned_s bp_to_mc_lo;
   logic bp_to_mc_v_lo, bp_to_mc_yumi_li;
 
-  host_response_packet_s mc_to_bp_response_li;
+  bsg_manycore_return_packet_aligned_s mc_to_bp_response_li;
   logic mc_to_bp_response_v_li, mc_to_bp_response_ready_lo;
   logic [bedrock_fill_width_p-1:0] mc_to_bp_response_data_lo;
   logic mc_to_bp_response_v_lo, mc_to_bp_response_yumi_li;
 
-  host_request_packet_s mc_to_bp_request_li;
+  bsg_manycore_packet_aligned_s mc_to_bp_request_li;
   logic mc_to_bp_request_v_li, mc_to_bp_request_ready_lo;
   logic [bedrock_fill_width_p-1:0] mc_to_bp_request_data_lo;
   logic mc_to_bp_request_v_lo, mc_to_bp_request_yumi_li;
@@ -200,7 +186,7 @@ module bp_cce_to_mc_fifo
   bsg_manycore_packet_s bp_to_mc_out_packet_li;
   wire [bedrock_fill_width_p-1:0] bp_to_mc_data_li = mem_fwd_data_li[0+:bedrock_fill_width_p];
   bsg_serial_in_parallel_out_full
-    #(.width_p(bedrock_fill_width_p), .els_p($bits(host_request_packet_s)/bedrock_fill_width_p))
+    #(.width_p(bedrock_fill_width_p), .els_p($bits(bsg_manycore_packet_aligned_s)/bedrock_fill_width_p))
     bp_to_mc_request_sipo
      (.clk_i(clk_i)
        ,.reset_i(reset_i)
@@ -217,14 +203,14 @@ module bp_cce_to_mc_fifo
                                     ,op_v2     : bsg_manycore_packet_op_e'(bp_to_mc_lo.op_v2)
                                     ,reg_id    : bp_to_mc_lo.reg_id
                                     ,payload   : bp_to_mc_lo.payload
-                                    ,src_y_cord: bp_to_mc_lo.y_src
-                                    ,src_x_cord: bp_to_mc_lo.x_src
-                                    ,y_cord    : bp_to_mc_lo.y_dst
-                                    ,x_cord    : bp_to_mc_lo.x_dst
+                                    ,src_y_cord: bp_to_mc_lo.src_y_cord
+                                    ,src_x_cord: bp_to_mc_lo.src_x_cord
+                                    ,y_cord    : bp_to_mc_lo.y_cord
+                                    ,x_cord    : bp_to_mc_lo.x_cord
                                     };
 
   bsg_parallel_in_serial_out
-    #(.width_p(bedrock_fill_width_p), .els_p($bits(host_response_packet_s)/bedrock_fill_width_p))
+    #(.width_p(bedrock_fill_width_p), .els_p($bits(bsg_manycore_return_packet_aligned_s)/bedrock_fill_width_p))
     mc_to_bp_response_piso
     (.clk_i(clk_i)
       ,.reset_i(reset_i)
@@ -239,16 +225,16 @@ module bp_cce_to_mc_fifo
       );
   // We ignore the x dst and y dst of return packets
   // TODO: Support remote SW
-  assign mc_to_bp_response_li = '{x_dst   : global_x_i
-                                  ,y_dst  : global_y_i
-                                  ,reg_id : returned_reg_id_r_lo
-                                  ,payload: returned_data_r_lo
-                                  ,op_v2  : returned_pkt_type_r_lo
-                                  ,default: '0
+  assign mc_to_bp_response_li = '{x_cord   : global_x_i
+                                  ,y_cord  : global_y_i
+                                  ,reg_id  : returned_reg_id_r_lo
+                                  ,data    : returned_data_r_lo
+                                  ,pkt_type: returned_pkt_type_r_lo
+                                  ,default : '0
                                   };
 
   bsg_parallel_in_serial_out
-    #(.width_p(bedrock_fill_width_p), .els_p($bits(host_request_packet_s)/bedrock_fill_width_p))
+    #(.width_p(bedrock_fill_width_p), .els_p($bits(bsg_manycore_packet_aligned_s)/bedrock_fill_width_p))
     mc_to_bp_request_piso
     (.clk_i(clk_i)
       ,.reset_i(reset_i)
@@ -263,14 +249,14 @@ module bp_cce_to_mc_fifo
       );
   assign mc_to_bp_request_v_li = in_v_lo;
   // TODO: Only support stores? Add loads too
-  assign mc_to_bp_request_li = '{x_dst    : global_x_i
-                                  ,y_dst   : global_y_i
-                                  ,x_src   : in_src_x_cord_lo
-                                  ,y_src   : in_src_y_cord_lo
-                                  ,payload : in_data_lo
-                                  ,reg_id  : in_mask_lo
-                                  ,op_v2   : in_we_lo ? e_remote_store : e_remote_load
-                                  ,addr    : in_addr_lo
+  assign mc_to_bp_request_li = '{x_cord      : global_x_i
+                                  ,y_cord    : global_y_i
+                                  ,src_x_cord: in_src_x_cord_lo
+                                  ,src_y_cord: in_src_y_cord_lo
+                                  ,payload   : in_data_lo
+                                  ,reg_id    : in_mask_lo
+                                  ,op_v2     : in_we_lo ? e_remote_store : e_remote_load
+                                  ,addr      : in_addr_lo
                                   ,default : '0
                                   };
 
@@ -298,18 +284,18 @@ module bp_cce_to_mc_fifo
       if (mem_fwd_v_li && dev_addr_li == mc_link_bp_req_fifo_addr_gp)
         begin
           mem_rev_data_o = '0;
-          mem_rev_v_o    = bp_to_mc_ready_lo;
+          mem_rev_v_o    = 1'b1;
           mem_fwd_yumi_lo = mem_rev_ready_and_i & mem_rev_v_o;
 
           bp_to_mc_v_li  = mem_fwd_yumi_lo;
         end
       else if (mem_fwd_v_li && dev_addr_li == mc_link_bp_req_credits_addr_gp)
         begin
-          mem_rev_data_o = out_credits_used_lo;
+          mem_rev_data_o = bp_to_mc_ready_lo;
           mem_rev_v_o    = 1'b1;
           mem_fwd_yumi_lo = mem_rev_ready_and_i & mem_rev_v_o;
         end
-      else if (mem_fwd_v_li && dev_addr_li == mc_link_bp_resp_fifo_addr_gp)
+      else if (mem_fwd_v_li && dev_addr_li == mc_link_mc_resp_fifo_addr_gp)
         begin
           mem_rev_data_o = mc_to_bp_response_data_lo;
           mem_rev_v_o    = mc_to_bp_response_v_lo;
@@ -317,7 +303,7 @@ module bp_cce_to_mc_fifo
 
           mc_to_bp_response_yumi_li = mem_fwd_yumi_lo;
         end
-      else if (mem_fwd_v_li && dev_addr_li == mc_link_bp_resp_entries_addr_gp)
+      else if (mem_fwd_v_li && dev_addr_li == mc_link_mc_resp_entries_addr_gp)
         begin
           mem_rev_data_o = mc_to_bp_response_v_lo;
           mem_rev_v_o    = 1'b1;
@@ -334,6 +320,12 @@ module bp_cce_to_mc_fifo
       else if (mem_fwd_v_li && dev_addr_li == mc_link_mc_req_entries_addr_gp)
         begin
           mem_rev_data_o = mc_to_bp_request_v_lo;
+          mem_rev_v_o    = 1'b1;
+          mem_fwd_yumi_lo = mem_rev_ready_and_i & mem_rev_v_o;
+        end
+      else if (mem_fwd_v_li && dev_addr_li == mc_link_endpoint_credits_addr_gp)
+        begin
+          mem_rev_data_o = out_credits_used_lo;
           mem_rev_v_o    = 1'b1;
           mem_fwd_yumi_lo = mem_rev_ready_and_i & mem_rev_v_o;
         end

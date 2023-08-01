@@ -113,10 +113,28 @@ module bsg_manycore_endpoint_to_fifos
      ,.yumi_i(packet_ep_req_ready_lo & packet_ep_req_v_li)
      );
 
-  // Endpoint Response
-  logic ep_rsp_wr_v_r;
-  wire [data_width_p-1:0] ep_rsp_data_li = '0; // ep_rsp data is zero by default. The endpoint cannot respond.
-  wire ep_rsp_v_li = ep_rsp_wr_v_r;
+  // Manycore Response
+  logic mc_rsp_v_r_lo, mc_rsp_yumi_li, mc_rsp_fifo_full_lo;
+  bsg_manycore_return_packet_type_e mc_rsp_pkt_type_r_lo;
+  logic [data_width_p-1:0] mc_rsp_data_r_lo;
+  logic [bsg_manycore_reg_id_width_gp-1:0] mc_rsp_reg_id_r_lo;
+
+  bsg_manycore_return_packet_aligned_s aligned_packet_mc_rsp_lo;
+  logic packet_mc_rsp_ready_li, packet_mc_rsp_v_lo;
+  bsg_parallel_in_serial_out
+   #(.width_p(axil_width_p), .els_p(fifo_width_p/axil_width_p))
+   rsp_piso
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+
+     ,.data_i(aligned_packet_mc_rsp_lo)
+     ,.valid_i(packet_mc_rsp_v_lo)
+     ,.ready_and_o(packet_mc_rsp_ready_li)
+
+     ,.data_o(mc_rsp_o)
+     ,.valid_o(mc_rsp_v_o)
+     ,.yumi_i(mc_rsp_ready_i & mc_rsp_v_o)
+     );
 
   // Manycore Request
   logic mc_req_v_lo, mc_req_we_lo, mc_req_yumi_li;
@@ -145,27 +163,50 @@ module bsg_manycore_endpoint_to_fifos
      ,.yumi_i(mc_req_ready_i & mc_req_v_o)
      );
 
-  // Manycore Response
-  logic mc_rsp_v_r_lo, mc_rsp_yumi_li, mc_rsp_fifo_full_lo;
-  bsg_manycore_return_packet_type_e mc_rsp_pkt_type_r_lo;
-  logic [data_width_p-1:0] mc_rsp_data_r_lo;
-  logic [bsg_manycore_reg_id_width_gp-1:0] mc_rsp_reg_id_r_lo;
-
-  bsg_manycore_return_packet_aligned_s aligned_packet_mc_rsp_lo;
-  logic packet_mc_rsp_ready_li, packet_mc_rsp_v_lo;
-  bsg_parallel_in_serial_out
+  // Endpoint Response
+  bsg_manycore_return_packet_s packet_ep_rsp_li;
+  bsg_manycore_return_packet_aligned_s aligned_packet_ep_rsp_li;
+  logic packet_ep_rsp_ready_lo, packet_ep_rsp_v_li;
+  bsg_serial_in_parallel_out_full
    #(.width_p(axil_width_p), .els_p(fifo_width_p/axil_width_p))
-   rsp_piso
+   rsp_sipo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
 
-     ,.data_i(aligned_packet_mc_rsp_lo)
-     ,.valid_i(packet_mc_rsp_v_lo)
-     ,.ready_and_o(packet_mc_rsp_ready_li)
+     ,.data_i(endpoint_rsp_i)
+     ,.v_i(endpoint_rsp_v_i)
+     ,.ready_o(endpoint_rsp_ready_o)
 
-     ,.data_o(mc_rsp_o)
-     ,.valid_o(mc_rsp_v_o)
-     ,.yumi_i(mc_rsp_ready_i & mc_rsp_v_o)
+     ,.data_o(aligned_packet_ep_rsp_li)
+     ,.v_o(packet_ep_rsp_v_li)
+     ,.yumi_i(packet_ep_rsp_ready_lo & packet_ep_rsp_v_li)
+     );
+
+  logic [data_width_p-1:0] ep_rsp_data_li;
+  logic ep_rsp_v_li;
+
+  logic pending_r_v_r;
+  wire pending_r_v_n = mc_req_yumi_li & ~mc_req_we_lo;
+  bsg_dff_reset_en
+   #(.width_p(1))
+   pending_r_v_reg
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+     ,.en_i(mc_req_yumi_li | ep_rsp_v_li)
+     ,.data_i(pending_r_v_n)
+     ,.data_o(pending_r_v_r)
+     );
+
+  logic pending_w_v_r;
+  wire pending_w_v_n = mc_req_yumi_li & mc_req_we_lo;
+  bsg_dff_reset_en
+   #(.width_p(1))
+   pending_w_v_reg
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+     ,.en_i(mc_req_yumi_li | ep_rsp_v_li)
+     ,.data_i(pending_w_v_n)
+     ,.data_o(pending_w_v_r)
      );
 
   // Endpoint Request
@@ -193,7 +234,7 @@ module bsg_manycore_endpoint_to_fifos
 
   // Manycore Request
   // ----------------------------
-  assign packet_mc_req_v_lo = mc_req_v_lo;
+  assign packet_mc_req_v_lo = mc_req_v_lo & ~pending_r_v_r;
   assign mc_req_yumi_li = packet_mc_req_ready_li & packet_mc_req_v_lo;
 
   assign aligned_packet_mc_req_lo.padding    = '0;
@@ -208,23 +249,12 @@ module bsg_manycore_endpoint_to_fifos
 
   // Endpoint Response
   // ---------------------------
+  assign ep_rsp_v_li = pending_w_v_r | (pending_r_v_r & packet_ep_rsp_v_li);
+  assign packet_ep_rsp_ready_lo = 1'b1; // Manycore is always ready for responses
+  assign ep_rsp_data_li = aligned_packet_ep_rsp_li.data;
 
-  // Delay automatic write responses by one cycle. This is dictated
-  // by the endpoint standard, which expects a 1-cycle SRAM interface
-  // to maintain full throughput.
-  //
-  // Responses are NOT sent for reads, just for writes. The
-  // endpoint_standard handles amoswap responses and they do not need
-  // to be handled here.
-  // 
-  // The endpoint is always ready for a response.
-  always_ff @(posedge clk_i) begin
-    if(reset_i)
-      ep_rsp_wr_v_r <= '0;
-    else
-      ep_rsp_wr_v_r <= mc_req_yumi_li & mc_req_we_lo;
-  end
-
+  // Endpoint Standard
+  // ---------------------------
   bsg_manycore_endpoint_standard #(
     .x_cord_width_p(x_cord_width_p)
     ,.y_cord_width_p(y_cord_width_p)
@@ -276,8 +306,6 @@ module bsg_manycore_endpoint_to_fifos
     ,.global_x_i(global_x_i)
     ,.global_y_i(global_y_i)
   );
-
-  assign endpoint_rsp_ready_o = 1'b0;
 
   // synopsys translate_off
   always @(negedge clk_i) begin
