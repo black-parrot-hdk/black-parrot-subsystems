@@ -39,8 +39,8 @@
 
 module bsg_manycore_endpoint_to_fifos
  import bsg_manycore_pkg::*;
- #(parameter `BSG_INV_PARAM(axil_width_p)
-   , parameter `BSG_INV_PARAM(fifo_width_p)
+ #(parameter `BSG_INV_PARAM(fifo_width_p)
+   , parameter `BSG_INV_PARAM(host_width_p)
    , parameter `BSG_INV_PARAM(x_cord_width_p)
    , parameter `BSG_INV_PARAM(y_cord_width_p)
    , parameter `BSG_INV_PARAM(addr_width_p)
@@ -58,22 +58,22 @@ module bsg_manycore_endpoint_to_fifos
    , input                                     reset_i
 
    // manycore request
-   , output logic [axil_width_p-1:0]           mc_req_o
+   , output logic [host_width_p-1:0]           mc_req_o
    , output logic                              mc_req_v_o
    , input                                     mc_req_ready_i
 
    // endpoint request
-   , input [axil_width_p-1:0]                  endpoint_req_i
+   , input [host_width_p-1:0]                  endpoint_req_i
    , input                                     endpoint_req_v_i
    , output logic                              endpoint_req_ready_o
 
    // manycore response
-   , output logic [axil_width_p-1:0]           mc_rsp_o
+   , output logic [host_width_p-1:0]           mc_rsp_o
    , output logic                              mc_rsp_v_o
    , input                                     mc_rsp_ready_i
 
    // endpoint response
-   , input [axil_width_p-1:0]                  endpoint_rsp_i
+   , input [host_width_p-1:0]                  endpoint_rsp_i
    , input                                     endpoint_rsp_v_i
    , output logic                              endpoint_rsp_ready_o
 
@@ -99,7 +99,7 @@ module bsg_manycore_endpoint_to_fifos
   bsg_manycore_packet_aligned_s aligned_packet_ep_req_li;
   logic packet_ep_req_ready_lo, packet_ep_req_v_li;
   bsg_serial_in_parallel_out_full
-   #(.width_p(axil_width_p), .els_p(fifo_width_p/axil_width_p))
+   #(.width_p(host_width_p), .els_p(fifo_width_p/host_width_p))
    req_sipo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
@@ -122,7 +122,7 @@ module bsg_manycore_endpoint_to_fifos
   bsg_manycore_return_packet_aligned_s aligned_packet_mc_rsp_lo;
   logic packet_mc_rsp_ready_li, packet_mc_rsp_v_lo;
   bsg_parallel_in_serial_out
-   #(.width_p(axil_width_p), .els_p(fifo_width_p/axil_width_p))
+   #(.width_p(host_width_p), .els_p(fifo_width_p/host_width_p))
    rsp_piso
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
@@ -149,7 +149,7 @@ module bsg_manycore_endpoint_to_fifos
   bsg_manycore_packet_aligned_s aligned_packet_mc_req_lo;
   logic packet_mc_req_ready_li, packet_mc_req_v_lo;
   bsg_parallel_in_serial_out
-   #(.width_p(axil_width_p), .els_p(fifo_width_p/axil_width_p))
+   #(.width_p(host_width_p), .els_p(fifo_width_p/host_width_p))
    req_piso
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
@@ -168,7 +168,7 @@ module bsg_manycore_endpoint_to_fifos
   bsg_manycore_return_packet_aligned_s aligned_packet_ep_rsp_li;
   logic packet_ep_rsp_ready_lo, packet_ep_rsp_v_li;
   bsg_serial_in_parallel_out_full
-   #(.width_p(axil_width_p), .els_p(fifo_width_p/axil_width_p))
+   #(.width_p(host_width_p), .els_p(fifo_width_p/host_width_p))
    rsp_sipo
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
