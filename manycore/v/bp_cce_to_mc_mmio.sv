@@ -136,16 +136,17 @@ module bp_cce_to_mc_mmio
      );
 
   // Other MMIO
-  localparam tile_addr_width_lp = 18; // From manycore
-  wire [addr_width_p-1:0]      mmio_tile_epa_lo = mem_fwd_header_cast_i.addr[2+:tile_addr_width_lp];
-  wire [x_cord_width_p-1:0] mmio_tile_x_cord_lo = mem_fwd_header_cast_i.addr[2+tile_addr_width_lp+:x_cord_width_p];
-  wire [y_cord_width_p-1:0] mmio_tile_y_cord_lo = mem_fwd_header_cast_i.addr[2+tile_addr_width_lp+x_cord_width_p+:y_cord_width_p];
+  localparam tile_addr_width_lp = 18;
+  wire [addr_width_p-1:0]      mmio_tile_epa_lo = mem_fwd_header_cast_i.addr[2+:tile_addr_width_lp-2];
+  wire [x_cord_width_p-1:0] mmio_tile_x_cord_lo = mem_fwd_header_cast_i.addr[tile_addr_width_lp+:x_cord_width_p];
+  wire [y_cord_width_p-1:0] mmio_tile_y_cord_lo = mem_fwd_header_cast_i.addr[tile_addr_width_lp+x_cord_width_p+:y_cord_width_p];
 
-  wire [addr_width_p-1:0]         mmio_vcache_epa_lo     = mem_fwd_header_cast_i.addr[2+:addr_width_p];
-  wire [x_cord_width_p-1:0]    mmio_vcache_x_cord_lo     = mem_fwd_header_cast_i.addr[2+addr_width_p+:x_cord_width_p];
-  // V$ always occupy pods with even y-coordinates
-  wire [pod_y_cord_width_p-1:0] mmio_vcache_y_pod_lo     = (mem_fwd_header_cast_i.addr[2+addr_width_p+x_cord_width_p+:pod_y_cord_width_p-1] << 1);
-  wire [y_subcord_width_lp-1:0] mmio_vcache_y_subcord_lo = (mmio_vcache_y_pod_lo == '0) ? '1 : '0;
+  localparam vcache_addr_width_lp = 29;
+  wire [vcache_addr_width_lp-1:0] mmio_vcache_epa_lo     = mem_fwd_header_cast_i.addr[2+:vcache_addr_width_lp-2];
+  wire [x_cord_width_p-1:0]    mmio_vcache_x_cord_lo     = mem_fwd_header_cast_i.addr[vcache_addr_width_lp+:x_cord_width_p];
+  // If we have extra address space it goes to y_pod. Additionally, we drop the low bit because all vcache pods are even
+  wire [pod_y_cord_width_p-1:0] mmio_vcache_y_pod_lo     = (mem_fwd_header_cast_i.addr[paddr_width_p-2:vcache_addr_width_lp+x_cord_width_p] << 1);
+  wire [y_subcord_width_lp-1:0] mmio_vcache_y_subcord_lo = (mmio_vcache_y_pod_lo[1] == '0) ? '1 : '0;
   wire [y_cord_width_p-1:0] mmio_vcache_y_cord_lo        = {mmio_vcache_y_pod_lo, mmio_vcache_y_subcord_lo};
 
   wire [addr_width_p-1:0] host_epa_lo = mem_fwd_header_cast_i.addr[2+:addr_width_p];
@@ -230,6 +231,7 @@ module bp_cce_to_mc_mmio
   //////////////////////////////////////////////
   wire is_mc_compute_tile_li = mem_fwd_v_i & mem_fwd_header_cast_i.addr[paddr_width_p-1-:2] == 2'b11;
   wire is_mc_vcache_tile_li  = mem_fwd_v_i & mem_fwd_header_cast_i.addr[paddr_width_p-1-:2] == 2'b10;
+
   always_comb
     begin
       mem_fwd_ready_and_o = trans_id_v_lo & packet_ready_lo;
@@ -253,7 +255,7 @@ module bp_cce_to_mc_mmio
         end
       else // Send to host
         begin
-          packet_li.addr   = host_epa_lo; // Select EPA for stores to manycore host
+          packet_li.addr   = host_epa_lo;
           packet_li.y_cord = host_y_i;
           packet_li.x_cord = host_x_i;
         end
