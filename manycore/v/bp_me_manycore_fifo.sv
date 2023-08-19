@@ -3,7 +3,7 @@
 `include "bsg_manycore_defines.vh"
 `include "bsg_manycore_endpoint_to_fifos.vh"
 
-module bp_cce_to_mc_fifo
+module bp_me_manycore_fifo
  import bp_common_pkg::*;
  import bsg_manycore_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
@@ -190,5 +190,5 @@ module bp_cce_to_mc_fifo
 
 endmodule
 
-`BSG_ABSTRACT_MODULE(bp_cce_to_mc_fifo)
+`BSG_ABSTRACT_MODULE(bp_me_manycore_fifo)
 

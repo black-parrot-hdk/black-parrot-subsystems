@@ -2,7 +2,7 @@
 `include "bp_common_defines.svh"
 `include "bsg_manycore_defines.vh"
 
-module bp_cce_to_mc_mmio
+module bp_me_manycore_mmio
  import bp_common_pkg::*;
  import bsg_manycore_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
@@ -378,5 +378,5 @@ module bp_cce_to_mc_mmio
 
 endmodule
 
-`BSG_ABSTRACT_MODULE(bp_cce_to_mc_mmio)
+`BSG_ABSTRACT_MODULE(bp_me_manycore_mmio)
 

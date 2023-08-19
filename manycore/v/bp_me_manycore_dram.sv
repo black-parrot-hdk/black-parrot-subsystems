@@ -2,7 +2,7 @@
 `include "bp_common_defines.svh"
 `include "bsg_manycore_defines.vh"
 
-module bp_cce_to_mc_dram
+module bp_me_manycore_dram
  import bp_common_pkg::*;
  import bsg_manycore_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
@@ -310,5 +310,5 @@ module bp_cce_to_mc_dram
 
 endmodule
 
-`BSG_ABSTRACT_MODULE(bp_cce_to_mc_dram)
+`BSG_ABSTRACT_MODULE(bp_me_manycore_dram)
 
