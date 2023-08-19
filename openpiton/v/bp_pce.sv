@@ -38,7 +38,7 @@ module bp_pce
   , input [cache_req_width_lp-1:0]                 cache_req_i
   , input                                          cache_req_v_i
   , output logic                                   cache_req_yumi_o
-  , output logic                                   cache_req_busy_o
+  , output logic                                   cache_req_lock_o
   , input [cache_req_metadata_width_lp-1:0]        cache_req_metadata_i
   , input                                          cache_req_metadata_v_i
   , output logic [paddr_width_p-1:0]               cache_req_addr_o
@@ -193,7 +193,7 @@ module bp_pce
   // We have finished processing all of our requests
   assign cache_req_credits_empty_o = ~cache_req_v_lo;
   // Force immediate acceptance of invalidations
-  assign cache_req_busy_o          = inval_v_li;
+  assign cache_req_lock_o          = is_reset | is_init | inval_v_li | clear_v_li;
 
   bp_pce_l15_amo_type_e amo_type;
   always_comb
