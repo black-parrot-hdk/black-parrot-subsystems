@@ -147,13 +147,13 @@ module bp_axi_top
   logic mem_rev_v_li, mem_rev_ready_and_lo;
 
   // DMA interface from BP to cache2axi
-  `declare_bsg_cache_dma_pkt_s(daddr_width_p, l2_block_size_in_words_p);
-  bsg_cache_dma_pkt_s [num_cce_p*l2_banks_p-1:0] dma_pkt_lo;
-  logic [num_cce_p*l2_banks_p-1:0] dma_pkt_v_lo, dma_pkt_ready_and_li;
-  logic [num_cce_p*l2_banks_p-1:0][l2_fill_width_p-1:0] dma_data_lo;
-  logic [num_cce_p*l2_banks_p-1:0] dma_data_v_lo, dma_data_ready_and_li;
-  logic [num_cce_p*l2_banks_p-1:0][l2_fill_width_p-1:0] dma_data_li;
-  logic [num_cce_p*l2_banks_p-1:0] dma_data_v_li, dma_data_ready_and_lo;
+  `declare_bsg_cache_dma_pkt_s(daddr_width_p, dma_mask_width_p);
+  bsg_cache_dma_pkt_s [num_cce_p*dma_els_p-1:0] dma_pkt_lo;
+  logic [num_cce_p*dma_els_p-1:0] dma_pkt_v_lo, dma_pkt_ready_and_li;
+  logic [num_cce_p*dma_els_p-1:0][l2_fill_width_p-1:0] dma_data_lo;
+  logic [num_cce_p*dma_els_p-1:0] dma_data_v_lo, dma_data_ready_and_li;
+  logic [num_cce_p*dma_els_p-1:0][l2_fill_width_p-1:0] dma_data_li;
+  logic [num_cce_p*dma_els_p-1:0] dma_data_v_li, dma_data_ready_and_lo;
 
   bp_processor
    #(.bp_params_p(bp_params_p))
@@ -250,15 +250,15 @@ module bp_axi_top
 
   // If necessary, downsize to axi data width. This could be done in bsg_cache_to_axi,
   //   but punt for now
-  logic [num_cce_p*l2_banks_p-1:0][axi_data_width_p-1:0] axi_dma_data_lo;
-  logic [num_cce_p*l2_banks_p-1:0] axi_dma_data_v_lo, axi_dma_data_ready_and_li;
-  logic [num_cce_p*l2_banks_p-1:0][axi_data_width_p-1:0] axi_dma_data_li;
-  logic [num_cce_p*l2_banks_p-1:0] axi_dma_data_v_li, axi_dma_data_yumi_lo;
-  for (genvar i = 0; i < num_cce_p*l2_banks_p; i++)
+  logic [num_cce_p*dma_els_p-1:0][axi_data_width_p-1:0] axi_dma_data_lo;
+  logic [num_cce_p*dma_els_p-1:0] axi_dma_data_v_lo, axi_dma_data_ready_and_li;
+  logic [num_cce_p*dma_els_p-1:0][axi_data_width_p-1:0] axi_dma_data_li;
+  logic [num_cce_p*dma_els_p-1:0] axi_dma_data_v_li, axi_dma_data_yumi_lo;
+  for (genvar i = 0; i < num_cce_p*dma_els_p; i++)
     begin : narrow
       bsg_serial_in_parallel_out_full
        #(.width_p(axi_data_width_p), .els_p(l2_fill_width_p/axi_data_width_p))
-       dma_piso
+       dma_sipo
         (.clk_i(clk_i)
          ,.reset_i(reset_i)
 
@@ -273,7 +273,7 @@ module bp_axi_top
 
       bsg_parallel_in_serial_out
        #(.width_p(axi_data_width_p), .els_p(l2_fill_width_p/axi_data_width_p))
-       dma_sipo
+       dma_piso
         (.clk_i(clk_i)
          ,.reset_i(reset_i)
 
@@ -290,13 +290,15 @@ module bp_axi_top
   bsg_cache_to_axi
    #(.addr_width_p(daddr_width_p)
      ,.data_width_p(axi_data_width_p)
-     ,.mask_width_p(l2_block_size_in_words_p)
+     ,.mask_width_p(dma_mask_width_p)
      ,.block_size_in_words_p(l2_block_width_p/axi_data_width_p)
-     ,.num_cache_p(num_cce_p*l2_banks_p)
+     ,.num_cache_p(num_cce_p*dma_els_p)
      ,.axi_data_width_p(axi_data_width_p)
      ,.axi_id_width_p(axi_id_width_p)
      ,.axi_burst_len_p(l2_block_width_p/axi_data_width_p)
-     ,.axi_burst_type_p(e_axi_burst_incr)
+     ,.axi_burst_type_p(e_axi_burst_wrap)
+     ,.tag_fifo_els_p(l2_en_p ? l2_banks_p : 8)
+     ,.ordering_en_p(1)
      )
    cache2axi
     (.clk_i(clk_i)

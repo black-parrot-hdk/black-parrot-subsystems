@@ -107,7 +107,7 @@ module bp_me_axil_master
   logic fsm_rev_v_li, fsm_rev_ready_and_lo;
   logic [paddr_width_p-1:0] fsm_rev_addr_lo;
   logic fsm_rev_new_lo, fsm_rev_critical_lo, fsm_rev_last_lo;
-  logic stream_fifo_ready_and_lo;
+  logic stream_fifo_ready_and_lo, stream_header_v_lo;
   bsg_two_fifo
    #(.width_p($bits(bp_bedrock_mem_fwd_header_s)))
    stream_fifo
