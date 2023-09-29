@@ -74,8 +74,8 @@ module bp_me_axil_client
   logic mem_fwd_v_lo, mem_fwd_ready_and_li, mem_fwd_full_li;
   logic mem_rev_v_li, mem_rev_ready_and_lo, mem_rev_full_lo;
 	
-	wire aclk_li   = axi_async_p ? aclk_i   : clk_i;
-	wire areset_li = axi_async_p ? areset_i : reset_i;
+  wire aclk_li   = axi_async_p ? aclk_i   : clk_i;
+  wire areset_li = axi_async_p ? areset_i : reset_i;
 
   if(axi_async_p) 
     begin: async
