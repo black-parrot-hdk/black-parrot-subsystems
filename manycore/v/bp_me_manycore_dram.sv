@@ -2,7 +2,7 @@
 `include "bp_common_defines.svh"
 `include "bsg_manycore_defines.vh"
 
-module bp_cce_to_mc_dram
+module bp_me_manycore_dram
  import bp_common_pkg::*;
  import bsg_manycore_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
@@ -93,7 +93,7 @@ module bp_cce_to_mc_dram
 
   bp_bedrock_mem_rev_header_s fsm_rev_header_lo;
   logic [word_width_gp-1:0] fsm_rev_data_lo;
-  logic fsm_rev_v_lo, fsm_rev_yumi_li;
+  logic fsm_rev_v_lo, fsm_rev_ready_and_li;
   logic [paddr_width_p-1:0] fsm_rev_addr_lo;
   logic fsm_rev_new_lo, fsm_rev_critical_lo, fsm_rev_last_lo;
   bp_me_stream_pump_out
@@ -116,7 +116,7 @@ module bp_cce_to_mc_dram
      ,.fsm_header_i(fsm_rev_header_lo)
      ,.fsm_data_i(fsm_rev_data_lo)
      ,.fsm_v_i(fsm_rev_v_lo)
-     ,.fsm_yumi_o(fsm_rev_yumi_li)
+     ,.fsm_ready_and_o(fsm_rev_ready_and_li)
      ,.fsm_addr_o(fsm_rev_addr_lo)
      ,.fsm_new_o(fsm_rev_new_lo)
      ,.fsm_critical_o(fsm_rev_critical_lo)
@@ -202,9 +202,8 @@ module bp_cce_to_mc_dram
 
   wire [data_width_p-2:0] dram_addr_li = fsm_fwd_addr_li + dram_offset_i;
   wire [data_width_p-1:0] dram_eva_li  = {1'b1, dram_addr_li};
-  // TODO: Need to stripe across mc_compute pods for pods > 1
-  wire [pod_x_cord_width_p-1:0] dram_pod_x_li = dram_pod_i[0+:pod_x_cord_width_p];
-  wire [pod_y_cord_width_p-1:0] dram_pod_y_li = dram_pod_i[pod_x_cord_width_p+:pod_y_cord_width_p];
+  wire [pod_y_cord_width_p-1:0] dram_pod_y_li = dram_pod_i[0+:pod_y_cord_width_p];
+  wire [pod_x_cord_width_p-1:0] dram_pod_x_li = dram_pod_i[pod_y_cord_width_p+:pod_x_cord_width_p];
   bsg_manycore_dram_hash_function
    #(.data_width_p(data_width_p)
      ,.addr_width_p(addr_width_p)
@@ -306,10 +305,10 @@ module bp_cce_to_mc_dram
       fsm_rev_header_lo = dram_rev_header_lo;
       fsm_rev_data_lo = dram_rev_data_lo;
       fsm_rev_v_lo = dram_rev_v_lo;
-      dram_rev_yumi_li = fsm_rev_yumi_li;
+      dram_rev_yumi_li = fsm_rev_ready_and_li & fsm_rev_v_lo;
     end
 
 endmodule
 
-`BSG_ABSTRACT_MODULE(bp_cce_to_mc_dram)
+`BSG_ABSTRACT_MODULE(bp_me_manycore_dram)
 

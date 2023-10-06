@@ -286,7 +286,7 @@ module bsg_manycore_tile_blackparrot
   logic [addr_width_p-1:0] dram_offset_lo;
   logic [x_cord_width_p+y_cord_width_p-1:0] my_cord_lo;
   logic [x_cord_width_p+y_cord_width_p-1:0] host_cord_lo;
-  bp_cce_to_mc_bridge
+  bp_me_manycore_bridge
    #(.bp_params_p(bp_params_p)
      ,.x_cord_width_p(x_cord_width_p)
      ,.y_cord_width_p(y_cord_width_p)
@@ -318,7 +318,7 @@ module bsg_manycore_tile_blackparrot
 
   wire [x_cord_width_p-1:0] mmio_x_li = global_x_i[0];
   wire [y_cord_width_p-1:0] mmio_y_li = global_y_i[0];
-  bp_cce_to_mc_mmio
+  bp_me_manycore_mmio
    #(.bp_params_p(bp_params_p)
      ,.x_cord_width_p(x_cord_width_p)
      ,.pod_x_cord_width_p(pod_x_cord_width_p)
@@ -362,15 +362,15 @@ module bsg_manycore_tile_blackparrot
      ,.link_sif_i(link_sif_i[0])
      ,.link_sif_o(link_sif_o[0])
 
-     ,.host_x_i(host_cord_lo[0+:x_cord_width_p])
-     ,.host_y_i(host_cord_lo[x_cord_width_p+:y_cord_width_p])
+     ,.host_x_i(host_cord_lo[y_cord_width_p+:x_cord_width_p])
+     ,.host_y_i(host_cord_lo[0+:y_cord_width_p])
      ,.global_x_i(mmio_x_li)
      ,.global_y_i(mmio_y_li)
      );
 
   wire [x_cord_width_p-1:0] fifo_x_li = global_x_i[1];
   wire [y_cord_width_p-1:0] fifo_y_li = global_y_i[1];
-  bp_cce_to_mc_fifo
+  bp_me_manycore_fifo
    #(.bp_params_p(bp_params_p)
      ,.x_cord_width_p(x_cord_width_p)
      ,.y_cord_width_p(y_cord_width_p)
@@ -403,7 +403,7 @@ module bsg_manycore_tile_blackparrot
     begin : d
       wire [x_cord_width_p-1:0] dram_x_li = global_x_i[2+i];
       wire [y_cord_width_p-1:0] dram_y_li = global_y_i[2+i];
-      bp_cce_to_mc_dram
+      bp_me_manycore_dram
        #(.bp_params_p(bp_params_p)
          ,.x_cord_width_p(x_cord_width_p)
          ,.pod_x_cord_width_p(pod_x_cord_width_p)

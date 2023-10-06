@@ -2,7 +2,7 @@
 `include "bp_common_defines.svh"
 `include "bp_me_defines.svh"
 
-module bp_cce_to_mc_bridge
+module bp_me_manycore_bridge
  import bp_common_pkg::*;
  import bp_me_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
@@ -121,5 +121,5 @@ module bp_cce_to_mc_bridge
 
 endmodule
 
-`BSG_ABSTRACT_MODULE(bp_cce_to_mc_bridge)
+`BSG_ABSTRACT_MODULE(bp_me_manycore_bridge)
 
