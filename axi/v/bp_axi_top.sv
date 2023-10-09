@@ -30,7 +30,7 @@ module bp_axi_top
    , parameter `BSG_INV_PARAM(axi_size_width_p)
    , localparam axi_mask_width_lp = axi_data_width_p>>3
 
-   `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
+   `declare_bp_bedrock_if_widths(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p)
    )
   (input                                       clk_i
    , input                                     reset_i
@@ -131,7 +131,7 @@ module bp_axi_top
    , input [1:0]                               m_axi_rresp_i
    );
 
-  `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
+  `declare_bp_bedrock_if(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p);
 
   bp_bedrock_mem_fwd_header_s mem_fwd_header_li;
   logic [bedrock_fill_width_p-1:0] mem_fwd_data_li;
