@@ -425,8 +425,8 @@ module bp_axi_top
      ,.axi_burst_type_p(e_axi_burst_incr)
      )
    cache2axi
-    (.clk_i(aclk_i)
-     ,.reset_i(areset_i)
+    (.clk_i(aclk_li)
+     ,.reset_i(areset_li)
 
      ,.dma_pkt_i(cache2axi_dma_pkt_lo)
      ,.dma_pkt_v_i(cache2axi_dma_pkt_v_lo)
