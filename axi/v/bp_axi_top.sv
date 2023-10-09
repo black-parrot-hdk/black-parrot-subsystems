@@ -322,7 +322,7 @@ module bp_axi_top
     for (genvar i = 0; i < num_cce_p*l2_banks_p; i++) 
      begin : nl2
        bsg_async_fifo
-        #(  .width_p($bits(axi_dma_pkt_lo[i]))
+      #(  .width_p($bits(cache2axi_dma_pkt_lo[i]))
               , .lg_size_p(3))
           bp2a_pkt_cross
             (   .w_clk_i(clk_i)
