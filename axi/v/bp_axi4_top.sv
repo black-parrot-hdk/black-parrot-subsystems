@@ -47,7 +47,7 @@ module bp_axi4_top
    , parameter `BSG_INV_PARAM(m01_axi_id_width_p)
    , localparam m01_axi_mask_width_lp = m01_axi_data_width_p>>3
 
-   `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
+   `declare_bp_bedrock_if_widths(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p)
    )
   (// clk and reset are associated with the AXI interfaces (aclk and ~aresetn)
    input                                       clk_i
@@ -193,7 +193,7 @@ module bp_axi4_top
    , input [1:0]                               m01_axi_rresp_i
    );
 
-  `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
+  `declare_bp_bedrock_if(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p)
 
   bp_bedrock_mem_fwd_header_s mem_fwd_header_li;
   logic [bedrock_fill_width_p-1:0] mem_fwd_data_li;
