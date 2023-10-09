@@ -76,8 +76,8 @@ module bp_me_axil_master
   logic mem_fwd_v_li, mem_fwd_full_lo, mem_fwd_ready_and_lo;
   logic mem_rev_v_lo, mem_rev_full_li, mem_rev_ready_and_li;
 
-  wire aclk_li   = ((cce_type_p == e_cce_uce) && axi_async_p) ? aclk_i   : clk_i;
-  wire areset_li = ((cce_type_p == e_cce_uce) && axi_async_p) ? areset_i : reset_i;
+  wire aclk_li   = axi_async_p ? aclk_i   : clk_i;
+  wire areset_li = axi_async_p ? areset_i : reset_i;
 
   if(axi_async_p)
     begin: async
