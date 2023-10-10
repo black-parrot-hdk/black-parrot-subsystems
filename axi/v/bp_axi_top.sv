@@ -32,9 +32,9 @@ module bp_axi_top
 
    // for async operation of bp and AXI; will then need to provide valid aclk_i
    // otherwise, clk_i will be used for both BlackParrot and AXI busses
-   , parameter axi_async_p       = 0
-   , parameter `BSG_INV_PARAM(async_fifo_size_p) // 3 is large enough
-   , parameter `BSG_INV_PARAM(rd_buf_size_p) // 8 is large enough  
+   , parameter axi_async_p = 0
+   , parameter async_fifo_size_p = 3 // large enough
+   , parameter rd_buf_size_p =8 // large enough
 
    `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
    )
@@ -322,7 +322,7 @@ module bp_axi_top
     for (genvar i = 0; i < num_cce_p*l2_banks_p; i++) 
      begin : nl2
        bsg_async_fifo
-      #(  .width_p($bits(cache2axi_dma_pkt_lo[i]))
+        #(  .width_p($bits(cache2axi_dma_pkt_lo[i]))
               , .lg_size_p(3))
           bp2a_pkt_cross
             (   .w_clk_i(clk_i)
@@ -399,7 +399,7 @@ module bp_axi_top
      end
    end
   else 
-   begin: sync
+   begin
     assign dma_pkt_ready_and_li = cache2axi_dma_pkt_ready_and_li;
     assign cache2axi_dma_pkt_v_lo = dma_pkt_v_lo;
     assign cache2axi_dma_pkt_lo = dma_pkt_lo;
