@@ -247,9 +247,10 @@ module bsg_manycore_axil_bridge
   assign out_packet_li.y_cord     = dest_x_i;
   assign out_packet_li.x_cord     = dest_y_i;
   assign out_v_li = c_v_lo;
+  assign c_ready_and_li = out_credit_or_ready_lo;
 
   assign c_rdata_li = returned_data_r_lo;
-  assign c_v_li = returned_v_r_lo;
+  assign c_v_li = returned_v_r_lo | returned_credit_v_r_lo;
   assign returned_yumi_li = c_ready_and_lo & c_v_li;
 
   logic [axil_data_width_p-1:0] m_wdata_li;
