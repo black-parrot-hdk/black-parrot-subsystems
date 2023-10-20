@@ -14,6 +14,7 @@
  *   - 8, 16, and 32-bit requests must have axlen equal to 0
  *   - requests with axsize of 64-bits may have axlen greater than 0
  *
+ * Every read and write on the fifo interface requires a response
  */
 
 `include "bsg_defines.v"

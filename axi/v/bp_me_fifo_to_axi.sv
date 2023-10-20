@@ -12,6 +12,7 @@
  *   - address must be naturally aligned to request size (axsize)
  *   - size may be 8, 16, 32, or 64-bits
  *
+ * Only reads return responses on the fifo interface
  */
 
 `include "bsg_defines.v"
