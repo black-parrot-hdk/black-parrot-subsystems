@@ -259,7 +259,7 @@ module bsg_manycore_axil_bridge
   logic [axil_mask_width_lp-1:0] m_wmask_li;
 
   logic [axil_data_width_p-1:0] m_rdata_lo;
-  logic m_v_lo, m_yumi_li;
+  logic m_v_lo, m_ready_and_li;
   bsg_axil_fifo_master
    #(.axil_data_width_p(axil_data_width_p)
      ,.axil_addr_width_p(axil_addr_width_p)
@@ -277,7 +277,7 @@ module bsg_manycore_axil_bridge
 
      ,.data_o(m_rdata_lo)
      ,.v_o(m_v_lo)
-     ,.ready_and_i(m_yumi_li)
+     ,.ready_and_i(m_ready_and_li)
 
      ,.*
      );
@@ -285,13 +285,13 @@ module bsg_manycore_axil_bridge
   assign m_v_li = in_v_lo;
   assign m_w_li = in_we_lo;
   assign m_addr_li = (in_addr_lo << 2'b10);
-  assign m_data_li = in_data_lo;
-  assign m_mask_li = in_mask_lo;
+  assign m_wdata_li = in_data_lo;
+  assign m_wmask_li = in_mask_lo;
   assign in_yumi_li = m_ready_and_lo & m_v_li;
 
   assign returning_data_li = m_rdata_lo;
   assign returning_data_v_li = m_v_lo;
-  assign m_yumi_li = returning_data_v_li;
+  assign m_ready_and_li = 1'b1;
 
 endmodule
 
