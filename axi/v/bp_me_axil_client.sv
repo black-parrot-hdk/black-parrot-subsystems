@@ -81,8 +81,8 @@ module bp_me_axil_client
      ,.axil_addr_width_p(axil_addr_width_p)
      )
    fifo_client
-    (.clk_i(clk_i)
-     ,.reset_i(reset_i)
+    (.clk_i(aclk_li)
+     ,.reset_i(areset_li)
 
      ,.data_o(wdata_lo)
      ,.addr_o(addr_lo)
@@ -106,10 +106,10 @@ module bp_me_axil_client
       mem_fwd_header_cast_o.payload.lce_id  = lce_id_i;
       mem_fwd_header_cast_o.payload.src_did = did_i;
       mem_fwd_header_cast_o.addr            = addr_lo;
-      mem_fwd_header_cast_o.msg_type        = w_lo ? e_bedrock_mem_wr : e_bedrock_mem_rd;
+      mem_fwd_header_cast_o.msg_type        = w_lo ? e_bedrock_mem_uc_wr : e_bedrock_mem_uc_rd;
       if (~w_lo) begin
         // reads are full width
-        mem_fwd_header_cast_o.size = bp_bedrock_msg_size_e'(lg_axil_mask_width_lp);
+        mem_fwd_header_lo.size = bp_bedrock_msg_size_e'(lg_axil_mask_width_lp);
       end else begin
         // TODO: check address aligned with write strobes and for error cases (including mask 'h00),
         // reply with AXIL error response, and do not send BedRock message.
@@ -121,27 +121,27 @@ module bp_me_axil_client
           ,axil_mask_width_lp'('h08)
           ,axil_mask_width_lp'('h04)
           ,axil_mask_width_lp'('h02)
-          ,axil_mask_width_lp'('h01): mem_fwd_header_cast_o.size = e_bedrock_msg_size_1;
+          ,axil_mask_width_lp'('h01): mem_fwd_header_lo.size = e_bedrock_msg_size_1;
           axil_mask_width_lp'('hC0)
           ,axil_mask_width_lp'('h30)
           ,axil_mask_width_lp'('h0C)
-          ,axil_mask_width_lp'('h03): mem_fwd_header_cast_o.size = e_bedrock_msg_size_2;
+          ,axil_mask_width_lp'('h03): mem_fwd_header_lo.size = e_bedrock_msg_size_2;
           axil_mask_width_lp'('hF0)
-          ,axil_mask_width_lp'('h0F): mem_fwd_header_cast_o.size = e_bedrock_msg_size_4;
-          axil_mask_width_lp'('hFF): mem_fwd_header_cast_o.size = e_bedrock_msg_size_8;
-          default: mem_fwd_header_cast_o.size = e_bedrock_msg_size_8;
+          ,axil_mask_width_lp'('h0F): mem_fwd_header_lo.size = e_bedrock_msg_size_4;
+          axil_mask_width_lp'('hFF): mem_fwd_header_lo.size = e_bedrock_msg_size_8;
+          default: mem_fwd_header_lo.size = e_bedrock_msg_size_8;
         endcase
       end
 
-      mem_fwd_v_o = v_lo;
-      ready_and_li = mem_fwd_ready_and_i;
+      mem_fwd_v_lo = v_lo;
+      ready_and_li = mem_fwd_ready_and_li;
     end
 
   always_comb
     begin
-      rdata_li = mem_rev_data_i;
-      v_li = mem_rev_v_i;
-      mem_rev_ready_and_o = ready_and_lo;
+      rdata_li = mem_rev_data_li;
+      v_li = mem_rev_v_li;
+      mem_rev_ready_and_lo = ready_and_lo;
     end
 
 endmodule

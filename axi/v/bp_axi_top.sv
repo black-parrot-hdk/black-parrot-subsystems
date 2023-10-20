@@ -13,8 +13,9 @@ module bp_axi_top
  // see bp_common/src/include/bp_common_aviary_pkgdef.svh for a list of configurations that you can try!
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
    `declare_bp_proc_params(bp_params_p)
-   , parameter axi_core_clk_async_p = 0
-   , localparam lg_async_fifo_size_lp = 3
+   , parameter `BSG_INV_PARAM(axi_core_clk_async_p)
+   , parameter `BSG_INV_PARAM(async_fifo_size_p)
+   , localparam lg_async_fifo_size_lp = `BSG_SAFE_CLOG2(async_fifo_size_p)
 
    // AXI4-LITE PARAMS
    , parameter `BSG_INV_PARAM(m_axil_addr_width_p)
@@ -252,6 +253,8 @@ module bp_axi_top
    #(.bp_params_p(bp_params_p)
      ,.axil_data_width_p(s_axil_data_width_p)
      ,.axil_addr_width_p(s_axil_addr_width_p)
+     ,.axi_async_p(axi_async_p)
+     ,.async_fifo_size_p(async_fifo_size_p)
      )
    axil2io
     (.clk_i(axi_clk_i)
@@ -276,6 +279,8 @@ module bp_axi_top
    #(.bp_params_p(bp_params_p)
      ,.axil_data_width_p(m_axil_data_width_p)
      ,.axil_addr_width_p(m_axil_addr_width_p)
+     ,.axi_async_p(axi_async_p)
+     ,.async_fifo_size_p(async_fifo_size_p)
      )
    io2axil
     (.clk_i(axi_clk_i)
