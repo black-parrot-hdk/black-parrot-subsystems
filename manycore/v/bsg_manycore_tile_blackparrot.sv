@@ -143,21 +143,24 @@ module bsg_manycore_tile_blackparrot
       bp_local_addr_s local_addr;
       assign local_addr = proc_fwd_header_lo[i].addr;
       wire [dev_id_width_gp-1:0] device_fwd_li = local_addr.dev;
-      wire local_fwd_li = (proc_fwd_header_lo[i].addr < dram_base_addr_gp);
+      wire is_local = (proc_fwd_header_lo[i].addr < dram_base_addr_gp);
       wire is_mc_addr = proc_fwd_header_lo[i].addr[paddr_width_p-1-:1] == 1'b1;
+      wire is_my_core      = is_local & (local_addr.tile == cfg_bus_lo.core_id);
+      wire is_other_core   = is_local & (local_addr.tile != cfg_bus_lo.core_id);
+      wire is_other_hio    = (proc_fwd_header_lo[i].addr[paddr_width_p-2-:hio_width_p-1] != 0);
 
-      wire is_host_fwd      =  local_fwd_li & (device_fwd_li == mc_host_dev_gp);
-      wire is_cfg_fwd       =  local_fwd_li & (device_fwd_li == mc_cfg_dev_gp);
-      wire is_clint_fwd     =  local_fwd_li & (device_fwd_li == mc_clint_dev_gp);
-      wire is_bridge_fwd    =  local_fwd_li & (device_fwd_li == mc_bridge_dev_gp);
-      wire is_fifo_fwd      =  local_fwd_li & (device_fwd_li == mc_fifo_dev_gp);
+      wire is_host_fwd      =  is_local & (device_fwd_li == mc_host_dev_gp);
+      wire is_cfg_fwd       =  is_local & (device_fwd_li == mc_cfg_dev_gp);
+      wire is_clint_fwd     =  is_local & (device_fwd_li == mc_clint_dev_gp);
+      wire is_bridge_fwd    =  is_local & (device_fwd_li == mc_bridge_dev_gp);
+      wire is_fifo_fwd      =  is_local & (device_fwd_li == mc_fifo_dev_gp);
 
       wire vcache_row_id = local_addr[2+`BSG_SAFE_CLOG2(vcache_block_size_in_words_p*num_tiles_x_p)+:1];
 
-      wire is_dram0_fwd     = ~local_fwd_li & ~is_mc_addr & ~vcache_row_id;
-      wire is_dram1_fwd     = ~local_fwd_li & ~is_mc_addr &  vcache_row_id; 
-      wire is_mmio_fwd      = is_mc_addr | is_host_fwd;
-      wire is_loopback_fwd  =  local_fwd_li & ~is_host_fwd & ~is_cfg_fwd & ~is_fifo_fwd & ~is_clint_fwd & ~is_bridge_fwd;
+      wire is_dram0_fwd     = ~is_local & ~is_mc_addr & ~vcache_row_id;
+      wire is_dram1_fwd     = ~is_local & ~is_mc_addr &  vcache_row_id;
+      wire is_mmio_fwd      = is_mc_addr | is_host_fwd | is_other_core | is_other_hio;
+      wire is_loopback_fwd  =  ~is_cfg_fwd & ~is_clint_fwd & ~is_bridge_fwd & ~is_fifo_fwd & ~is_dram0_fwd & ~is_dram1_fwd & ~is_mmio_fwd;
 
       bsg_encode_one_hot
        #(.width_p(num_dev_lp), .lo_to_hi_p(1))
