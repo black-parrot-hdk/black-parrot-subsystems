@@ -51,18 +51,14 @@ module bsg_manycore_switch_1x2
   wire is_sready = (send_state_r == e_sready);
   wire is_send0  = (send_state_r == e_send0);
   wire is_send1  = (send_state_r == e_send1);
-  bsg_manycore_packet_s fwd_packet;
-  assign fwd_packet = multi_fwd_link_sif_cast_i.data;
-  wire [addr_width_p-1:0] fwd_epa = (fwd_packet.addr << 2) | (fwd_packet.payload.load_info_s.load_info.part_sel);
-  wire fwd_select = (fwd_epa >= split_addr_p);
 
   assign fwd_link_sif_cast_o[0].data             = multi_fwd_link_sif_cast_i.data;
-  assign fwd_link_sif_cast_o[0].v                = multi_fwd_link_sif_cast_i.v & !fwd_select;
+  assign fwd_link_sif_cast_o[0].v                = multi_fwd_link_sif_cast_i.v & is_send0;
   assign fwd_link_sif_cast_o[1].data             = multi_fwd_link_sif_cast_i.data;
-  assign fwd_link_sif_cast_o[1].v                = multi_fwd_link_sif_cast_i.v &  fwd_select;
+  assign fwd_link_sif_cast_o[1].v                = multi_fwd_link_sif_cast_i.v & is_send1;
   assign multi_fwd_link_sif_cast_o.ready_and_rev =
-    (fwd_link_sif_cast_o[0].v & fwd_link_sif_cast_i[0].ready_and_rev)
-    | (fwd_link_sif_cast_o[1].v & fwd_link_sif_cast_i[1].ready_and_rev);
+    (is_send0 & fwd_link_sif_cast_i[0].ready_and_rev)
+    | (is_send1 & fwd_link_sif_cast_i[1].ready_and_rev);
 
   bsg_manycore_return_packet_s multi_rev_data_lo;
   logic multi_rev_tag_lo, multi_rev_v_lo, multi_rev_yumi_li;
@@ -95,21 +91,26 @@ module bsg_manycore_switch_1x2
   // Arbitrary for now
   localparam outstanding_sends_lp = 127;
   logic [`BSG_WIDTH(outstanding_sends_lp)-1:0] send_cnt_lo;
-  bsg_flow_counter
-   #(.els_p(outstanding_sends_lp))
+  bsg_counter_up_down
+   #(.max_val_p(outstanding_sends_lp), .init_val_p(0), .max_step_p(1))
    sfc
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
 
-     ,.v_i(multi_fwd_link_sif_cast_i.v)
-     ,.ready_i(multi_fwd_link_sif_cast_o.ready_and_rev)
-     ,.yumi_i(multi_rev_link_sif_cast_i.ready_and_rev)
+     ,.up_i(multi_fwd_link_sif_cast_o.ready_and_rev & multi_fwd_link_sif_cast_i.v)
+     // Credit-based
+     ,.down_i(multi_rev_link_sif_cast_i.ready_and_rev)
 
      ,.count_o(send_cnt_lo)
      );
 
-  wire send0 = fwd_link_sif_cast_o[0].v & fwd_link_sif_cast_i[0].ready_and_rev;
-  wire send1 = fwd_link_sif_cast_o[1].v & fwd_link_sif_cast_i[1].ready_and_rev;
+  bsg_manycore_packet_s fwd_packet;
+  assign fwd_packet = multi_fwd_link_sif_cast_i.data;
+  wire [1:0] fwd_part_sel = fwd_packet.payload.load_info_s.load_info.part_sel;
+  wire [addr_width_p-1:0] fwd_epa = (fwd_packet.addr << 2) | fwd_part_sel;
+  wire fwd_select = (fwd_epa >= split_addr_p);
+  wire send0 = multi_fwd_link_sif_cast_i.v & !fwd_select;
+  wire send1 = multi_fwd_link_sif_cast_i.v &  fwd_select;
   wire send_drained = (send_cnt_lo == '0) & ~send0 & ~send1;
   always_comb
     unique casez (send_state_r)
@@ -170,15 +171,14 @@ module bsg_manycore_switch_1x2
   // Arbitrary for now
   localparam outstanding_recvs_lp = 127;
   logic [`BSG_WIDTH(outstanding_recvs_lp)-1:0] recv_cnt_lo;
-  bsg_flow_counter
-   #(.els_p(outstanding_recvs_lp))
+  bsg_counter_up_down
+   #(.max_val_p(outstanding_recvs_lp), .init_val_p(0), .max_step_p(1))
    rfc
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
 
-     ,.v_i(multi_fwd_link_sif_cast_o.v)
-     ,.ready_i(multi_fwd_link_sif_cast_i.ready_and_rev)
-     ,.yumi_i(multi_rev_link_sif_cast_i.v & multi_rev_link_sif_cast_o.ready_and_rev)
+     ,.up_i(multi_fwd_link_sif_cast_o.v)
+     ,.down_i(multi_rev_link_sif_cast_o.ready_and_rev & multi_rev_link_sif_cast_i.v)
 
      ,.count_o(recv_cnt_lo)
      );

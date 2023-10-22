@@ -7,7 +7,7 @@ module bp_me_manycore_mmio
  import bsg_manycore_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
    `declare_bp_proc_params(bp_params_p)
-   `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
+   `declare_bp_bedrock_if_widths(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p)
 
    , parameter `BSG_INV_PARAM(x_cord_width_p)
    , parameter `BSG_INV_PARAM(pod_x_cord_width_p)
@@ -64,7 +64,7 @@ module bp_me_manycore_mmio
    , input [y_cord_width_p-1:0]                 global_y_i
    );
 
-  `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
+  `declare_bp_bedrock_if(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p);
   `declare_bp_memory_map(paddr_width_p, daddr_width_p);
   `declare_bsg_manycore_packet_s(addr_width_p, data_width_p, x_cord_width_p, y_cord_width_p);
   `bp_cast_i(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
@@ -336,9 +336,9 @@ module bp_me_manycore_mmio
     begin
       mem_fwd_header_cast_o = '0;
       mem_fwd_header_cast_o.payload.lce_id = 2'b10; // Always 2'b10 for I/O
-      mem_fwd_header_cast_o.payload.did[0+:x_cord_width_p] = packet_lo.src_x_cord;
-      mem_fwd_header_cast_o.payload.did[x_cord_width_p+:y_cord_width_p] = packet_lo.src_y_cord;
-      mem_fwd_header_cast_o.payload.did[x_cord_width_p+y_cord_width_p+:5] = packet_lo.reg_id;
+      mem_fwd_header_cast_o.payload.src_did[0+:x_cord_width_p] = packet_lo.src_x_cord;
+      mem_fwd_header_cast_o.payload.src_did[x_cord_width_p+:y_cord_width_p] = packet_lo.src_y_cord;
+      mem_fwd_header_cast_o.payload.src_did[x_cord_width_p+y_cord_width_p+:5] = packet_lo.reg_id;
       mem_fwd_header_cast_o.msg_type = (packet_lo.op_v2 inside {e_remote_load}) ? e_bedrock_mem_uc_rd : e_bedrock_mem_uc_wr;
       // TODO: we only support 32-bit loads and stores to BP configuration addresses
       mem_fwd_header_cast_o.size = e_bedrock_msg_size_4;
@@ -371,9 +371,9 @@ module bp_me_manycore_mmio
       // TODO: Handle subword ops, float / ifetch ops
       return_packet_li.pkt_type = (mem_rev_header_cast_i.msg_type inside {e_bedrock_mem_uc_wr}) ? e_return_credit : e_return_int_wb;
       return_packet_li.data = mem_rev_data_i;
-      return_packet_li.x_cord = mem_rev_header_cast_i.payload.did[0+:x_cord_width_p];
-      return_packet_li.y_cord = mem_rev_header_cast_i.payload.did[x_cord_width_p+:y_cord_width_p];
-      return_packet_li.reg_id = mem_rev_header_cast_i.payload.did[x_cord_width_p+y_cord_width_p+:5];
+      return_packet_li.x_cord = mem_rev_header_cast_i.payload.src_did[0+:x_cord_width_p];
+      return_packet_li.y_cord = mem_rev_header_cast_i.payload.src_did[x_cord_width_p+:y_cord_width_p];
+      return_packet_li.reg_id = mem_rev_header_cast_i.payload.src_did[x_cord_width_p+y_cord_width_p+:5];
     end
 
 endmodule
