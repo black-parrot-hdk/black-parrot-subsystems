@@ -297,6 +297,7 @@ module bp_axi_top
      ,.axi_id_width_p(axi_id_width_p)
      ,.axi_burst_len_p(l2_block_width_p/axi_data_width_p)
      ,.axi_burst_type_p(e_axi_burst_incr)
+     ,.ordering_en_p(1)
      )
    cache2axi
     (.clk_i(clk_i)
