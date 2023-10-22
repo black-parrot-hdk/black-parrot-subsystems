@@ -148,12 +148,12 @@ module bp_axi_top
 
   // DMA interface from BP to cache2axi
   `declare_bsg_cache_dma_pkt_s(daddr_width_p, l2_block_size_in_words_p);
-  bsg_cache_dma_pkt_s [num_cce_p*l2_banks_p-1:0] dma_pkt_lo;
-  logic [num_cce_p*l2_banks_p-1:0] dma_pkt_v_lo, dma_pkt_ready_and_li;
-  logic [num_cce_p*l2_banks_p-1:0][l2_fill_width_p-1:0] dma_data_lo;
-  logic [num_cce_p*l2_banks_p-1:0] dma_data_v_lo, dma_data_ready_and_li;
-  logic [num_cce_p*l2_banks_p-1:0][l2_fill_width_p-1:0] dma_data_li;
-  logic [num_cce_p*l2_banks_p-1:0] dma_data_v_li, dma_data_ready_and_lo;
+  bsg_cache_dma_pkt_s [num_cce_p*l2_dmas_p-1:0] dma_pkt_lo;
+  logic [num_cce_p*l2_dmas_p-1:0] dma_pkt_v_lo, dma_pkt_ready_and_li;
+  logic [num_cce_p*l2_dmas_p-1:0][l2_fill_width_p-1:0] dma_data_lo;
+  logic [num_cce_p*l2_dmas_p-1:0] dma_data_v_lo, dma_data_ready_and_li;
+  logic [num_cce_p*l2_dmas_p-1:0][l2_fill_width_p-1:0] dma_data_li;
+  logic [num_cce_p*l2_dmas_p-1:0] dma_data_v_li, dma_data_ready_and_lo;
 
   bp_processor
    #(.bp_params_p(bp_params_p))
@@ -250,11 +250,11 @@ module bp_axi_top
 
   // If necessary, downsize to axi data width. This could be done in bsg_cache_to_axi,
   //   but punt for now
-  logic [num_cce_p*l2_banks_p-1:0][axi_data_width_p-1:0] axi_dma_data_lo;
-  logic [num_cce_p*l2_banks_p-1:0] axi_dma_data_v_lo, axi_dma_data_ready_and_li;
-  logic [num_cce_p*l2_banks_p-1:0][axi_data_width_p-1:0] axi_dma_data_li;
-  logic [num_cce_p*l2_banks_p-1:0] axi_dma_data_v_li, axi_dma_data_yumi_lo;
-  for (genvar i = 0; i < num_cce_p*l2_banks_p; i++)
+  logic [num_cce_p*l2_dmas_p-1:0][axi_data_width_p-1:0] axi_dma_data_lo;
+  logic [num_cce_p*l2_dmas_p-1:0] axi_dma_data_v_lo, axi_dma_data_ready_and_li;
+  logic [num_cce_p*l2_dmas_p-1:0][axi_data_width_p-1:0] axi_dma_data_li;
+  logic [num_cce_p*l2_dmas_p-1:0] axi_dma_data_v_li, axi_dma_data_yumi_lo;
+  for (genvar i = 0; i < num_cce_p*l2_dmas_p; i++)
     begin : narrow
       bsg_serial_in_parallel_out_full
        #(.width_p(axi_data_width_p), .els_p(l2_fill_width_p/axi_data_width_p))
@@ -292,7 +292,7 @@ module bp_axi_top
      ,.data_width_p(axi_data_width_p)
      ,.mask_width_p(l2_block_size_in_words_p)
      ,.block_size_in_words_p(l2_block_width_p/axi_data_width_p)
-     ,.num_cache_p(num_cce_p*l2_banks_p)
+     ,.num_cache_p(num_cce_p*l2_dmas_p)
      ,.axi_data_width_p(axi_data_width_p)
      ,.axi_id_width_p(axi_id_width_p)
      ,.axi_burst_len_p(l2_block_width_p/axi_data_width_p)
