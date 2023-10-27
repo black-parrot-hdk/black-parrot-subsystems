@@ -92,7 +92,7 @@ module bp_me_fifo_to_axi
   // buffers address, data, wmask, size
   logic [m_axi_addr_width_p-1:0] addr_li;
   logic [m_axi_data_width_p-1:0] data_li;
-  logic [m_axi_mask_width_lp-1;)] wmask_li;
+  logic [m_axi_mask_width_lp-1:0] wmask_li;
   logic [2:0] size_li;
   logic v_li, yumi_lo, w_li;
   bsg_two_fifo
@@ -151,14 +151,14 @@ module bp_me_fifo_to_axi
   assign addr_clear = yumi_lo;
   assign addr_set = v_li & ((m_axi_awvalid_o & m_axi_awready_i) | (m_axi_arvalid_o & m_axi_arready_i));
   assign data_clear = yumi_lo;
-  assign data_set = v_li & m_axi_wvalid_i & m_axi_wready_i;
+  assign data_set = v_li & m_axi_wvalid_o & m_axi_wready_i;
 
   localparam lg_m_axi_mask_width_lp = `BSG_SAFE_CLOG2(m_axi_mask_width_lp);
   wire [lg_m_axi_mask_width_lp-1:0] mask_shift = addr_li[0+:lg_m_axi_mask_width_lp];
 
   always_comb begin
 
-    m_axi_awaddr_o = addr_li
+    m_axi_awaddr_o = addr_li;
     m_axi_awvalid_o = v_li & w_li & ~addr_sent;
     m_axi_awid_o = '0;
     m_axi_awlock_o = '0;

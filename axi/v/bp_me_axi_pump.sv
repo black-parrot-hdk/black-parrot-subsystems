@@ -96,7 +96,7 @@ module bp_me_axi_pump
   wire [axi_addr_width_p-1:0] aligned_addr = (address_r >> axsize) << axsize;
   wire is_aligned = (aligned_addr == address_r);
 
-  wire [8:0] burst_length = axburst + 9'b1;
+  wire [8:0] burst_length = 9'(axburst) + 'b1;
   // WRAP mode requires computing wrap boundaries, but restricts axlen to 1, 3, 7, 15
   // this computation can be transformed to a simple lookup instead of a dynamic
   // log2 computation as we only care about it for the limited cases of WRAP mode
@@ -131,9 +131,9 @@ module bp_me_axi_pump
   // lower_wrap_boundary = int(addr/dtsize) * dtsize
   // use the dtsize equivalence above to compute lower_wrap_boundary with only shifts
   wire [axi_addr_width_p-1:0] lower_wrap_boundary = (axaddr >> lg_burst_length >> axsize) << lg_burst_length << axsize;
-  wire [axi_addr_width_p-1:0] upper_wrap_boundary = lower_wrap_boundary + dtsize;
+  wire [axi_addr_width_p-1:0] upper_wrap_boundary = lower_wrap_boundary + axi_addr_width_p'(dtsize);
 
-  wire [axi_addr_width_p-1:0] aligned_addr_incr = aligned_addr + number_bytes;
+  wire [axi_addr_width_p-1:0] aligned_addr_incr = aligned_addr + axi_addr_width_p'(number_bytes);
   wire do_wrap = (aligned_addr_incr >= upper_wrap_boundary);
 
   // compute lower_byte_lane and upper_byte_lane and mask_o
