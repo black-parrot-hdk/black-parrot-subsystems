@@ -7,7 +7,7 @@ module bp_me_axil_client
  import bp_me_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
   `declare_bp_proc_params(bp_params_p)
-  `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
+  `declare_bp_bedrock_if_widths(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p)
 
   // AXI CHANNEL PARAMS
   , parameter `BSG_INV_PARAM(axil_data_width_p)
@@ -65,7 +65,7 @@ module bp_me_axil_client
    );
 
   // declaring i/o command and response struct type and size
-  `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
+  `declare_bp_bedrock_if(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p);
   `bp_cast_o(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
   `bp_cast_i(bp_bedrock_mem_rev_header_s, mem_rev_header);
 
@@ -103,10 +103,10 @@ module bp_me_axil_client
     begin
       mem_fwd_data_o = wdata_lo;
       mem_fwd_header_cast_o = '0;
-      mem_fwd_header_cast_o.payload.lce_id = lce_id_i;
-      mem_fwd_header_cast_o.payload.did    = did_i;
-      mem_fwd_header_cast_o.addr           = addr_lo;
-      mem_fwd_header_cast_o.msg_type       = w_lo ? e_bedrock_mem_uc_wr : e_bedrock_mem_uc_rd;
+      mem_fwd_header_cast_o.payload.lce_id  = lce_id_i;
+      mem_fwd_header_cast_o.payload.src_did = did_i;
+      mem_fwd_header_cast_o.addr            = addr_lo;
+      mem_fwd_header_cast_o.msg_type        = w_lo ? e_bedrock_mem_uc_wr : e_bedrock_mem_uc_rd;
       if (~w_lo) begin
         // reads are full width
         mem_fwd_header_cast_o.size = bp_bedrock_msg_size_e'(lg_axil_mask_width_lp);

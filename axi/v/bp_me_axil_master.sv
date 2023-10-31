@@ -11,7 +11,7 @@ module bp_me_axil_master
  import bp_me_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
   `declare_bp_proc_params(bp_params_p)
-  `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
+  `declare_bp_bedrock_if_widths(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p)
 
   // AXI WRITE DATA CHANNEL PARAMS
   , parameter `BSG_INV_PARAM(axil_data_width_p)
@@ -65,7 +65,7 @@ module bp_me_axil_master
   );
 
   // declaring i/o command and response struct type and size
-  `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
+  `declare_bp_bedrock_if(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p);
   `bp_cast_i(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
   `bp_cast_o(bp_bedrock_mem_rev_header_s, mem_rev_header);
 
@@ -119,7 +119,7 @@ module bp_me_axil_master
      ,.ready_o(stream_fifo_ready_and_lo)
 
      ,.data_o(fsm_rev_header_li)
-     ,.v_o(stream_header_v_lo)
+     ,.v_o()
      ,.yumi_i(fsm_rev_ready_and_lo & fsm_rev_v_li & fsm_rev_last_lo)
      );
 
@@ -189,11 +189,11 @@ module bp_me_axil_master
      ,.data_o(fsm_rev_data_li)
      );
 
-  logic v_lo, yumi_li;
+  logic v_lo, ready_and_li;
   always_comb
     begin
-      fsm_rev_v_li = stream_header_v_lo & v_lo;
-      yumi_li = fsm_rev_ready_and_lo & fsm_rev_v_li;
+      fsm_rev_v_li = v_lo;
+      ready_and_li = fsm_rev_ready_and_lo;
     end
 
   bsg_axil_fifo_master
@@ -213,7 +213,7 @@ module bp_me_axil_master
 
      ,.data_o(rdata_lo)
      ,.v_o(v_lo)
-     ,.ready_and_i(yumi_li)
+     ,.ready_and_i(ready_and_li)
 
      ,.*
      );
