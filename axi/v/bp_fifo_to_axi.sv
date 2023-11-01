@@ -231,19 +231,7 @@ module bp_fifo_to_axi
     m_axi_wdata_o = data_li;
     m_axi_wvalid_o = v_li & w_li & ~data_sent;
     m_axi_wlast_o = 1'b1;
-    m_axi_wstrb_o = '0; // set by case statement below
-    // construct the write strobe
-    case (size_li)
-      // 1 byte
-      3'b000: m_axi_wstrb_o = (m_axi_mask_width_lp)'('h1) << mask_shift;
-      // 2 bytes
-      3'b001: m_axi_wstrb_o = (m_axi_mask_width_lp)'('h3) << mask_shift;
-      // 4 bytes
-      3'b010: m_axi_wstrb_o = (m_axi_mask_width_lp)'('hF) << mask_shift;
-      // 8 bytes
-      // 3'b011
-      default : m_axi_wstrb_o = (m_axi_mask_width_lp)'('hFF);
-    endcase
+    m_axi_wstrb_o = wmask_li;
 
     m_axi_araddr_o = addr_li;
     m_axi_arvalid_o = v_li & ~w_li & ~addr_sent;
