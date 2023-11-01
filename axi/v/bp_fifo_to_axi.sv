@@ -92,6 +92,10 @@ module bp_fifo_to_axi
    , input [1:0]                                m_axi_rresp_i
    );
 
+  // unused AXI interface signals
+  wire b_unused = &{m_axi_bid_i};
+  wire r_unused = &{m_axi_rid_i, m_axi_rlast_i, m_axi_rresp_i};
+
   // FIFO buffer
   // buffers address, data, wmask, size
   logic input_ready_and_lo;
@@ -143,9 +147,7 @@ module bp_fifo_to_axi
       );
 
   // B channel
-  wire b_unused = &{m_axi_bid_i};
   logic b_v_li, b_yumi_lo;
-  logic [1:0] b_resp_li;
   bsg_fifo_1r1w_small
     #(.width_p(2)
       ,.els_p(response_els_p)
@@ -160,11 +162,10 @@ module bp_fifo_to_axi
       // to FIFO
       ,.v_o(b_v_li)
       ,.yumi_i(b_yumi_lo)
-      ,.data_o(b_resp_li)
+      ,.data_o() // B response unused
       );
 
   // R channel
-  wire r_unused = &{m_axi_rid_i, m_axi_rlast_i, m_axi_rresp_i};
   logic r_v_li, r_yumi_lo;
   logic [m_axi_data_width_p-1:0] r_data_li;
   bsg_fifo_1r1w_small
@@ -210,9 +211,6 @@ module bp_fifo_to_axi
   assign addr_set = v_li & ((m_axi_awvalid_o & m_axi_awready_i) | (m_axi_arvalid_o & m_axi_arready_i));
   assign data_clear = yumi_lo;
   assign data_set = v_li & m_axi_wvalid_o & m_axi_wready_i;
-
-  localparam lg_m_axi_mask_width_lp = `BSG_SAFE_CLOG2(m_axi_mask_width_lp);
-  wire [lg_m_axi_mask_width_lp-1:0] mask_shift = addr_li[0+:lg_m_axi_mask_width_lp];
 
   always_comb begin
 

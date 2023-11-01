@@ -91,9 +91,15 @@ module bp_axi_to_fifo
    , output logic [1:0]                         s_axi_rresp_o
    );
 
+  // unused AXI interface signals
+  wire aw_unused = &{s_axi_awlock_i, s_axi_awcache_i, s_axi_awprot_i
+                     ,s_axi_awqos_i ,s_axi_awregion_i};
+  wire ar_unused = &{s_axi_arlock_i, s_axi_arcache_i, s_axi_arprot_i
+                     ,s_axi_arqos_i ,s_axi_arregion_i};
+  wire w_unused = &{s_axi_wlast_i};
+
   // AW channel pump and ID fifo
   logic [s_axi_addr_width_p-1:0] awpump_addr_lo;
-  logic [s_axi_mask_width_lp-1:0] awpump_mask_lo;
   logic [2:0] awpump_size_lo;
   logic [7:0] awpump_len_lo;
   logic awpump_first_lo, awpump_last_lo;
@@ -126,7 +132,7 @@ module bp_axi_to_fifo
       ,.v_o(awpump_v_lo)
       ,.send_i(awpump_send_li)
       ,.addr_o(awpump_addr_lo)
-      ,.mask_o(awpump_mask_lo)
+      ,.mask_o() // mask comes from W channel
       ,.size_o(awpump_size_lo)
       ,.len_o(awpump_len_lo)
       ,.first_o(awpump_first_lo)
@@ -165,7 +171,6 @@ module bp_axi_to_fifo
 
   // AR channel pump and ID fifo
   logic [s_axi_addr_width_p-1:0] arpump_addr_lo;
-  logic [s_axi_mask_width_lp-1:0] arpump_mask_lo;
   logic [2:0] arpump_size_lo;
   logic [7:0] arpump_len_lo;
   logic arpump_first_lo, arpump_last_lo;
@@ -198,7 +203,7 @@ module bp_axi_to_fifo
       ,.v_o(arpump_v_lo)
       ,.send_i(arpump_send_li)
       ,.addr_o(arpump_addr_lo)
-      ,.mask_o(arpump_mask_lo)
+      ,.mask_o() // unused for reads
       ,.size_o(arpump_size_lo)
       ,.len_o(arpump_len_lo)
       ,.first_o(arpump_first_lo)
