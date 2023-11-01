@@ -1,6 +1,6 @@
 /*
  * Name:
- *   bp_me_axi_pump.sv
+ *   bp_axi_pump.sv
  *
  * Description:
  *   This module implements AXI transaction counting per the spec (IHI0022H_c A3.4.1)
@@ -11,7 +11,7 @@
 
 `include "bsg_defines.v"
 
-module bp_me_axi_pump
+module bp_axi_pump
   import bsg_axi_pkg::*;
  #(parameter axi_addr_width_p = 64
   ,parameter axi_data_width_p = 64

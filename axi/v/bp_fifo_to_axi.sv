@@ -1,6 +1,6 @@
 /*
  * Name:
- *   bp_me_fifo_to_axi.sv
+ *   bp_fifo_to_axi.sv
  *
  * Description:
  *   This module converts a fifo interface to an AXI4 manager interface. The fifo is split into
@@ -17,7 +17,7 @@
 
 `include "bsg_defines.v"
 
-module bp_me_fifo_to_axi
+module bp_fifo_to_axi
  import bsg_axi_pkg::*;
  #(parameter m_axi_data_width_p = 64
   , parameter m_axi_addr_width_p = 64

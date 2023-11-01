@@ -1,6 +1,6 @@
 /*
  * Name:
- *   bp_me_axi_to_fifo.sv
+ *   bp_axi_to_fifo.sv
  *
  * Description:
  *   This module converts an AXI4 subordinate interface to a fifo interface. The independent
@@ -19,7 +19,7 @@
 
 `include "bsg_defines.v"
 
-module bp_me_axi_to_fifo
+module bp_axi_to_fifo
  import bsg_axi_pkg::*;
  #(parameter s_axi_data_width_p = 64
   , parameter s_axi_addr_width_p = 64
@@ -110,7 +110,7 @@ module bp_me_axi_to_fifo
 
   assign awpump_send_li = v_o & w_o & ready_and_i;
 
-  bp_me_axi_pump
+  bp_axi_pump
     #(.axi_addr_width_p(s_axi_addr_width_p)
       ,.axi_data_width_p(s_axi_data_width_p)
       )
@@ -182,7 +182,7 @@ module bp_me_axi_to_fifo
 
   assign arpump_send_li = v_o & ~w_o & ready_and_i;
 
-  bp_me_axi_pump
+  bp_axi_pump
     #(.axi_addr_width_p(s_axi_addr_width_p)
       ,.axi_data_width_p(s_axi_data_width_p)
       )

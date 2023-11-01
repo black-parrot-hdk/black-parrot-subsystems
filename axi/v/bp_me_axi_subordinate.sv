@@ -152,7 +152,7 @@ module bp_me_axi_subordinate
   logic [2:0] size_lo;
 
   wire mem_rev_fifo_w_li = (mem_rev_fifo_header_li.msg_type == e_bedrock_mem_uc_wr);
-  bp_me_axi_to_fifo
+  bp_axi_to_fifo
    #(.s_axi_data_width_p(s_axi_data_width_p)
      ,.s_axi_addr_width_p(s_axi_addr_width_p)
      ,.s_axi_id_width_p(s_axi_id_width_p)
