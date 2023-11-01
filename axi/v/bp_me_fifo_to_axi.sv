@@ -4,15 +4,15 @@
  *
  * Description:
  *   This module converts a fifo interface to an AXI4 manager interface. The fifo is split into
- *   independent read and write channels. The fifo client must manage flow-control. Writes
- *   return no response, reads return a response on the fifo out interface.
+ *   independent read and write channels. The fifo client must manage ordering if required. Every
+ *   FIFO transaction returns a response, and response order is preserved from the FIFO input
+ *   interface.
  *
  * Constraints and Assumptions:
  *   - data width must be 64-bits
  *   - address must be naturally aligned to request size (axsize)
  *   - size may be 8, 16, 32, or 64-bits
  *
- * Only reads return responses on the fifo interface
  */
 
 `include "bsg_defines.v"
@@ -22,6 +22,9 @@ module bp_me_fifo_to_axi
  #(parameter m_axi_data_width_p = 64
   , parameter m_axi_addr_width_p = 64
   , parameter m_axi_id_width_p = 1
+  , parameter input_els_p = 2
+  , parameter response_els_p = 8
+
   , localparam m_axi_mask_width_lp = m_axi_data_width_p>>3
   )
   (//==================== GLOBAL SIGNALS =======================
@@ -39,6 +42,7 @@ module bp_me_fifo_to_axi
 
    , output logic [m_axi_data_width_p-1:0]      data_o
    , output logic                               v_o
+   , output logic                               w_o
    , input                                      ready_and_i
 
 
@@ -90,19 +94,30 @@ module bp_me_fifo_to_axi
 
   // FIFO buffer
   // buffers address, data, wmask, size
+  logic input_ready_and_lo;
   logic [m_axi_addr_width_p-1:0] addr_li;
   logic [m_axi_data_width_p-1:0] data_li;
   logic [m_axi_mask_width_lp-1:0] wmask_li;
   logic [2:0] size_li;
   logic v_li, yumi_lo, w_li;
-  bsg_two_fifo
-    #(.width_p(m_axi_addr_width_p+m_axi_data_width_p+m_axi_mask_width_lp+3+1))
+
+  // Response type buffer
+  logic resp_type_ready_and_lo;
+  logic resp_type_lo, resp_type_v_lo;
+
+  // accept input when both input FIFO and response type FIFO are ready
+  assign ready_and_o = input_ready_and_lo & resp_type_ready_and_lo;
+
+  bsg_fifo_1r1w_small
+    #(.width_p(m_axi_addr_width_p+m_axi_data_width_p+m_axi_mask_width_lp+3+1)
+      ,.els_p(input_els_p)
+      )
     input_fifo
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
       // from FIFO interface
-      ,.v_i(v_i)
-      ,.ready_o(ready_and_o)
+      ,.v_i(v_i & resp_type_ready_and_lo)
+      ,.ready_o(input_ready_and_lo)
       ,.data_i({size_i, wmask_i, data_i, w_i, addr_i})
       // to AXI
       ,.v_o(v_li)
@@ -110,17 +125,53 @@ module bp_me_fifo_to_axi
       ,.data_o({size_li, wmask_li, data_li, w_li, addr_li})
       );
 
+  bsg_fifo_1r1w_small
+    #(.width_p(1)
+      ,.els_p(response_els_p)
+      )
+    resp_type_fifo
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      // from FIFO interface
+      ,.v_i(v_i & input_ready_and_lo)
+      ,.ready_o(resp_type_ready_and_lo)
+      ,.data_i(w_i)
+      // to response arbitration
+      ,.v_o(resp_type_v_lo)
+      ,.yumi_i(v_o & ready_and_i)
+      ,.data_o(resp_type_lo)
+      );
+
   // B channel
-  wire b_unused = &{m_axi_bvalid_i, m_axi_bid_i, m_axi_bresp_i};
-  assign m_axi_bready_o = 1'b1;
+  wire b_unused = &{m_axi_bid_i};
+  logic b_v_li, b_yumi_lo;
+  logic [1:0] b_resp_li;
+  bsg_fifo_1r1w_small
+    #(.width_p(2)
+      ,.els_p(response_els_p)
+      )
+    write_resp_fifo
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      // from B
+      ,.v_i(m_axi_bvalid_i)
+      ,.ready_o(m_axi_bready_o)
+      ,.data_i(m_axi_bresp_i)
+      // to FIFO
+      ,.v_o(b_v_li)
+      ,.yumi_i(b_yumi_lo)
+      ,.data_o(b_resp_li)
+      );
 
   // R channel
-  // connects directly to fifo out interface
-  // only reads return responses
   wire r_unused = &{m_axi_rid_i, m_axi_rlast_i, m_axi_rresp_i};
-  bsg_two_fifo
-    #(.width_p(m_axi_data_width_p))
-    read_fifo
+  logic r_v_li, r_yumi_lo;
+  logic [m_axi_data_width_p-1:0] r_data_li;
+  bsg_fifo_1r1w_small
+    #(.width_p(m_axi_data_width_p)
+      ,.els_p(response_els_p)
+      )
+    read_resp_fifo
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
       // from R
@@ -128,10 +179,17 @@ module bp_me_fifo_to_axi
       ,.ready_o(m_axi_rready_o)
       ,.data_i(m_axi_rdata_i)
       // to FIFO
-      ,.v_o(v_o)
-      ,.yumi_i(v_o & ready_and_i)
-      ,.data_o(data_o)
+      ,.v_o(r_v_li)
+      ,.yumi_i(r_yumi_lo)
+      ,.data_o(r_data_li)
       );
+
+  // FIFO response arbitration
+  assign v_o = resp_type_v_lo & ((resp_type_lo & b_v_li) | (~resp_type_lo & r_v_li));
+  assign w_o = resp_type_v_lo & resp_type_lo;
+  assign b_yumi_lo = resp_type_v_lo & resp_type_lo & b_v_li & ready_and_i;
+  assign r_yumi_lo = resp_type_v_lo & ~resp_type_lo & r_v_li & ready_and_i;
+  assign data_o = resp_type_lo ? '0 : r_data_li;
 
   logic addr_sent, addr_clear, addr_set;
   logic data_sent, data_clear, data_set;
