@@ -362,7 +362,7 @@ module bp_axi_top
 
       bsg_fifo_1r1w_small
        #(.width_p(axi_data_width_p)
-        ,.els_p(l2_block_width_p/axi_data_width_p)
+        ,.els_p(16*l2_block_width_p/axi_data_width_p)
         )
        a2bp_buf
         (.clk_i(aclk_li)
@@ -422,8 +422,8 @@ module bp_axi_top
      ,.axi_id_width_p(axi_id_width_p)
      ,.axi_burst_len_p(l2_block_width_p/axi_data_width_p)
      ,.axi_burst_type_p(e_axi_burst_wrap)
-     ,.tag_fifo_els_p(l2_en_p ? l2_banks_p : 8)
-     ,.ordering_en_p(1)
+     ,.tag_fifo_els_p(l2_en_p ? l2_banks_p : 4)
+     ,.ordering_en_p(l2_en_p ? 0 : 1)
      )
    cache2axi
     (.clk_i(aclk_li)
