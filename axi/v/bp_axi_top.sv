@@ -37,11 +37,20 @@ module bp_axi_top
 
    `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
    )
-  (input                                       clk_i
-   , input                                     reset_i
-   , input                                     aclk_i
+  (// Ungated and faster AXI clock
+   input                                       aclk_i
    , input                                     areset_i
+   // Gated and downsampled BlackParrot clock
+   , input                                     clk_i
+   , input                                     reset_i
+   // Ungated and downsampled clock
+   , input                                     ungated_clk_i
+   // Async real-time clock
    , input                                     rt_clk_i
+
+   , input                                     gate_en_i
+   , input [31:0]                              dram_lat_i
+   , output                                    cdl_gate_o
 
    //======================== Outgoing I/O ========================
    , output logic [m_axil_addr_width_p-1:0]    m_axil_awaddr_o
@@ -271,6 +280,11 @@ module bp_axi_top
   logic [num_cce_p*dma_els_p-1:0] axi_dma_data_v_lo, axi_dma_data_ready_and_li;
   logic [num_cce_p*dma_els_p-1:0][axi_data_width_p-1:0] axi_dma_data_li;
   logic [num_cce_p*dma_els_p-1:0] axi_dma_data_v_li, axi_dma_data_yumi_lo, axi_dma_data_full_lo;
+
+  logic [num_cce_p*dma_els_p-1:0] cdl_gate_lo;
+  logic [num_cce_p*dma_els_p-1:0] cdl_deq_lo;
+  assign cdl_gate_o = |cdl_gate_lo;
+
   for (genvar i = 0; i < num_cce_p*dma_els_p; i++)
     begin : narrow
       bsg_serial_in_parallel_out_full
@@ -280,7 +294,7 @@ module bp_axi_top
          ,.reset_i(reset_i)
 
          ,.data_i(axi_dma_data_lo[i])
-         ,.v_i(axi_dma_data_v_lo[i])
+         ,.v_i(axi_dma_data_v_lo[i] & cdl_deq_lo[i])
          ,.ready_o(axi_dma_data_ready_and_li[i])
 
          ,.data_o(dma_data_li[i])
@@ -317,7 +331,60 @@ module bp_axi_top
   logic [num_cce_p*dma_els_p-1:0] cache2axi_dma_data_v_li, cache2axi_dma_data_yumi_lo;
 
   if(axi_async_p) begin: async
+    logic ungated_reset_li, gate_en_sync_li;
+    logic [31:0] dram_lat_sync_li;
+    logic [num_cce_p*dma_els_p-1:0] buf_axi_dma_data_sync_v_lo;
+    bsg_sync_sync
+     #(.width_p(1))
+     reset_crossing
+     (.oclk_i(ungated_clk_i)
+     ,.iclk_data_i(reset_i)
+     ,.oclk_data_o(ungated_reset_li)
+     );
+
+    bsg_sync_sync
+     #(.width_p(1))
+     gate_en_crossing
+     (.oclk_i(ungated_clk_i)
+     ,.iclk_data_i(gate_en_i)
+     ,.oclk_data_o(gate_en_sync_li)
+     );
+
+    bsg_sync_sync
+     #(.width_p(32))
+     dram_lat_crossing
+     (.oclk_i(ungated_clk_i)
+     ,.iclk_data_i(dram_lat_i)
+     ,.oclk_data_o(dram_lat_sync_li)
+     );
+
     for (genvar i = 0; i < num_cce_p*dma_els_p; i++) begin: nl2
+      bsg_sync_sync
+       #(.width_p(1))
+       resp_v_crossing
+       (.oclk_i(ungated_clk_i)
+       ,.iclk_data_i(buf_axi_dma_data_v_lo[i])
+       ,.oclk_data_o(buf_axi_dma_data_sync_v_lo[i])
+       );
+
+      bp_axi_cdl
+       cdl
+       (.clk_i(clk_i)
+       ,.reset_i(reset_i)
+
+       ,.ungated_clk_i(ungated_clk_i)
+       ,.ungated_reset_i(ungated_reset_li)
+
+       ,.gate_en_i(gate_en_sync_li)
+       ,.dram_lat_i(dram_lat_sync_li)
+       ,.gate_o(cdl_gate_lo[i])
+
+       ,.cmd_v_i(dma_pkt_v_lo[i] & ~dma_pkt_full_li[i] & ~dma_pkt_lo[i].write_not_read)
+       ,.resp_v_i(buf_axi_dma_data_sync_v_lo[i])
+       ,.resp_done_i(~axi_dma_data_v_lo[i])
+       ,.deq_o(cdl_deq_lo[i])
+       );
+
       bsg_async_fifo
        #(.width_p($bits(bsg_cache_dma_pkt_s))
         ,.lg_size_p(async_fifo_size_p)
@@ -362,7 +429,7 @@ module bp_axi_top
 
       bsg_fifo_1r1w_small
        #(.width_p(axi_data_width_p)
-        ,.els_p(16*l2_block_width_p/axi_data_width_p)
+        ,.els_p(l2_block_width_p/axi_data_width_p)
         )
        a2bp_buf
         (.clk_i(aclk_li)
@@ -392,13 +459,16 @@ module bp_axi_top
         ,.r_clk_i(clk_i)
         ,.r_reset_i(reset_i)
 
-        ,.r_deq_i(axi_dma_data_ready_and_li[i] & axi_dma_data_v_lo[i])
+        ,.r_deq_i(axi_dma_data_ready_and_li[i] & axi_dma_data_v_lo[i] & cdl_deq_lo[i])
         ,.r_data_o(axi_dma_data_lo[i])
         ,.r_valid_o(axi_dma_data_v_lo[i])
         );
     end
   end
   else begin
+    assign cdl_gate_lo = '0;
+    assign cdl_deq_lo = '1;
+
     assign dma_pkt_ready_and_li = cache2axi_dma_pkt_ready_and_li;
     assign cache2axi_dma_pkt_v_lo = dma_pkt_v_lo;
     assign cache2axi_dma_pkt_lo = dma_pkt_lo;
