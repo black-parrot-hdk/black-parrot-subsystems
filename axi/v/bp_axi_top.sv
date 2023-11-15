@@ -37,8 +37,13 @@ module bp_axi_top
    )
   (input                                       axi_clk_i
    , input                                     core_clk_i
+   , input                                     ds_clk_i
    , input                                     rt_clk_i
    , input                                     async_reset_i
+
+   , input                                     cdl_en_i
+   , input [31:0]                              cdl_lat_i
+   , output                                    cdl_gate_o
 
    //======================== Outgoing I/O ========================
    , output logic [m_axil_addr_width_p-1:0]    m_axil_awaddr_o
@@ -168,6 +173,15 @@ module bp_axi_top
      ,.oclk_data_o(core_reset_li)
      );
 
+  logic ds_reset_li;
+  bsg_sync_sync
+   #(.width_p(1))
+   ds_reset_bss
+    (.oclk_i(ds_clk_i)
+     ,.iclk_data_i(async_reset_i)
+     ,.oclk_data_o(ds_reset_li)
+     );
+
   logic axi_reset_li;
   bsg_sync_sync
    #(.width_p(1))
@@ -249,6 +263,11 @@ module bp_axi_top
   logic [num_cce_p*l2_dmas_p-1:0][axi_data_width_p-1:0] core_dma_data_li;
   logic [num_cce_p*l2_dmas_p-1:0] core_dma_data_v_li, core_dma_data_yumi_lo;
 
+  logic [num_cce_p*l2_dmas_p-1:0] cdl_cmd_v_li, cdl_resp_v_li;
+  logic [num_cce_p*l2_dmas_p-1:0] cdl_gate_lo;
+  logic [num_cce_p*l2_dmas_p-1:0] cdl_deq_lo;
+  assign cdl_gate_o = |cdl_gate_lo;
+
   bp_me_axil_client
    #(.bp_params_p(bp_params_p)
      ,.axil_data_width_p(s_axil_data_width_p)
@@ -310,7 +329,7 @@ module bp_axi_top
          ,.reset_i(core_reset_li)
 
          ,.data_i(core_dma_data_lo[i])
-         ,.v_i(core_dma_data_v_lo[i])
+         ,.v_i(core_dma_data_v_lo[i] & cdl_deq_lo[i])
          ,.ready_o(core_dma_data_ready_and_li[i])
 
          ,.data_o(dma_data_li[i])
@@ -493,65 +512,92 @@ module bp_axi_top
          );
 
       // DMA interface
-      logic dma_pkt_full_lo;
-      assign dma_pkt_ready_and_li = ~dma_pkt_full_lo;
-      bsg_async_fifo
-       #(.width_p($bits(bsg_cache_dma_pkt_s)), .lg_size_p(lg_async_fifo_size_lp))
-       dma_pkt_af
-        (.w_clk_i(core_clk_i)
-         ,.w_reset_i(core_reset_li)
+      logic [num_cce_p*l2_dmas_p-1:0] dma_pkt_full_lo, core_dma_data_out_full_lo, axi_dma_in_full_lo;
+      for (genvar i = 0; i < num_cce_p*l2_dmas_p; i++)
+        begin : rof
+          assign dma_pkt_ready_and_li[i] = ~dma_pkt_full_lo[i];
+          bsg_async_fifo
+           #(.width_p($bits(bsg_cache_dma_pkt_s)), .lg_size_p(lg_async_fifo_size_lp))
+           dma_pkt_af
+            (.w_clk_i(core_clk_i)
+             ,.w_reset_i(core_reset_li)
 
-         ,.w_enq_i(dma_pkt_ready_and_li & dma_pkt_v_lo)
-         ,.w_data_i(dma_pkt_lo)
-         ,.w_full_o(dma_pkt_full_lo)
+             ,.w_enq_i(dma_pkt_ready_and_li[i] & dma_pkt_v_lo[i])
+             ,.w_data_i(dma_pkt_lo[i])
+             ,.w_full_o(dma_pkt_full_lo[i])
 
-         ,.r_clk_i(axi_clk_i)
-         ,.r_reset_i(axi_reset_li)
+             ,.r_clk_i(axi_clk_i)
+             ,.r_reset_i(axi_reset_li)
 
-         ,.r_deq_i(axi_dma_pkt_yumi_lo)
-         ,.r_data_o(axi_dma_pkt_li)
-         ,.r_valid_o(axi_dma_pkt_v_li)
-         );
+             ,.r_deq_i(axi_dma_pkt_yumi_lo[i])
+             ,.r_data_o(axi_dma_pkt_li[i])
+             ,.r_valid_o(axi_dma_pkt_v_li[i])
+             );
 
-      logic core_dma_data_out_full_lo;
-      assign core_dma_data_yumi_lo = ~core_dma_data_out_full_lo & core_dma_data_v_li;
-      bsg_async_fifo
-       #(.width_p(l2_fill_width_p), .lg_size_p(lg_async_fifo_size_lp))
-       dma_out_data_af
-        (.w_clk_i(core_clk_i)
-         ,.w_reset_i(core_reset_li)
+          assign core_dma_data_yumi_lo[i] = ~core_dma_data_out_full_lo[i] & core_dma_data_v_li[i];
+          bsg_async_fifo
+           #(.width_p(l2_fill_width_p), .lg_size_p(lg_async_fifo_size_lp))
+           dma_out_data_af
+            (.w_clk_i(core_clk_i)
+             ,.w_reset_i(core_reset_li)
 
-         ,.w_enq_i(core_dma_data_yumi_lo)
-         ,.w_data_i(core_dma_data_li)
-         ,.w_full_o(core_dma_data_out_full_lo)
+             ,.w_enq_i(core_dma_data_yumi_lo[i])
+             ,.w_data_i(core_dma_data_li[i])
+             ,.w_full_o(core_dma_data_out_full_lo[i])
 
-         ,.r_clk_i(axi_clk_i)
-         ,.r_reset_i(axi_reset_li)
+             ,.r_clk_i(axi_clk_i)
+             ,.r_reset_i(axi_reset_li)
 
-         ,.r_deq_i(axi_dma_data_yumi_lo)
-         ,.r_data_o(axi_dma_data_li)
-         ,.r_valid_o(axi_dma_data_v_li)
-         );
+             ,.r_deq_i(axi_dma_data_yumi_lo[i])
+             ,.r_data_o(axi_dma_data_li[i])
+             ,.r_valid_o(axi_dma_data_v_li[i])
+             );
 
-      logic axi_dma_in_full_lo;
-      assign axi_dma_data_ready_and_li = ~axi_dma_in_full_lo;
-      bsg_async_fifo
-       #(.width_p(l2_fill_width_p), .lg_size_p(lg_async_fifo_size_lp))
-       dma_in_data_af
-        (.w_clk_i(axi_clk_i)
-         ,.w_reset_i(axi_reset_li)
+          assign axi_dma_data_ready_and_li[i] = ~axi_dma_in_full_lo[i];
+          bsg_async_fifo
+           #(.width_p(l2_fill_width_p), .lg_size_p(lg_async_fifo_size_lp))
+           dma_in_data_af
+            (.w_clk_i(axi_clk_i)
+             ,.w_reset_i(axi_reset_li)
 
-         ,.w_enq_i(axi_dma_data_ready_and_li & axi_dma_data_v_lo)
-         ,.w_data_i(axi_dma_data_lo)
-         ,.w_full_o(axi_dma_in_full_lo)
+             ,.w_enq_i(axi_dma_data_ready_and_li[i] & axi_dma_data_v_lo[i])
+             ,.w_data_i(axi_dma_data_lo[i])
+             ,.w_full_o(axi_dma_in_full_lo[i])
 
-         ,.r_clk_i(core_clk_i)
-         ,.r_reset_i(core_reset_li)
+             ,.r_clk_i(core_clk_i)
+             ,.r_reset_i(core_reset_li)
 
-         ,.r_deq_i(core_dma_data_ready_and_li & core_dma_data_v_lo)
-         ,.r_data_o(core_dma_data_lo)
-         ,.r_valid_o(core_dma_data_v_lo)
-         );
+             ,.r_deq_i(core_dma_data_ready_and_li[i] & core_dma_data_v_lo[i] & cdl_deq_lo[i])
+             ,.r_data_o(core_dma_data_lo[i])
+             ,.r_valid_o(core_dma_data_v_lo[i])
+             );
+
+          assign cdl_cmd_v_li[i] = dma_pkt_v_lo[i] & dma_pkt_ready_and_li[i] & ~dma_pkt_lo[i].write_not_read;
+          bsg_sync_sync
+           #(.width_p(1))
+           cdl_resp_bss
+           (.oclk_i(ds_clk_i)
+           ,.iclk_data_i(axi_dma_data_v_lo[i])
+           ,.oclk_data_o(cdl_resp_v_li[i])
+           );
+
+          bp_axi_cdl
+           cdl
+           (.core_clk_i(core_clk_i)
+           ,.core_reset_i(core_reset_li)
+
+           ,.ds_clk_i(ds_clk_i)
+           ,.ds_reset_i(ds_reset_li)
+
+           ,.en_i(cdl_en_i)
+           ,.lat_i(cdl_lat_i)
+
+           ,.cmd_v_i(cdl_cmd_v_li[i])
+           ,.resp_v_i(cdl_resp_v_li[i])
+           ,.deq_o(cdl_deq_lo[i])
+           ,.gate_o(cdl_gate_lo[i])
+           );
+        end
     end
   else
     begin : sync
@@ -586,6 +632,9 @@ module bp_axi_top
       assign mem_rev_data_li = axi_mem_rev_data_lo;
       assign mem_rev_v_li = axi_mem_rev_v_lo;
       assign axi_mem_rev_ready_and_li = mem_rev_ready_and_lo;
+
+      assign cdl_deq_lo = '1;
+      assign cdl_gate_lo = '0;
     end
 
 endmodule
