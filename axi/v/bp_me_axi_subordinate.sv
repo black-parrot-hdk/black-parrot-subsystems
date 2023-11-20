@@ -167,7 +167,7 @@ module bp_me_axi_subordinate
      ,.w_o(w_lo)
      ,.wmask_o() // unused
      ,.size_o(size_lo)
-     ,.ready_and_i(mem_fwd_fifo_ready_and_li)
+     ,.yumi_i(mem_fwd_fifo_v_li & mem_fwd_fifo_ready_and_li)
 
      ,.data_i(mem_rev_fifo_data_li)
      ,.v_i(mem_rev_fifo_v_li)
