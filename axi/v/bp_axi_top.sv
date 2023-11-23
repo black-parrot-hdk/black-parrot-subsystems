@@ -45,9 +45,11 @@ module bp_axi_top
    , input                                     reset_i
    // Ungated and downsampled clock
    , input                                     ungated_clk_i
+   , input                                     ungated_reset_i
    // Async real-time clock
    , input                                     rt_clk_i
 
+   , input                                     gate_i
    , input                                     gate_en_i
    , input [31:0]                              dram_lat_i
    , output                                    cdl_gate_o
@@ -294,7 +296,7 @@ module bp_axi_top
          ,.reset_i(reset_i)
 
          ,.data_i(axi_dma_data_lo[i])
-         ,.v_i(axi_dma_data_v_lo[i] & cdl_deq_lo[i])
+         ,.v_i(axi_dma_data_v_lo[i] & ~gate_i & cdl_deq_lo[i])
          ,.ready_o(axi_dma_data_ready_and_li[i])
 
          ,.data_o(dma_data_li[i])
@@ -331,16 +333,9 @@ module bp_axi_top
   logic [num_cce_p*dma_els_p-1:0] cache2axi_dma_data_v_li, cache2axi_dma_data_yumi_lo;
 
   if(axi_async_p) begin: async
-    logic ungated_reset_li, gate_en_sync_li;
+    logic gate_en_sync_li;
     logic [31:0] dram_lat_sync_li;
-    logic [num_cce_p*dma_els_p-1:0] buf_axi_dma_data_sync_v_lo;
-    bsg_sync_sync
-     #(.width_p(1))
-     reset_crossing
-     (.oclk_i(ungated_clk_i)
-     ,.iclk_data_i(reset_i)
-     ,.oclk_data_o(ungated_reset_li)
-     );
+    logic [num_cce_p*dma_els_p-1:0] cmd_v_li;
 
     bsg_sync_sync
      #(.width_p(1))
@@ -361,27 +356,24 @@ module bp_axi_top
     for (genvar i = 0; i < num_cce_p*dma_els_p; i++) begin: nl2
       bsg_sync_sync
        #(.width_p(1))
-       resp_v_crossing
+       cmd_crossing
        (.oclk_i(ungated_clk_i)
-       ,.iclk_data_i(buf_axi_dma_data_v_lo[i])
-       ,.oclk_data_o(buf_axi_dma_data_sync_v_lo[i])
+       ,.iclk_data_i(dma_pkt_v_lo[i] & ~dma_pkt_full_li[i] & ~dma_pkt_lo[i].write_not_read)
+       ,.oclk_data_o(cmd_v_li[i])
        );
 
       bp_axi_cdl
        cdl
-       (.clk_i(clk_i)
-       ,.reset_i(reset_i)
+       (.ungated_clk_i(ungated_clk_i)
+       ,.ungated_reset_i(ungated_reset_i)
 
-       ,.ungated_clk_i(ungated_clk_i)
-       ,.ungated_reset_i(ungated_reset_li)
-
+       ,.gate_i(gate_i)
        ,.gate_en_i(gate_en_sync_li)
        ,.dram_lat_i(dram_lat_sync_li)
        ,.gate_o(cdl_gate_lo[i])
 
-       ,.cmd_v_i(dma_pkt_v_lo[i] & ~dma_pkt_full_li[i] & ~dma_pkt_lo[i].write_not_read)
-       ,.resp_v_i(buf_axi_dma_data_sync_v_lo[i])
-       ,.resp_done_i(~axi_dma_data_v_lo[i])
+       ,.cmd_v_i(cmd_v_li[i])
+       ,.resp_v_i(axi_dma_data_v_lo[i])
        ,.deq_o(cdl_deq_lo[i])
        );
 
@@ -456,10 +448,10 @@ module bp_axi_top
         ,.w_data_i(buf_axi_dma_data_lo[i])
         ,.w_full_o(buf_axi_dma_data_full_li[i])
 
-        ,.r_clk_i(clk_i)
-        ,.r_reset_i(reset_i)
+        ,.r_clk_i(ungated_clk_i)
+        ,.r_reset_i(ungated_reset_i)
 
-        ,.r_deq_i(axi_dma_data_ready_and_li[i] & axi_dma_data_v_lo[i] & cdl_deq_lo[i])
+        ,.r_deq_i(axi_dma_data_ready_and_li[i] & axi_dma_data_v_lo[i] & ~gate_i & cdl_deq_lo[i])
         ,.r_data_o(axi_dma_data_lo[i])
         ,.r_valid_o(axi_dma_data_v_lo[i])
         );
