@@ -34,8 +34,8 @@
  *
  */
 
-`include "bsg_manycore_defines.vh"
-`include "bsg_manycore_endpoint_to_fifos.vh"
+`include "bsg_manycore_defines.svh"
+`include "bsg_manycore_endpoint_to_fifos.svh"
 
 module bsg_manycore_endpoint_to_fifos
  import bsg_manycore_pkg::*;

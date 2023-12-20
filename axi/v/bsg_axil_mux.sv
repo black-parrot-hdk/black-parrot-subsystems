@@ -1,5 +1,5 @@
 
-`include "bsg_defines.v"
+`include "bsg_defines.sv"
 
 module bsg_axil_mux
  #(parameter `BSG_INV_PARAM(addr_width_p)
@@ -124,7 +124,7 @@ module bsg_axil_mux
 
      ,.data_i({s00_axil_awaddr, s00_axil_awprot})
      ,.v_i(s00_axil_awvalid)
-     ,.ready_o(s00_axil_awready)
+     ,.ready_param_o(s00_axil_awready)
 
      ,.data_o({s00_axil_awaddr_buffered, s00_axil_awprot_buffered})
      ,.v_o(s00_axil_awvalid_buffered)
@@ -138,7 +138,7 @@ module bsg_axil_mux
 
      ,.data_i({s00_axil_wdata, s00_axil_wstrb})
      ,.v_i(s00_axil_wvalid)
-     ,.ready_o(s00_axil_wready)
+     ,.ready_param_o(s00_axil_wready)
 
      ,.data_o({s00_axil_wdata_buffered, s00_axil_wstrb_buffered})
      ,.v_o(s00_axil_wvalid_buffered)
@@ -152,7 +152,7 @@ module bsg_axil_mux
 
      ,.data_i({s00_axil_araddr, s00_axil_arprot})
      ,.v_i(s00_axil_arvalid)
-     ,.ready_o(s00_axil_arready)
+     ,.ready_param_o(s00_axil_arready)
 
      ,.data_o({s00_axil_araddr_buffered, s00_axil_arprot_buffered})
      ,.v_o(s00_axil_arvalid_buffered)
@@ -167,7 +167,7 @@ module bsg_axil_mux
 
      ,.data_i({s01_axil_awaddr, s01_axil_awprot})
      ,.v_i(s01_axil_awvalid)
-     ,.ready_o(s01_axil_awready)
+     ,.ready_param_o(s01_axil_awready)
 
      ,.data_o({s01_axil_awaddr_buffered, s01_axil_awprot_buffered})
      ,.v_o(s01_axil_awvalid_buffered)
@@ -181,7 +181,7 @@ module bsg_axil_mux
 
      ,.data_i({s01_axil_wdata, s01_axil_wstrb})
      ,.v_i(s01_axil_wvalid)
-     ,.ready_o(s01_axil_wready)
+     ,.ready_param_o(s01_axil_wready)
 
      ,.data_o({s01_axil_wdata_buffered, s01_axil_wstrb_buffered})
      ,.v_o(s01_axil_wvalid_buffered)
@@ -195,7 +195,7 @@ module bsg_axil_mux
 
      ,.data_i({s01_axil_araddr, s01_axil_arprot})
      ,.v_i(s01_axil_arvalid)
-     ,.ready_o(s01_axil_arready)
+     ,.ready_param_o(s01_axil_arready)
 
      ,.data_o({s01_axil_araddr_buffered, s01_axil_arprot_buffered})
      ,.v_o(s01_axil_arvalid_buffered)
@@ -269,7 +269,7 @@ module bsg_axil_mux
 
      ,.data_i(s00_wgnt)
      ,.v_i(write_complete)
-     ,.ready_o(write_resp_ready_lo)
+     ,.ready_param_o(write_resp_ready_lo)
 
      ,.data_o(s00_wgnt_resp)
      ,.v_o(s00_wgnt_resp_v_lo)
@@ -326,7 +326,7 @@ module bsg_axil_mux
 
      ,.data_i(s00_rgnt)
      ,.v_i(read_complete)
-     ,.ready_o(read_resp_ready_lo)
+     ,.ready_param_o(read_resp_ready_lo)
 
      ,.data_o(s00_rgnt_resp)
      ,.v_o(s00_rgnt_resp_v_lo)

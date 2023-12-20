@@ -116,7 +116,7 @@ module bp_me_axil_master
 
      ,.data_i(fsm_fwd_header_li)
      ,.v_i(fsm_fwd_yumi_lo & fsm_fwd_new_li)
-     ,.ready_o(stream_fifo_ready_and_lo)
+     ,.ready_param_o(stream_fifo_ready_and_lo)
 
      ,.data_o(fsm_rev_header_li)
      ,.v_o()

@@ -264,7 +264,7 @@ module bp_axi_top
 
          ,.data_i(axi_dma_data_lo[i])
          ,.v_i(axi_dma_data_v_lo[i])
-         ,.ready_o(axi_dma_data_ready_and_li[i])
+         ,.ready_and_o(axi_dma_data_ready_and_li[i])
 
          ,.data_o(dma_data_li[i])
          ,.v_o(dma_data_v_li[i])
@@ -309,7 +309,7 @@ module bp_axi_top
 
      ,.dma_data_o(axi_dma_data_lo)
      ,.dma_data_v_o(axi_dma_data_v_lo)
-     ,.dma_data_ready_i(axi_dma_data_ready_and_li)
+     ,.dma_data_ready_and_i(axi_dma_data_ready_and_li)
 
      ,.dma_data_i(axi_dma_data_li)
      ,.dma_data_v_i(axi_dma_data_v_li)

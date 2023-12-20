@@ -1,5 +1,5 @@
 
-`include "bsg_defines.v"
+`include "bsg_defines.sv"
 
 module bsg_axil_fifo_client
  import bsg_axi_pkg::*;
@@ -68,7 +68,7 @@ module bsg_axil_fifo_client
 
      ,.data_i(s_axil_araddr_i)
      ,.v_i(s_axil_arvalid_i)
-     ,.ready_o(s_axil_arready_o)
+     ,.ready_and_o(s_axil_arready_o)
 
      ,.data_o(araddr_li)
      ,.v_o(araddr_v_li)
@@ -85,7 +85,7 @@ module bsg_axil_fifo_client
 
      ,.data_i(s_axil_awaddr_i)
      ,.v_i(s_axil_awvalid_i)
-     ,.ready_o(s_axil_awready_o)
+     ,.ready_and_o(s_axil_awready_o)
 
      ,.data_o(awaddr_li)
      ,.v_o(awaddr_v_li)
@@ -103,7 +103,7 @@ module bsg_axil_fifo_client
 
      ,.data_i({s_axil_wstrb_i, s_axil_wdata_i})
      ,.v_i(s_axil_wvalid_i)
-     ,.ready_o(s_axil_wready_o)
+     ,.ready_and_o(s_axil_wready_o)
 
      ,.data_o({wmask_li, wdata_li})
      ,.v_o(wdata_v_li)
@@ -119,7 +119,7 @@ module bsg_axil_fifo_client
 
      ,.data_i(w_o)
      ,.v_i(return_v_li)
-     ,.ready_o(return_ready_lo)
+     ,.ready_and_o(return_ready_lo)
 
      ,.data_o(return_w_lo)
      ,.v_o(return_v_lo)

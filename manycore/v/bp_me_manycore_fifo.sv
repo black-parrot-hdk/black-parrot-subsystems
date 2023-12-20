@@ -1,7 +1,7 @@
 
 `include "bp_common_defines.svh"
-`include "bsg_manycore_defines.vh"
-`include "bsg_manycore_endpoint_to_fifos.vh"
+`include "bsg_manycore_defines.svh"
+`include "bsg_manycore_endpoint_to_fifos.svh"
 
 module bp_me_manycore_fifo
  import bp_common_pkg::*;

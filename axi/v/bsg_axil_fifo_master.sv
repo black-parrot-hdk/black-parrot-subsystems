@@ -1,5 +1,5 @@
 
-`include "bsg_defines.v"
+`include "bsg_defines.sv"
 
 module bsg_axil_fifo_master
  import bsg_axi_pkg::*;
@@ -64,7 +64,7 @@ module bsg_axil_fifo_master
 
      ,.data_i({data_i, wmask_i})
      ,.v_i(ready_and_o & v_i & w_i)
-     ,.ready_o(wdata_ready_lo)
+     ,.ready_and_o(wdata_ready_lo)
 
      ,.data_o({m_axil_wdata_o, m_axil_wstrb_o})
      ,.v_o(m_axil_wvalid_o)
@@ -82,7 +82,7 @@ module bsg_axil_fifo_master
 
      ,.data_i({w_i, addr_i})
      ,.v_i(ready_and_o & v_i)
-     ,.ready_o(addr_ready_lo)
+     ,.ready_and_o(addr_ready_lo)
 
      ,.data_o({w_lo, addr_lo})
      ,.v_o(addr_v_lo)
@@ -98,7 +98,7 @@ module bsg_axil_fifo_master
 
      ,.data_i(w_i)
      ,.v_i(ready_and_o & v_i)
-     ,.ready_o(return_ready_lo)
+     ,.ready_and_o(return_ready_lo)
 
      ,.data_o(return_w_lo)
      ,.v_o(return_v_lo)

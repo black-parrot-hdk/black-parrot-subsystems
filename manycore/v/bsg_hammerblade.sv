@@ -1,6 +1,6 @@
 
-`include "bsg_manycore_defines.vh"
-`include "bsg_tag.vh"
+`include "bsg_manycore_defines.svh"
+`include "bsg_tag.svh"
 `include "bp_common_defines.svh"
 
 module bsg_hammerblade

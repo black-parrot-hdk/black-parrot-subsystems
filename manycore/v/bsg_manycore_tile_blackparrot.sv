@@ -1,5 +1,5 @@
 
-`include "bsg_manycore_defines.vh"
+`include "bsg_manycore_defines.svh"
 `include "bp_common_defines.svh"
 
 // This is the tile for a blackparrot core.

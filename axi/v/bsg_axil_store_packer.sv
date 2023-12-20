@@ -5,7 +5,7 @@
 // To avoid dealing with ordering transactions, only 1 req is outstanding
 // We could very easily increase throughput here, but wait until it's a bottleneck
 
-`include "bsg_defines.v"
+`include "bsg_defines.sv"
 
 module bsg_axil_store_packer
  import bsg_axi_pkg::*;
