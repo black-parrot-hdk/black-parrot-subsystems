@@ -326,7 +326,7 @@ module bp_axi4_top
 
          ,.data_i(axi_dma_data_lo[i])
          ,.v_i(axi_dma_data_v_lo[i])
-         ,.ready_o(axi_dma_data_ready_and_li[i])
+         ,.ready_and_o(axi_dma_data_ready_and_li[i])
 
          ,.data_o(dma_data_li[i])
          ,.v_o(dma_data_v_li[i])
@@ -359,6 +359,7 @@ module bp_axi4_top
      ,.axi_id_width_p(m01_axi_id_width_p)
      ,.axi_burst_len_p(l2_block_width_p/m01_axi_data_width_p)
      ,.axi_burst_type_p(e_axi_burst_incr)
+     ,.ordering_en_p(0)
      )
    cache2axi
     (.clk_i(clk_i)
@@ -370,7 +371,7 @@ module bp_axi4_top
 
      ,.dma_data_o(axi_dma_data_lo)
      ,.dma_data_v_o(axi_dma_data_v_lo)
-     ,.dma_data_ready_i(axi_dma_data_ready_and_li)
+     ,.dma_data_ready_and_i(axi_dma_data_ready_and_li)
 
      ,.dma_data_i(axi_dma_data_li)
      ,.dma_data_v_i(axi_dma_data_v_li)

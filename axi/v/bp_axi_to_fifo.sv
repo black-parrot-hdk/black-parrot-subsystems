@@ -26,7 +26,7 @@
  *
  */
 
-`include "bsg_defines.v"
+`include "bsg_defines.sv"
 
 module bp_axi_to_fifo
  import bsg_axi_pkg::*;
@@ -133,7 +133,7 @@ module bp_axi_to_fifo
       ,.reset_i(reset_i)
       ,.data_i({s_axi_awburst_i, s_axi_awsize_i, s_axi_awlen_i, s_axi_awid_i, s_axi_awaddr_i})
       ,.v_i(s_axi_awvalid_i)
-      ,.ready_o(s_axi_awready_o)
+      ,.ready_param_o(s_axi_awready_o)
       ,.data_o({s_axi_awburst, s_axi_awsize, s_axi_awlen, s_axi_awid, s_axi_awaddr})
       ,.v_o(s_axi_awvalid)
       ,.yumi_i(s_axi_awyumi)
@@ -181,7 +181,7 @@ module bp_axi_to_fifo
       ,.reset_i(reset_i)
       ,.data_i(s_axi_awid)
       ,.v_i(awid_v_li)
-      ,.ready_o(awid_ready_and_lo)
+      ,.ready_param_o(awid_ready_and_lo)
       ,.data_o(awid_li)
       ,.v_o(awid_v_lo)
       ,.yumi_i(awid_yumi_li)
@@ -208,7 +208,7 @@ module bp_axi_to_fifo
       ,.reset_i(reset_i)
       ,.data_i({s_axi_wstrb_i, s_axi_wdata_i})
       ,.v_i(wdata_valid_li)
-      ,.ready_o(wdata_ready_and_lo)
+      ,.ready_param_o(wdata_ready_and_lo)
       ,.data_o({wstrb_lo, wdata_lo})
       ,.v_o(wdata_valid_lo)
       ,.yumi_i(wdata_yumi_li)
@@ -227,7 +227,7 @@ module bp_axi_to_fifo
       ,.reset_i(reset_i)
       ,.data_i(s_axi_wlast_i)
       ,.v_i(wlast_valid_li)
-      ,.ready_o(wlast_ready_and_lo)
+      ,.ready_param_o(wlast_ready_and_lo)
       ,.data_o(wlast_lo)
       ,.v_o(wlast_valid_lo)
       ,.yumi_i(wlast_yumi_li)
@@ -257,7 +257,7 @@ module bp_axi_to_fifo
       ,.reset_i(reset_i)
       ,.data_i({s_axi_arburst_i, s_axi_arsize_i, s_axi_arlen_i, s_axi_arid_i, s_axi_araddr_i})
       ,.v_i(s_axi_arvalid_i)
-      ,.ready_o(s_axi_arready_o)
+      ,.ready_param_o(s_axi_arready_o)
       ,.data_o({s_axi_arburst, s_axi_arsize, s_axi_arlen, s_axi_arid, s_axi_araddr})
       ,.v_o(s_axi_arvalid)
       ,.yumi_i(s_axi_aryumi)
@@ -305,7 +305,7 @@ module bp_axi_to_fifo
       ,.reset_i(reset_i)
       ,.data_i(s_axi_arid)
       ,.v_i(arid_v_li)
-      ,.ready_o(arid_ready_and_lo)
+      ,.ready_param_o(arid_ready_and_lo)
       ,.data_o(arid_li)
       ,.v_o(arid_v_lo)
       ,.yumi_i(arid_yumi_li)
@@ -332,7 +332,7 @@ module bp_axi_to_fifo
       ,.reset_i(reset_i)
       ,.data_i(arpump_last_lo)
       ,.v_i(rlast_valid_li)
-      ,.ready_o(rlast_ready_and_lo)
+      ,.ready_param_o(rlast_ready_and_lo)
       ,.data_o(rlast_lo)
       ,.v_o(rlast_valid_lo)
       ,.yumi_i(rlast_yumi_li)
@@ -354,7 +354,7 @@ module bp_axi_to_fifo
       ,.reset_i(reset_i)
       ,.data_i({arpump_last_lo, arpump_size_lo, arpump_addr_lo})
       ,.v_i(rd_req_valid_li)
-      ,.ready_o(rd_req_ready_and_lo)
+      ,.ready_param_o(rd_req_ready_and_lo)
       ,.data_o({rd_req_last_lo, rd_req_size_lo, rd_req_addr_lo})
       ,.v_o(rd_req_valid_lo)
       ,.yumi_i(rd_req_yumi_li)
@@ -458,7 +458,7 @@ module bp_axi_to_fifo
       ,.reset_i(reset_i)
       // from FIFO interface
       ,.v_i(wr_resp_v_li)
-      ,.ready_o(wr_resp_ready_and_lo)
+      ,.ready_param_o(wr_resp_ready_and_lo)
       ,.data_i(w_i)
       // to AXI
       ,.v_o(wr_resp_v_lo)
@@ -479,7 +479,7 @@ module bp_axi_to_fifo
       ,.reset_i(reset_i)
       // from FIFO interface
       ,.v_i(rd_resp_v_li)
-      ,.ready_o(rd_resp_ready_and_lo)
+      ,.ready_param_o(rd_resp_ready_and_lo)
       ,.data_i(data_i)
       // to AXI
       ,.v_o(rd_resp_v_lo)

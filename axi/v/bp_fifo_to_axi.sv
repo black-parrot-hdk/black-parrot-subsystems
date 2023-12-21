@@ -27,7 +27,7 @@
 
 // TODO: should fifo wmask_i be generated internally based on address and size?
 
-`include "bsg_defines.v"
+`include "bsg_defines.sv"
 
 module bp_fifo_to_axi
  import bsg_axi_pkg::*;
@@ -146,7 +146,7 @@ module bp_fifo_to_axi
       ,.reset_i(reset_i)
       // from FIFO interface
       ,.v_i(reorder_v)
-      ,.ready_o(reorder_ready_and)
+      ,.ready_param_o(reorder_ready_and)
       ,.data_i(w_i)
       // to response arbitration
       ,.v_o(reorder_v_lo)
@@ -164,7 +164,7 @@ module bp_fifo_to_axi
       ,.reset_i(reset_i)
       // from FIFO interface
       ,.v_i(rd_req_v)
-      ,.ready_o(rd_req_ready_and)
+      ,.ready_param_o(rd_req_ready_and)
       ,.data_i({size_i, addr_i})
       // to AXI
       ,.v_o(rd_v_lo)
@@ -182,7 +182,7 @@ module bp_fifo_to_axi
       ,.reset_i(reset_i)
       // from FIFO interface
       ,.v_i(wr_req_v)
-      ,.ready_o(wr_req_ready_and)
+      ,.ready_param_o(wr_req_ready_and)
       ,.data_i({size_i, wmask_i, data_i, addr_i})
       // to AXI
       ,.v_o(wr_v_lo)
@@ -262,7 +262,7 @@ module bp_fifo_to_axi
       ,.reset_i(reset_i)
       // from B
       ,.v_i(m_axi_bvalid_i)
-      ,.ready_o(m_axi_bready_o)
+      ,.ready_param_o(m_axi_bready_o)
       ,.data_i(m_axi_bresp_i)
       // to FIFO
       ,.v_o(b_v_lo)
@@ -283,7 +283,7 @@ module bp_fifo_to_axi
       ,.reset_i(reset_i)
       // from R
       ,.v_i(m_axi_rvalid_i)
-      ,.ready_o(m_axi_rready_o)
+      ,.ready_param_o(m_axi_rready_o)
       ,.data_i(m_axi_rdata_i)
       // to FIFO
       ,.v_o(r_v_lo)

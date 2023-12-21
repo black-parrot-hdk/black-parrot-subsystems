@@ -9,7 +9,7 @@
  *
  */
 
-`include "bsg_defines.v"
+`include "bsg_defines.sv"
 
 module bp_axi_pump
   import bsg_axi_pkg::*;
