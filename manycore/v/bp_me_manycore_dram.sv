@@ -16,7 +16,6 @@ module bp_me_manycore_dram
    , parameter `BSG_INV_PARAM(data_width_p)
    , parameter `BSG_INV_PARAM(addr_width_p)
    , parameter `BSG_INV_PARAM(icache_block_size_in_words_p)
-   , parameter `BSG_INV_PARAM(num_vcache_rows_p)
    , parameter `BSG_INV_PARAM(vcache_block_size_in_words_p)
    , parameter `BSG_INV_PARAM(vcache_size_p)
    , parameter `BSG_INV_PARAM(vcache_sets_p)
@@ -24,6 +23,7 @@ module bp_me_manycore_dram
    , localparam x_subcord_width_lp = `BSG_SAFE_CLOG2(num_tiles_x_p)
    , parameter `BSG_INV_PARAM(num_tiles_y_p)
    , localparam y_subcord_width_lp = `BSG_SAFE_CLOG2(num_tiles_y_p)
+   , parameter `BSG_INV_PARAM(ipoly_hashing_p)
 
    , parameter `BSG_INV_PARAM(outstanding_words_p)
 
@@ -213,8 +213,8 @@ module bp_me_manycore_dram
      ,.pod_y_cord_width_p(pod_y_cord_width_p)
      ,.x_subcord_width_p(x_subcord_width_lp)
      ,.y_subcord_width_p(y_subcord_width_lp)
-     ,.num_vcache_rows_p(num_vcache_rows_p)
      ,.vcache_block_size_in_words_p(vcache_block_size_in_words_p)
+     ,.ipoly_hashing_p(ipoly_hashing_p)
      )
    dram_hash
     (.eva_i(dram_eva_li)

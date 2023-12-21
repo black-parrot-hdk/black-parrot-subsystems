@@ -16,7 +16,6 @@ module bp_me_manycore_mmio
    , parameter `BSG_INV_PARAM(data_width_p)
    , parameter `BSG_INV_PARAM(addr_width_p)
    , parameter `BSG_INV_PARAM(icache_block_size_in_words_p)
-   , parameter `BSG_INV_PARAM(num_vcache_rows_p)
    , parameter `BSG_INV_PARAM(vcache_block_size_in_words_p)
    , parameter `BSG_INV_PARAM(vcache_size_p)
    , parameter `BSG_INV_PARAM(vcache_sets_p)
