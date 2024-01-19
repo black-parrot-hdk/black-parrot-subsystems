@@ -25,8 +25,6 @@
  *
  */
 
-// TODO: should fifo wmask_i be generated internally based on address and size?
-
 `include "bsg_defines.sv"
 
 module bp_fifo_to_axi
