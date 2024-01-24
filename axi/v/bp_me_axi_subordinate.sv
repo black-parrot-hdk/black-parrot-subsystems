@@ -92,7 +92,7 @@ module bp_me_axi_subordinate
    , output logic [1:0]                         s_axi_rresp_o
    );
 
-  `declare_bp_bedrock_if(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p)
+  `declare_bp_bedrock_if(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p);
   `bp_cast_o(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
   `bp_cast_i(bp_bedrock_mem_rev_header_s, mem_rev_header);
 
@@ -151,7 +151,7 @@ module bp_me_axi_subordinate
   logic w_lo;
   logic [2:0] size_lo;
 
-  wire mem_rev_fifo_w_li = (mem_rev_fifo_header_li.msg_type == e_bedrock_mem_uc_wr);
+  wire mem_rev_fifo_w_li = (mem_rev_fifo_header_li.msg_type == e_bedrock_mem_wr);
   bp_axi_to_fifo
    #(.s_axi_data_width_p(s_axi_data_width_p)
      ,.s_axi_addr_width_p(s_axi_addr_width_p)
@@ -183,7 +183,7 @@ module bp_me_axi_subordinate
     mem_fwd_fifo_header_lo.payload.lce_id  = lce_id_i;
     mem_fwd_fifo_header_lo.payload.src_did = did_i;
     mem_fwd_fifo_header_lo.addr            = addr_lo;
-    mem_fwd_fifo_header_lo.msg_type        = w_lo ? e_bedrock_mem_uc_wr : e_bedrock_mem_uc_rd;
+    mem_fwd_fifo_header_lo.msg_type        = w_lo ? e_bedrock_mem_wr : e_bedrock_mem_rd;
     mem_fwd_fifo_header_lo.size            = bp_bedrock_msg_size_e'(size_lo);
   end
 

@@ -95,7 +95,7 @@ module bp_me_axi_manager
 
   wire unused = &{m_axi_bid_i, m_axi_bresp_i, m_axi_rid_i, m_axi_rlast_i, m_axi_rresp_i};
 
-  `declare_bp_bedrock_if(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p)
+  `declare_bp_bedrock_if(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p);
   `bp_cast_i(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
   `bp_cast_o(bp_bedrock_mem_rev_header_s, mem_rev_header);
 
@@ -141,7 +141,7 @@ module bp_me_axi_manager
       ,.data_o({mem_fwd_data_li, mem_fwd_header_li})
       );
 
-  wire mem_fwd_write = (mem_fwd_header_li.msg_type inside {e_bedrock_mem_wr, e_bedrock_mem_uc_wr});
+  wire mem_fwd_write = (mem_fwd_header_li.msg_type inside {e_bedrock_mem_wr});
 
   logic mem_rev_v_lo, mem_rev_ready_and_li;
 
