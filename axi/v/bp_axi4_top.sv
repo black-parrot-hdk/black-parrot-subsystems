@@ -312,6 +312,12 @@ module bp_axi4_top
      ,.*
      );
 
+  // TODO: only works if daddr_width_p = 1 + caddr_width_p
+  logic [caddr_width_p-1:0] axi_awaddr;
+  logic axi_awaddr_unused;
+  logic [caddr_width_p-1:0] axi_araddr;
+  logic axi_araddr_unused;
+
   bsg_cache_to_axi
    #(.addr_width_p(daddr_width_p)
      ,.data_width_p(l2_fill_width_p)
@@ -341,7 +347,7 @@ module bp_axi4_top
      ,.dma_data_yumi_o(dma_data_yumi_li)
 
      ,.axi_awid_o(m01_axi_awid_o)
-     ,.axi_awaddr_addr_o(m01_axi_awaddr_o)
+     ,.axi_awaddr_addr_o({axi_awaddr_unused, axi_awaddr})
      ,.axi_awlen_o(m01_axi_awlen_o)
      ,.axi_awsize_o(m01_axi_awsize_o)
      ,.axi_awburst_o(m01_axi_awburst_o)
@@ -363,7 +369,7 @@ module bp_axi4_top
      ,.axi_bready_o(m01_axi_bready_o)
 
      ,.axi_arid_o(m01_axi_arid_o)
-     ,.axi_araddr_addr_o(m01_axi_araddr_o)
+     ,.axi_araddr_addr_o({axi_araddr_unused, axi_araddr})
      ,.axi_arlen_o(m01_axi_arlen_o)
      ,.axi_arsize_o(m01_axi_arsize_o)
      ,.axi_arburst_o(m01_axi_arburst_o)
@@ -389,6 +395,9 @@ module bp_axi4_top
   assign m01_axi_awregion_o = '0;
   assign m01_axi_arqos_o = '0;
   assign m01_axi_arregion_o = '0;
+
+  assign m01_axi_araddr_o = axi_araddr;
+  assign m01_axi_awaddr_o = axi_awaddr;
 
 endmodule
 
