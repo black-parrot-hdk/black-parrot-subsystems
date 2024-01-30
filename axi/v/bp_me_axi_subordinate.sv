@@ -182,6 +182,7 @@ module bp_me_axi_subordinate
     mem_fwd_fifo_header_lo = '0;
     mem_fwd_fifo_header_lo.payload.lce_id  = lce_id_i;
     mem_fwd_fifo_header_lo.payload.src_did = did_i;
+    mem_fwd_fifo_header_lo.payload.uncached = 1'b1;
     mem_fwd_fifo_header_lo.addr            = addr_lo;
     mem_fwd_fifo_header_lo.msg_type        = w_lo ? e_bedrock_mem_wr : e_bedrock_mem_rd;
     mem_fwd_fifo_header_lo.size            = bp_bedrock_msg_size_e'(size_lo);

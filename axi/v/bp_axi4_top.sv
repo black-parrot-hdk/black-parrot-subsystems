@@ -211,7 +211,7 @@ module bp_axi4_top
   // DMA interface from BP to cache2axi
   `declare_bsg_cache_dma_pkt_s(daddr_width_p, l2_block_size_in_words_p);
   bsg_cache_dma_pkt_s [num_cce_p*l2_dmas_p-1:0] dma_pkt_lo;
-  logic [num_cce_p*l2_dmas_p-1:0] dma_pkt_v_lo, dma_pkt_ready_and_li;
+  logic [num_cce_p*l2_dmas_p-1:0] dma_pkt_v_lo, dma_pkt_yumi_li;
   logic [num_cce_p*l2_dmas_p-1:0][l2_fill_width_p-1:0] dma_data_lo;
   logic [num_cce_p*l2_dmas_p-1:0] dma_data_v_lo, dma_data_ready_and_li;
   logic [num_cce_p*l2_dmas_p-1:0][l2_fill_width_p-1:0] dma_data_li;
@@ -252,7 +252,7 @@ module bp_axi4_top
      // DMA (memory) to cache2axi
      ,.dma_pkt_o(dma_pkt_lo)
      ,.dma_pkt_v_o(dma_pkt_v_lo)
-     ,.dma_pkt_ready_and_i(dma_pkt_ready_and_li)
+     ,.dma_pkt_ready_and_i(dma_pkt_yumi_li)
 
      ,.dma_data_i(dma_data_li)
      ,.dma_data_v_i(dma_data_v_li)
@@ -359,7 +359,7 @@ module bp_axi4_top
      ,.axi_id_width_p(m01_axi_id_width_p)
      ,.axi_burst_len_p(l2_block_width_p/m01_axi_data_width_p)
      ,.axi_burst_type_p(e_axi_burst_incr)
-     ,.ordering_en_p(0)
+     ,.ordering_en_p(1)
      )
    cache2axi
     (.clk_i(clk_i)
@@ -367,7 +367,7 @@ module bp_axi4_top
 
      ,.dma_pkt_i(dma_pkt_lo)
      ,.dma_pkt_v_i(dma_pkt_v_lo)
-     ,.dma_pkt_yumi_o(dma_pkt_ready_and_li)
+     ,.dma_pkt_yumi_o(dma_pkt_yumi_li)
 
      ,.dma_data_o(axi_dma_data_lo)
      ,.dma_data_v_o(axi_dma_data_v_lo)
