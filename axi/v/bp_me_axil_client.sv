@@ -106,7 +106,7 @@ module bp_me_axil_client
       mem_fwd_header_cast_o.payload.lce_id  = lce_id_i;
       mem_fwd_header_cast_o.payload.src_did = did_i;
       mem_fwd_header_cast_o.addr            = addr_lo;
-      mem_fwd_header_cast_o.msg_type        = w_lo ? e_bedrock_mem_uc_wr : e_bedrock_mem_uc_rd;
+      mem_fwd_header_cast_o.msg_type        = w_lo ? e_bedrock_mem_wr : e_bedrock_mem_rd;
       if (~w_lo) begin
         // reads are full width
         mem_fwd_header_cast_o.size = bp_bedrock_msg_size_e'(lg_axil_mask_width_lp);
