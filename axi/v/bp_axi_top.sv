@@ -13,6 +13,8 @@ module bp_axi_top
  // see bp_common/src/include/bp_common_aviary_pkgdef.svh for a list of configurations that you can try!
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
    `declare_bp_proc_params(bp_params_p)
+   , parameter axi_core_clk_async_p = 0
+   , localparam lg_async_fifo_size_lp = 3
 
    // AXI4-LITE PARAMS
    , parameter `BSG_INV_PARAM(m_axil_addr_width_p)
@@ -32,9 +34,10 @@ module bp_axi_top
 
    `declare_bp_bedrock_if_widths(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p)
    )
-  (input                                       clk_i
-   , input                                     reset_i
+  (input                                       axi_clk_i
+   , input                                     core_clk_i
    , input                                     rt_clk_i
+   , input                                     async_reset_i
 
    //======================== Outgoing I/O ========================
    , output logic [m_axil_addr_width_p-1:0]    m_axil_awaddr_o
@@ -155,12 +158,30 @@ module bp_axi_top
   logic [num_cce_p*l2_dmas_p-1:0][l2_fill_width_p-1:0] dma_data_li;
   logic [num_cce_p*l2_dmas_p-1:0] dma_data_v_li, dma_data_ready_and_lo;
 
+  logic core_reset_li;
+  bsg_sync_sync
+   #(.width_p(1))
+   core_reset_bss
+    (.oclk_i(core_clk_i)
+     ,.iclk_data_i(async_reset_i)
+     ,.oclk_data_o(core_reset_li)
+     );
+
+  logic axi_reset_li;
+  bsg_sync_sync
+   #(.width_p(1))
+   axi_reset_bss
+    (.oclk_i(axi_clk_i)
+     ,.iclk_data_i(async_reset_i)
+     ,.oclk_data_o(axi_reset_li)
+     );
+
   bp_processor
    #(.bp_params_p(bp_params_p))
    processor
-    (.clk_i(clk_i)
+    (.clk_i(core_clk_i)
      ,.rt_clk_i(rt_clk_i)
-     ,.reset_i(reset_i)
+     ,.reset_i(core_reset_li)
 
      // Irrelevant for current AXI wrapper
      ,.my_did_i(1'b1)
@@ -202,24 +223,44 @@ module bp_axi_top
      ,.dma_data_ready_and_i(dma_data_ready_and_li)
      );
 
+  bp_bedrock_mem_fwd_header_s axi_mem_fwd_header_li;
+  logic [bedrock_fill_width_p-1:0] axi_mem_fwd_data_li;
+  logic axi_mem_fwd_v_li, axi_mem_fwd_ready_and_lo;
+  bp_bedrock_mem_rev_header_s axi_mem_rev_header_lo;
+  logic [bedrock_fill_width_p-1:0] axi_mem_rev_data_lo;
+  logic axi_mem_rev_v_lo, axi_mem_rev_ready_and_li;
+  bp_bedrock_mem_fwd_header_s axi_mem_fwd_header_lo;
+  logic [bedrock_fill_width_p-1:0] axi_mem_fwd_data_lo;
+  logic axi_mem_fwd_v_lo, axi_mem_fwd_ready_and_li;
+  bp_bedrock_mem_rev_header_s axi_mem_rev_header_li;
+  logic [bedrock_fill_width_p-1:0] axi_mem_rev_data_li;
+  logic axi_mem_rev_v_li, axi_mem_rev_ready_and_lo;
+
+  bsg_cache_dma_pkt_s [num_cce_p*l2_dmas_p-1:0] axi_dma_pkt_li;
+  logic [num_cce_p*l2_dmas_p-1:0] axi_dma_pkt_v_li, axi_dma_pkt_yumi_lo;
+  logic [num_cce_p*l2_dmas_p-1:0][axi_data_width_p-1:0] axi_dma_data_lo;
+  logic [num_cce_p*l2_dmas_p-1:0] axi_dma_data_v_lo, axi_dma_data_ready_and_li;
+  logic [num_cce_p*l2_dmas_p-1:0][axi_data_width_p-1:0] axi_dma_data_li;
+  logic [num_cce_p*l2_dmas_p-1:0] axi_dma_data_v_li, axi_dma_data_yumi_lo;
+
   bp_me_axil_client
    #(.bp_params_p(bp_params_p)
      ,.axil_data_width_p(s_axil_data_width_p)
      ,.axil_addr_width_p(s_axil_addr_width_p)
      )
    axil2io
-    (.clk_i(clk_i)
-     ,.reset_i(reset_i)
+    (.clk_i(axi_clk_i)
+     ,.reset_i(axi_reset_li)
 
-     ,.mem_fwd_header_o(mem_fwd_header_li)
-     ,.mem_fwd_data_o(mem_fwd_data_li)
-     ,.mem_fwd_v_o(mem_fwd_v_li)
-     ,.mem_fwd_ready_and_i(mem_fwd_ready_and_lo)
+     ,.mem_fwd_header_o(axi_mem_fwd_header_lo)
+     ,.mem_fwd_data_o(axi_mem_fwd_data_lo)
+     ,.mem_fwd_v_o(axi_mem_fwd_v_lo)
+     ,.mem_fwd_ready_and_i(axi_mem_fwd_ready_and_li)
 
-     ,.mem_rev_header_i(mem_rev_header_lo)
-     ,.mem_rev_data_i(mem_rev_data_lo)
-     ,.mem_rev_v_i(mem_rev_v_lo)
-     ,.mem_rev_ready_and_o(mem_rev_ready_and_li)
+     ,.mem_rev_header_i(axi_mem_rev_header_li)
+     ,.mem_rev_data_i(axi_mem_rev_data_li)
+     ,.mem_rev_v_i(axi_mem_rev_v_li)
+     ,.mem_rev_ready_and_o(axi_mem_rev_ready_and_lo)
 
      ,.lce_id_i(lce_id_width_p'('b10))
      ,.did_i(did_width_p'('1))
@@ -232,60 +273,21 @@ module bp_axi_top
      ,.axil_addr_width_p(m_axil_addr_width_p)
      )
    io2axil
-    (.clk_i(clk_i)
-     ,.reset_i(reset_i)
+    (.clk_i(axi_clk_i)
+     ,.reset_i(axi_reset_li)
 
-     ,.mem_fwd_header_i(mem_fwd_header_lo)
-     ,.mem_fwd_data_i(mem_fwd_data_lo)
-     ,.mem_fwd_v_i(mem_fwd_v_lo)
-     ,.mem_fwd_ready_and_o(mem_fwd_ready_and_li)
+     ,.mem_fwd_header_i(axi_mem_fwd_header_li)
+     ,.mem_fwd_data_i(axi_mem_fwd_data_li)
+     ,.mem_fwd_v_i(axi_mem_fwd_v_li)
+     ,.mem_fwd_ready_and_o(axi_mem_fwd_ready_and_lo)
 
-     ,.mem_rev_header_o(mem_rev_header_li)
-     ,.mem_rev_data_o(mem_rev_data_li)
-     ,.mem_rev_v_o(mem_rev_v_li)
-     ,.mem_rev_ready_and_i(mem_rev_ready_and_lo)
+     ,.mem_rev_header_o(axi_mem_rev_header_lo)
+     ,.mem_rev_data_o(axi_mem_rev_data_lo)
+     ,.mem_rev_v_o(axi_mem_rev_v_lo)
+     ,.mem_rev_ready_and_i(axi_mem_rev_ready_and_li)
 
      ,.*
      );
-
-  // If necessary, downsize to axi data width. This could be done in bsg_cache_to_axi,
-  //   but punt for now
-  logic [num_cce_p*l2_dmas_p-1:0][axi_data_width_p-1:0] axi_dma_data_lo;
-  logic [num_cce_p*l2_dmas_p-1:0] axi_dma_data_v_lo, axi_dma_data_ready_and_li;
-  logic [num_cce_p*l2_dmas_p-1:0][axi_data_width_p-1:0] axi_dma_data_li;
-  logic [num_cce_p*l2_dmas_p-1:0] axi_dma_data_v_li, axi_dma_data_yumi_lo;
-  for (genvar i = 0; i < num_cce_p*l2_dmas_p; i++)
-    begin : narrow
-      bsg_serial_in_parallel_out_full
-       #(.width_p(axi_data_width_p), .els_p(l2_fill_width_p/axi_data_width_p))
-       dma_piso
-        (.clk_i(clk_i)
-         ,.reset_i(reset_i)
-
-         ,.data_i(axi_dma_data_lo[i])
-         ,.v_i(axi_dma_data_v_lo[i])
-         ,.ready_o(axi_dma_data_ready_and_li[i])
-
-         ,.data_o(dma_data_li[i])
-         ,.v_o(dma_data_v_li[i])
-         ,.yumi_i(dma_data_ready_and_lo[i] & dma_data_v_li[i])
-         );
-
-      bsg_parallel_in_serial_out
-       #(.width_p(axi_data_width_p), .els_p(l2_fill_width_p/axi_data_width_p))
-       dma_sipo
-        (.clk_i(clk_i)
-         ,.reset_i(reset_i)
-
-         ,.data_i(dma_data_lo[i])
-         ,.valid_i(dma_data_v_lo[i])
-         ,.ready_and_o(dma_data_ready_and_li[i])
-
-         ,.data_o(axi_dma_data_li[i])
-         ,.valid_o(axi_dma_data_v_li[i])
-         ,.yumi_i(axi_dma_data_yumi_lo[i])
-         );
-    end
 
   bsg_cache_to_axi
    #(.addr_width_p(daddr_width_p)
@@ -300,16 +302,16 @@ module bp_axi_top
      ,.ordering_en_p(1)
      )
    cache2axi
-    (.clk_i(clk_i)
-     ,.reset_i(reset_i)
+    (.clk_i(axi_clk_i)
+     ,.reset_i(axi_reset_li)
 
-     ,.dma_pkt_i(dma_pkt_lo)
-     ,.dma_pkt_v_i(dma_pkt_v_lo)
-     ,.dma_pkt_yumi_o(dma_pkt_ready_and_li)
+     ,.dma_pkt_i(axi_dma_pkt_li)
+     ,.dma_pkt_v_i(axi_dma_pkt_v_li)
+     ,.dma_pkt_yumi_o(axi_dma_pkt_yumi_lo)
 
      ,.dma_data_o(axi_dma_data_lo)
      ,.dma_data_v_o(axi_dma_data_v_lo)
-     ,.dma_data_ready_i(axi_dma_data_ready_and_li)
+     ,.dma_data_ready_and_i(axi_dma_data_ready_and_li)
 
      ,.dma_data_i(axi_dma_data_li)
      ,.dma_data_v_i(axi_dma_data_v_li)
@@ -359,6 +361,187 @@ module bp_axi_top
      ,.axi_awaddr_cache_id_o()
      ,.axi_araddr_cache_id_o()
      );
+
+  if (axi_core_clk_async_p)
+    begin : async
+      // Input I/O interface
+      logic axi_mem_fwd_out_full_lo;
+      assign axi_mem_fwd_ready_and_li = ~axi_mem_fwd_out_full_lo;
+      bsg_async_fifo
+       #(.width_p($bits(bp_bedrock_mem_fwd_header_s)+bedrock_fill_width_p), .lg_size_p(lg_async_fifo_size_lp))
+       mem_fwd_iaf
+        (.w_clk_i(axi_clk_i)
+         ,.w_reset_i(axi_reset_li)
+
+         ,.w_enq_i(axi_mem_fwd_ready_and_li & axi_mem_fwd_v_lo)
+         ,.w_data_i({axi_mem_fwd_data_lo, axi_mem_fwd_header_lo})
+         ,.w_full_o(axi_mem_fwd_out_full_lo)
+
+         ,.r_clk_i(core_clk_i)
+         ,.r_reset_i(core_reset_li)
+
+         ,.r_deq_i(mem_fwd_ready_and_lo & mem_fwd_v_li)
+         ,.r_data_o({mem_fwd_data_li, mem_fwd_header_li})
+         ,.r_valid_o(mem_fwd_v_li)
+         );
+
+      logic mem_rev_out_full_lo;
+      assign mem_rev_ready_and_li = ~mem_rev_out_full_lo;
+      bsg_async_fifo
+       #(.width_p($bits(bp_bedrock_mem_rev_header_s)+bedrock_fill_width_p), .lg_size_p(lg_async_fifo_size_lp))
+       mem_rev_oaf
+        (.w_clk_i(core_clk_i)
+         ,.w_reset_i(core_reset_li)
+
+         ,.w_enq_i(mem_rev_ready_and_li & mem_rev_v_lo)
+         ,.w_data_i({mem_rev_data_lo, mem_rev_header_lo})
+         ,.w_full_o(mem_rev_out_full_lo)
+
+         ,.r_clk_i(axi_clk_i)
+         ,.r_reset_i(axi_reset_li)
+
+         ,.r_deq_i(axi_mem_rev_ready_and_lo & axi_mem_rev_v_li)
+         ,.r_data_o({axi_mem_rev_data_li, axi_mem_rev_header_li})
+         ,.r_valid_o(axi_mem_rev_v_li)
+         );
+
+
+      // Output I/O interface
+      logic mem_fwd_out_full_lo;
+      assign mem_fwd_ready_and_li = ~mem_fwd_out_full_lo;
+      bsg_async_fifo
+       #(.width_p($bits(bp_bedrock_mem_fwd_header_s)+bedrock_fill_width_p), .lg_size_p(lg_async_fifo_size_lp))
+       mem_fwd_oaf
+        (.w_clk_i(core_clk_i)
+         ,.w_reset_i(core_reset_li)
+
+         ,.w_enq_i(mem_fwd_ready_and_li & mem_fwd_v_lo)
+         ,.w_data_i({mem_fwd_data_lo, mem_fwd_header_lo})
+         ,.w_full_o(mem_fwd_out_full_lo)
+
+         ,.r_clk_i(axi_clk_i)
+         ,.r_reset_i(axi_reset_li)
+
+         ,.r_deq_i(axi_mem_fwd_ready_and_lo & axi_mem_fwd_v_li)
+         ,.r_data_o({axi_mem_fwd_data_li, axi_mem_fwd_header_li})
+         ,.r_valid_o(axi_mem_fwd_v_li)
+         );
+
+      logic axi_mem_rev_out_full_lo;
+      assign axi_mem_rev_ready_and_li = ~axi_mem_rev_out_full_lo;
+      bsg_async_fifo
+       #(.width_p($bits(bp_bedrock_mem_rev_header_s)+bedrock_fill_width_p), .lg_size_p(lg_async_fifo_size_lp))
+       mem_rev_iaf
+        (.w_clk_i(axi_clk_i)
+         ,.w_reset_i(axi_reset_li)
+
+         ,.w_enq_i(axi_mem_rev_ready_and_li & axi_mem_rev_v_lo)
+         ,.w_data_i({axi_mem_rev_data_lo, axi_mem_rev_header_lo})
+         ,.w_full_o(axi_mem_rev_out_full_lo)
+
+         ,.r_clk_i(core_clk_i)
+         ,.r_reset_i(core_reset_li)
+
+         ,.r_deq_i(mem_rev_ready_and_lo & mem_rev_v_li)
+         ,.r_data_o({mem_rev_data_li, mem_rev_header_li})
+         ,.r_valid_o(mem_rev_v_li)
+         );
+
+      // DMA interface
+      logic dma_pkt_full_lo;
+      assign dma_pkt_ready_and_li = ~dma_pkt_full_lo;
+      bsg_async_fifo
+       #(.width_p($bits(bsg_cache_dma_pkt_s)), .lg_size_p(lg_async_fifo_size_lp))
+       dma_pkt_af
+        (.w_clk_i(core_clk_i)
+         ,.w_reset_i(core_reset_li)
+
+         ,.w_enq_i(dma_pkt_ready_and_li & dma_pkt_v_lo)
+         ,.w_data_i(dma_pkt_lo)
+         ,.w_full_o(dma_pkt_full_lo)
+
+         ,.r_clk_i(axi_clk_i)
+         ,.r_reset_i(axi_reset_li)
+
+         ,.r_deq_i(axi_dma_pkt_yumi_lo)
+         ,.r_data_o(axi_dma_pkt_li)
+         ,.r_valid_o(axi_dma_pkt_v_li)
+         );
+
+      logic dma_data_out_full_lo;
+      assign dma_data_ready_and_li = ~dma_data_out_full_lo;
+      bsg_async_fifo
+       #(.width_p(l2_fill_width_p), .lg_size_p(lg_async_fifo_size_lp))
+       dma_out_data_af
+        (.w_clk_i(core_clk_i)
+         ,.w_reset_i(core_reset_li)
+
+         ,.w_enq_i(dma_data_ready_and_li & dma_data_v_lo)
+         ,.w_data_i(dma_data_lo)
+         ,.w_full_o(dma_data_out_full_lo)
+
+         ,.r_clk_i(axi_clk_i)
+         ,.r_reset_i(axi_reset_li)
+
+         ,.r_deq_i(axi_dma_data_yumi_lo)
+         ,.r_data_o(axi_dma_data_li)
+         ,.r_valid_o(axi_dma_data_v_li)
+         );
+
+      logic axi_dma_in_full_lo;
+      assign axi_dma_data_ready_and_li = ~axi_dma_in_full_lo;
+      bsg_async_fifo
+       #(.width_p(l2_fill_width_p), .lg_size_p(lg_async_fifo_size_lp))
+       dma_in_data_af
+        (.w_clk_i(axi_clk_i)
+         ,.w_reset_i(axi_reset_li)
+
+         ,.w_enq_i(axi_dma_data_ready_and_li & axi_dma_data_v_lo)
+         ,.w_data_i(axi_dma_data_lo)
+         ,.w_full_o(axi_dma_in_full_lo)
+
+         ,.r_clk_i(core_clk_i)
+         ,.r_reset_i(core_reset_li)
+
+         ,.r_deq_i(dma_data_ready_and_lo & dma_data_v_li)
+         ,.r_data_o(dma_data_li)
+         ,.r_valid_o(dma_data_v_li)
+         );
+    end
+  else
+    begin : sync
+      assign dma_data_li = axi_dma_data_lo;
+      assign dma_data_v_li = axi_dma_data_v_lo;
+      assign axi_dma_data_ready_and_li = dma_data_ready_and_lo;
+
+      assign axi_dma_data_li = dma_data_lo;
+      assign axi_dma_data_v_li = dma_data_v_lo;
+      assign dma_data_ready_and_li = axi_dma_data_yumi_lo;
+
+      assign axi_dma_pkt_li = dma_pkt_lo;
+      assign axi_dma_pkt_v_li = dma_pkt_v_lo;
+      assign dma_pkt_ready_and_li = axi_dma_pkt_yumi_lo;
+
+      assign mem_fwd_header_li = axi_mem_fwd_header_lo;
+      assign mem_fwd_data_li = axi_mem_fwd_data_lo;
+      assign mem_fwd_v_li = axi_mem_fwd_v_lo;
+      assign axi_mem_fwd_ready_and_li = mem_fwd_ready_and_lo;
+
+      assign axi_mem_rev_header_li = mem_rev_header_lo;
+      assign axi_mem_rev_data_li = mem_rev_data_lo;
+      assign axi_mem_rev_v_li = mem_rev_v_lo;
+      assign mem_rev_ready_and_li = axi_mem_rev_ready_and_lo;
+
+      assign axi_mem_fwd_header_li = mem_fwd_header_lo;
+      assign axi_mem_fwd_data_li = mem_fwd_data_lo;
+      assign axi_mem_fwd_v_li = mem_fwd_v_lo;
+      assign mem_fwd_ready_and_li = axi_mem_fwd_ready_and_lo;
+
+      assign mem_rev_header_li = axi_mem_rev_header_lo;
+      assign mem_rev_data_li = axi_mem_rev_data_lo;
+      assign mem_rev_v_li = axi_mem_rev_v_lo;
+      assign axi_mem_rev_ready_and_li = mem_rev_ready_and_lo;
+    end
 
 endmodule
 

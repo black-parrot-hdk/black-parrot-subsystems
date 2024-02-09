@@ -34,8 +34,8 @@
  *
  */
 
-`include "bsg_manycore_defines.vh"
-`include "bsg_manycore_endpoint_to_fifos.vh"
+`include "bsg_manycore_defines.svh"
+`include "bsg_manycore_endpoint_to_fifos.svh"
 
 module bsg_manycore_endpoint_to_fifos
  import bsg_manycore_pkg::*;
@@ -106,7 +106,7 @@ module bsg_manycore_endpoint_to_fifos
 
      ,.data_i(endpoint_req_i)
      ,.v_i(endpoint_req_v_i)
-     ,.ready_o(endpoint_req_ready_o)
+     ,.ready_and_o(endpoint_req_ready_o)
 
      ,.data_o(aligned_packet_ep_req_li)
      ,.v_o(packet_ep_req_v_li)
@@ -175,7 +175,7 @@ module bsg_manycore_endpoint_to_fifos
 
      ,.data_i(endpoint_rsp_i)
      ,.v_i(endpoint_rsp_v_i)
-     ,.ready_o(endpoint_rsp_ready_o)
+     ,.ready_and_o(endpoint_rsp_ready_o)
 
      ,.data_o(aligned_packet_ep_rsp_li)
      ,.v_o(packet_ep_rsp_v_li)

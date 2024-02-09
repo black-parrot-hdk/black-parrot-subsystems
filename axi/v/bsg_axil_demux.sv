@@ -1,5 +1,5 @@
 
-`include "bsg_defines.v"
+`include "bsg_defines.sv"
 
 module bsg_axil_demux
  #(parameter `BSG_INV_PARAM(addr_width_p)
@@ -120,7 +120,7 @@ module bsg_axil_demux
 
      ,.data_i({s00_axil_awaddr, s00_axil_awprot})
      ,.v_i(s00_axil_awvalid)
-     ,.ready_o(s00_axil_awready)
+     ,.ready_param_o(s00_axil_awready)
 
      ,.data_o({s00_axil_awaddr_buffered, s00_axil_awprot_buffered})
      ,.v_o(s00_axil_awvalid_buffered)
@@ -134,7 +134,7 @@ module bsg_axil_demux
 
      ,.data_i({s00_axil_wdata, s00_axil_wstrb})
      ,.v_i(s00_axil_wvalid)
-     ,.ready_o(s00_axil_wready)
+     ,.ready_param_o(s00_axil_wready)
 
      ,.data_o({s00_axil_wdata_buffered, s00_axil_wstrb_buffered})
      ,.v_o(s00_axil_wvalid_buffered)
@@ -148,7 +148,7 @@ module bsg_axil_demux
 
      ,.data_i({s00_axil_araddr, s00_axil_arprot})
      ,.v_i(s00_axil_arvalid)
-     ,.ready_o(s00_axil_arready)
+     ,.ready_param_o(s00_axil_arready)
 
      ,.data_o({s00_axil_araddr_buffered, s00_axil_arprot_buffered})
      ,.v_o(s00_axil_arvalid_buffered)
@@ -238,7 +238,7 @@ module bsg_axil_demux
 
      ,.data_i(write_m00_select)
      ,.v_i(next_write_req)
-     ,.ready_o(write_resp_fifo_ready_lo)
+     ,.ready_param_o(write_resp_fifo_ready_lo)
 
      ,.data_o(write_resp_m00_select)
      ,.v_o(write_resp_fifo_v_lo)
@@ -254,7 +254,7 @@ module bsg_axil_demux
 
      ,.data_i(read_m00_select)
      ,.v_i(read_resp_fifo_v_li)
-     ,.ready_o(read_resp_fifo_ready_lo)
+     ,.ready_param_o(read_resp_fifo_ready_lo)
 
      ,.data_o(read_resp_m00_select)
      ,.v_o(read_resp_fifo_v_lo)

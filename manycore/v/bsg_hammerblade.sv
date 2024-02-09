@@ -1,6 +1,6 @@
 
-`include "bsg_manycore_defines.vh"
-`include "bsg_tag.vh"
+`include "bsg_manycore_defines.svh"
+`include "bsg_tag.svh"
 `include "bp_common_defines.svh"
 
 module bsg_hammerblade
@@ -33,7 +33,6 @@ module bsg_hammerblade
    , parameter `BSG_INV_PARAM(icache_tag_width_p)
    , parameter `BSG_INV_PARAM(icache_block_size_in_words_p)
 
-   , parameter `BSG_INV_PARAM(num_vcache_rows_p)
    , parameter `BSG_INV_PARAM(vcache_addr_width_p)
    , parameter `BSG_INV_PARAM(vcache_data_width_p)
    , parameter `BSG_INV_PARAM(vcache_ways_p)
@@ -42,6 +41,7 @@ module bsg_hammerblade
    , parameter `BSG_INV_PARAM(vcache_size_p)
    , parameter `BSG_INV_PARAM(vcache_dma_data_width_p)
    , parameter `BSG_INV_PARAM(vcache_word_tracking_p)
+   , parameter `BSG_INV_PARAM(ipoly_hashing_p)
 
    , parameter `BSG_INV_PARAM(barrier_ruche_factor_X_p)
 
@@ -72,8 +72,8 @@ module bsg_hammerblade
    , input [manycore_link_sif_width_lp-1:0]                                                          io_link_sif_i
    , output logic [manycore_link_sif_width_lp-1:0]                                                   io_link_sif_o
 
-   , input [S:N][E:W][num_vcache_rows_p-1:0][wh_ruche_factor_p-1:0][wh_link_sif_width_lp-1:0]        wh_link_sif_i
-   , output logic [S:N][E:W][num_vcache_rows_p-1:0][wh_ruche_factor_p-1:0][wh_link_sif_width_lp-1:0] wh_link_sif_o
+   , input [S:N][E:W][wh_ruche_factor_p-1:0][wh_link_sif_width_lp-1:0]                               wh_link_sif_i
+   , output logic [S:N][E:W][wh_ruche_factor_p-1:0][wh_link_sif_width_lp-1:0]                        wh_link_sif_o
 
    , input bsg_tag_s                                                                                 pod_tags_i
    );
@@ -85,7 +85,7 @@ module bsg_hammerblade
   bsg_manycore_link_sif_s [S:N][num_tiles_x_p-1:0] ver_link_sif_li, ver_link_sif_lo;
   bsg_manycore_link_sif_s [E:W][num_tiles_y_p-1:0] hor_link_sif_li, hor_link_sif_lo;
   bsg_manycore_ruche_x_link_sif_s [E:W][num_pods_y_p-1:0][num_tiles_y_p-1:0] ruche_link_li, ruche_link_lo;
-  wh_link_sif_s [E:W][S:N][num_vcache_rows_p-1:0][wh_ruche_factor_p-1:0] wh_link_sif_li, wh_link_sif_lo;
+  wh_link_sif_s [E:W][S:N][wh_ruche_factor_p-1:0] wh_link_sif_li, wh_link_sif_lo;
 
   if (bsg_manycore_network_cfg_p == e_network_half_ruche_x)
     begin : ruche
@@ -108,7 +108,6 @@ module bsg_hammerblade
          ,.icache_tag_width_p(icache_tag_width_p)
          ,.icache_block_size_in_words_p(icache_block_size_in_words_p)
 
-         ,.num_vcache_rows_p(num_vcache_rows_p)
          ,.vcache_addr_width_p(vcache_addr_width_p)
          ,.vcache_data_width_p(vcache_data_width_p)
          ,.vcache_ways_p(vcache_ways_p)
@@ -167,7 +166,6 @@ module bsg_hammerblade
          ,.icache_tag_width_p(icache_tag_width_p)
          ,.icache_block_size_in_words_p(icache_block_size_in_words_p)
 
-         ,.num_vcache_rows_p(num_vcache_rows_p)
          ,.vcache_addr_width_p(vcache_addr_width_p)
          ,.vcache_data_width_p(vcache_data_width_p)
          ,.vcache_ways_p(vcache_ways_p)
@@ -176,6 +174,7 @@ module bsg_hammerblade
          ,.vcache_size_p(vcache_size_p)
          ,.vcache_dma_data_width_p(vcache_dma_data_width_p)
          ,.vcache_word_tracking_p(vcache_word_tracking_p)
+         ,.ipoly_hashing_p(ipoly_hashing_p)
 
          ,.wh_ruche_factor_p(wh_ruche_factor_p)
          ,.wh_cid_width_p(wh_cid_width_p)
@@ -360,12 +359,12 @@ module bsg_hammerblade
      ,.data_width_p(data_width_p)
      ,.addr_width_p(addr_width_p)
      ,.icache_block_size_in_words_p(icache_block_size_in_words_p)
-     ,.num_vcache_rows_p(num_vcache_rows_p)
      ,.vcache_block_size_in_words_p(vcache_block_size_in_words_p)
      ,.vcache_size_p(vcache_size_p)
      ,.vcache_sets_p(vcache_sets_p)
      ,.num_tiles_x_p(num_tiles_x_p)
      ,.num_tiles_y_p(num_tiles_y_p)
+     ,.ipoly_hashing_p(ipoly_hashing_p)
      ,.scratchpad_els_p(scratchpad_els_p)
      ,.rev_use_credits_p(rev_use_credits_p)
      ,.rev_fifo_els_p(rev_fifo_els_p)
