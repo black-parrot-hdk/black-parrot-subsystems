@@ -57,7 +57,7 @@ module bp_axil_top
    , input                                      s_external_irq_i
    );
 
-  `declare_bp_cfg_bus_s(vaddr_width_p, hio_width_p, core_id_width_p, cce_id_width_p, lce_id_width_p);
+  `declare_bp_cfg_bus_s(vaddr_width_p, hio_width_p, core_id_width_p, cce_id_width_p, lce_id_width_p, did_width_p);
   `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
 
   bp_bedrock_mem_fwd_header_s [1:0] proc_fwd_header_lo;
@@ -79,6 +79,7 @@ module bp_axil_top
       ,cce_id     : '0
       ,cce_mode   : e_cce_mode_uncached
       ,hio_mask   : '1
+      ,did        : 1'b1
       };
 
   bp_unicore_lite
