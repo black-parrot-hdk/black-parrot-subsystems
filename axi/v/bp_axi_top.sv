@@ -272,8 +272,6 @@ module bp_axi_top
    #(.bp_params_p(bp_params_p)
      ,.axil_data_width_p(s_axil_data_width_p)
      ,.axil_addr_width_p(s_axil_addr_width_p)
-     ,.axi_async_p(axi_async_p)
-     ,.async_fifo_size_p(async_fifo_size_p)
      )
    axil2io
     (.clk_i(axi_clk_i)
@@ -298,8 +296,6 @@ module bp_axi_top
    #(.bp_params_p(bp_params_p)
      ,.axil_data_width_p(m_axil_data_width_p)
      ,.axil_addr_width_p(m_axil_addr_width_p)
-     ,.axi_async_p(axi_async_p)
-     ,.async_fifo_size_p(async_fifo_size_p)
      )
    io2axil
     (.clk_i(axi_clk_i)
@@ -356,7 +352,7 @@ module bp_axi_top
   bsg_cache_to_axi
    #(.addr_width_p(daddr_width_p)
      ,.data_width_p(axi_data_width_p)
-     ,.mask_width_p(dma_mask_width_p)
+     ,.mask_width_p(l2_block_size_in_words_p)
      ,.block_size_in_words_p(l2_block_width_p/axi_data_width_p)
      ,.num_cache_p(num_cce_p*l2_dmas_p)
      ,.axi_data_width_p(axi_data_width_p)

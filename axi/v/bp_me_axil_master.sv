@@ -179,8 +179,8 @@ module bp_me_axil_master
      ,.axil_addr_width_p(axil_addr_width_p)
      )
    fifo_master
-    (.clk_i(aclk_li)
-     ,.reset_i(areset_li)
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
 
      ,.data_i(wdata_li)
      ,.addr_i(addr_li)
