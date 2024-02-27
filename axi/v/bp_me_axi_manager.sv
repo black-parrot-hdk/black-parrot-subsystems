@@ -105,7 +105,6 @@ module bp_me_axi_manager
 
   bp_me_stream_gearbox
     #(.bp_params_p(bp_params_p)
-      ,.buffered_p(1)
       ,.in_data_width_p(bedrock_fill_width_p)
       ,.out_data_width_p(m_axi_data_width_p)
       ,.payload_width_p(mem_fwd_payload_width_lp)
@@ -164,7 +163,6 @@ module bp_me_axi_manager
 
   bp_me_stream_gearbox
     #(.bp_params_p(bp_params_p)
-      ,.buffered_p(1)
       ,.in_data_width_p(m_axi_data_width_p)
       ,.out_data_width_p(bedrock_fill_width_p)
       ,.payload_width_p(mem_rev_payload_width_lp)
