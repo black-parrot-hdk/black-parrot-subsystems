@@ -47,7 +47,15 @@ module bp_axi_cdl
   // Ungated clk domain
   // FSM
   assign deq_o = en_i ? (state_n == READY) : 1'b1;
-  assign gate_o = en_i & (state_n == WFD);
+  wire gate_pos = en_i & (state_n == WFD);
+
+  bsg_sync_sync
+   #(.width_p(1))
+   gate_bss
+   (.oclk_i(~ds_clk_i)
+   ,.iclk_data_i(gate_pos)
+   ,.oclk_data_o(gate_o)
+   );
 
   always_comb begin
     state_n = state_r;
@@ -77,4 +85,5 @@ module bp_axi_cdl
     else
       state_r <= state_n;
   end
+
 endmodule
