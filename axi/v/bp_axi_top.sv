@@ -326,7 +326,7 @@ module bp_axi_top
 
          ,.data_i(core_dma_data_lo[i])
          ,.v_i(core_dma_data_v_lo[i] & cdl_deq_lo[i])
-         ,.ready_o(core_dma_data_ready_and_li[i])
+         ,.ready_and_o(core_dma_data_ready_and_li[i])
 
          ,.data_o(dma_data_li[i])
          ,.v_o(dma_data_v_li[i])
@@ -337,7 +337,7 @@ module bp_axi_top
        #(.width_p(axi_data_width_p), .els_p(l2_fill_width_p/axi_data_width_p))
        dma_piso
         (.clk_i(core_clk_i)
-         ,.reset_i(core_reset_i)
+         ,.reset_i(core_reset_li)
 
          ,.data_i(dma_data_lo[i])
          ,.valid_i(dma_data_v_lo[i])

@@ -22,7 +22,7 @@ module bp_axi_cdl
   logic [31:0] cnt_lo;
   wire start_li = en_i & cmd_v_i;
   wire end_lo = en_i & (cnt_lo == lat_i);
-  assign cnt_clr_li = start_li;
+  assign cnt_clr_li = end_lo;
 
   bsg_dff_reset_en_bypass
    #(.width_p(1))
@@ -30,7 +30,7 @@ module bp_axi_cdl
    (.clk_i(core_clk_i)
    ,.reset_i(core_reset_i)
    ,.en_i(start_li | end_lo)
-   ,.data_i(~end_lo)
+   ,.data_i(start_li)
    ,.data_o(cnt_up_li)
    );
 

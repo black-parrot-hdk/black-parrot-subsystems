@@ -141,7 +141,7 @@ module bp_me_axil_master
       wdata_li = fsm_fwd_data_li;
       addr_li = fsm_fwd_addr_li;
       v_li = fsm_fwd_v_li;
-      w_li = fsm_fwd_header_li.msg_type inside {e_bedrock_mem_wr, e_bedrock_mem_wr};
+      w_li = fsm_fwd_header_li.msg_type inside {e_bedrock_mem_wr};
       fsm_fwd_yumi_lo = fsm_fwd_v_li & ready_and_lo;
 
       case (fsm_fwd_header_li.size)
@@ -155,8 +155,8 @@ module bp_me_axil_master
 
   localparam size_width_lp = `BSG_WIDTH(byte_offset_width_lp);
 
-  wire [byte_offset_width_lp-1:0] resp_sel_li = fsm_rev_header_li.addr[0+:byte_offset_width_lp] & ({byte_offset_width_lp{1'b1}} << fsm_rev_header_li.size);
-  wire [size_width_lp-1:0] resp_size_li = `BSG_MIN(fsm_rev_header_li.size, (size_width_lp)'(byte_offset_width_lp));
+  wire [byte_offset_width_lp-1:0] resp_sel_li = fsm_rev_header_lo.addr[0+:byte_offset_width_lp] & ({byte_offset_width_lp{1'b1}} << fsm_rev_header_lo.size);
+  wire [size_width_lp-1:0] resp_size_li = `BSG_MIN(fsm_rev_header_lo.size, (size_width_lp)'(byte_offset_width_lp));
   logic [axil_data_width_p-1:0] rdata_lo;
   bsg_bus_pack
    #(.in_width_p(axil_data_width_p), .out_width_p(axil_data_width_p))
