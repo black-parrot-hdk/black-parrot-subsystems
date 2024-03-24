@@ -284,7 +284,7 @@ module bp_axi4_top
      ,.mem_rev_ready_and_o(mem_rev_ready_and_li)
 
      // IDs for the I/O sender
-     ,.lce_id_i(lce_id_width_p'('b10))
+     ,.lce_id_i(lce_id_width_p'('1))
      ,.did_i(did_width_p'('1))
      ,.*
      );
