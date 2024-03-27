@@ -164,6 +164,11 @@ module bp_axi_top
   logic [num_cce_p*l2_dmas_p-1:0][l2_fill_width_p-1:0] dma_data_li;
   logic [num_cce_p*l2_dmas_p-1:0] dma_data_v_li, dma_data_ready_and_lo;
 
+  logic [num_cce_p*l2_dmas_p-1:0] cdl_cmd_v_li, cdl_resp_v_li;
+  logic [num_cce_p*l2_dmas_p-1:0] cdl_gate_lo;
+  logic [num_cce_p*l2_dmas_p-1:0] cdl_deq_lo;
+  assign cdl_gate_o = |cdl_gate_lo;
+
   logic core_reset_li;
   bsg_sync_sync
    #(.width_p(1))
@@ -230,7 +235,7 @@ module bp_axi_top
      ,.dma_pkt_ready_and_i(dma_pkt_ready_and_li)
 
      ,.dma_data_i(dma_data_li)
-     ,.dma_data_v_i(dma_data_v_li)
+     ,.dma_data_v_i(dma_data_v_li & cdl_deq_lo)
      ,.dma_data_ready_and_o(dma_data_ready_and_lo)
 
      ,.dma_data_o(dma_data_lo)
@@ -257,16 +262,6 @@ module bp_axi_top
   logic [num_cce_p*l2_dmas_p-1:0] axi_dma_data_v_lo, axi_dma_data_ready_and_li;
   logic [num_cce_p*l2_dmas_p-1:0][axi_data_width_p-1:0] axi_dma_data_li;
   logic [num_cce_p*l2_dmas_p-1:0] axi_dma_data_v_li, axi_dma_data_yumi_lo;
-
-  logic [num_cce_p*l2_dmas_p-1:0][axi_data_width_p-1:0] core_dma_data_lo;
-  logic [num_cce_p*l2_dmas_p-1:0] core_dma_data_v_lo, core_dma_data_ready_and_li;
-  logic [num_cce_p*l2_dmas_p-1:0][axi_data_width_p-1:0] core_dma_data_li;
-  logic [num_cce_p*l2_dmas_p-1:0] core_dma_data_v_li, core_dma_data_yumi_lo;
-
-  logic [num_cce_p*l2_dmas_p-1:0] cdl_cmd_v_li, cdl_resp_v_li;
-  logic [num_cce_p*l2_dmas_p-1:0] cdl_gate_lo;
-  logic [num_cce_p*l2_dmas_p-1:0] cdl_deq_lo;
-  assign cdl_gate_o = |cdl_gate_lo;
 
   bp_me_axil_client
    #(.bp_params_p(bp_params_p)
@@ -314,41 +309,6 @@ module bp_axi_top
      ,.*
      );
 
-  // If necessary, downsize to axi data width. This could be done in bsg_cache_to_axi,
-  //   but punt for now
-  for (genvar i = 0; i < num_cce_p*l2_dmas_p; i++)
-    begin : narrow
-      bsg_serial_in_parallel_out_full
-       #(.width_p(axi_data_width_p), .els_p(l2_fill_width_p/axi_data_width_p))
-       dma_sipo
-        (.clk_i(core_clk_i)
-         ,.reset_i(core_reset_li)
-
-         ,.data_i(core_dma_data_lo[i])
-         ,.v_i(core_dma_data_v_lo[i] & cdl_deq_lo[i])
-         ,.ready_and_o(core_dma_data_ready_and_li[i])
-
-         ,.data_o(dma_data_li[i])
-         ,.v_o(dma_data_v_li[i])
-         ,.yumi_i(dma_data_ready_and_lo[i] & dma_data_v_li[i])
-         );
-
-      bsg_parallel_in_serial_out
-       #(.width_p(axi_data_width_p), .els_p(l2_fill_width_p/axi_data_width_p))
-       dma_piso
-        (.clk_i(core_clk_i)
-         ,.reset_i(core_reset_li)
-
-         ,.data_i(dma_data_lo[i])
-         ,.valid_i(dma_data_v_lo[i])
-         ,.ready_and_o(dma_data_ready_and_li[i])
-
-         ,.data_o(core_dma_data_li[i])
-         ,.valid_o(core_dma_data_v_li[i])
-         ,.yumi_i(core_dma_data_yumi_lo[i])
-         );
-    end
-
   bsg_cache_to_axi
    #(.addr_width_p(daddr_width_p)
      ,.data_width_p(axi_data_width_p)
@@ -359,7 +319,7 @@ module bp_axi_top
      ,.axi_id_width_p(axi_id_width_p)
      ,.axi_burst_len_p(l2_block_width_p/axi_data_width_p)
      ,.axi_burst_type_p(e_axi_burst_wrap)
-     ,.ordering_en_p(l2_features_p[e_cfg_enabled] ? 0 : 1)
+     ,.ordering_en_p(1)
      )
    cache2axi
     (.clk_i(axi_clk_i)
@@ -508,7 +468,7 @@ module bp_axi_top
          );
 
       // DMA interface
-      logic [num_cce_p*l2_dmas_p-1:0] dma_pkt_full_lo, core_dma_data_out_full_lo, axi_dma_in_full_lo;
+      logic [num_cce_p*l2_dmas_p-1:0] dma_pkt_full_lo, dma_data_out_full_lo, axi_dma_in_full_lo;
       for (genvar i = 0; i < num_cce_p*l2_dmas_p; i++)
         begin : rof
           assign dma_pkt_ready_and_li[i] = ~dma_pkt_full_lo[i];
@@ -530,16 +490,16 @@ module bp_axi_top
              ,.r_valid_o(axi_dma_pkt_v_li[i])
              );
 
-          assign core_dma_data_yumi_lo[i] = ~core_dma_data_out_full_lo[i] & core_dma_data_v_li[i];
+          assign dma_data_ready_and_li[i] = ~dma_data_out_full_lo[i];
           bsg_async_fifo
            #(.width_p(l2_fill_width_p), .lg_size_p(lg_async_fifo_size_lp))
            dma_out_data_af
             (.w_clk_i(core_clk_i)
              ,.w_reset_i(core_reset_li)
 
-             ,.w_enq_i(core_dma_data_yumi_lo[i])
-             ,.w_data_i(core_dma_data_li[i])
-             ,.w_full_o(core_dma_data_out_full_lo[i])
+             ,.w_enq_i(dma_data_v_lo[i] & dma_data_ready_and_li[i])
+             ,.w_data_i(dma_data_lo[i])
+             ,.w_full_o(dma_data_out_full_lo[i])
 
              ,.r_clk_i(axi_clk_i)
              ,.r_reset_i(axi_reset_li)
@@ -563,9 +523,9 @@ module bp_axi_top
              ,.r_clk_i(core_clk_i)
              ,.r_reset_i(core_reset_li)
 
-             ,.r_deq_i(core_dma_data_ready_and_li[i] & core_dma_data_v_lo[i] & cdl_deq_lo[i])
-             ,.r_data_o(core_dma_data_lo[i])
-             ,.r_valid_o(core_dma_data_v_lo[i])
+             ,.r_deq_i(dma_data_ready_and_lo[i] & dma_data_v_li[i] & cdl_deq_lo[i])
+             ,.r_data_o(dma_data_li[i])
+             ,.r_valid_o(dma_data_v_li[i])
              );
 
           assign cdl_cmd_v_li[i] = dma_pkt_v_lo[i] & dma_pkt_ready_and_li[i] & ~dma_pkt_lo[i].write_not_read;
@@ -632,6 +592,13 @@ module bp_axi_top
       assign cdl_deq_lo = '1;
       assign cdl_gate_lo = '0;
     end
+
+  // synopsys translate_off
+  initial begin
+    assert(l2_fill_width_p == axi_data_width_p)
+      else $error("l2_fill_width_p != axi_data_width_p not supported!");
+  end
+  // synopsys translate_on
 
 endmodule
 
