@@ -68,23 +68,23 @@ module bp_me_axil_master
   `declare_bp_bedrock_if(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p);
 
   bp_bedrock_mem_fwd_header_s fsm_fwd_header_li;
-  logic [bedrock_fill_width_p-1:0] fsm_fwd_data_li;
+  logic [axil_data_width_p-1:0] fsm_fwd_data_li;
   logic fsm_fwd_v_li, fsm_fwd_yumi_lo;
   logic [paddr_width_p-1:0] fsm_fwd_addr_li;
   logic fsm_fwd_new_li, fsm_fwd_critical_li, fsm_fwd_last_li;
   bp_bedrock_mem_rev_header_s fsm_rev_header_lo;
-  logic [bedrock_fill_width_p-1:0] fsm_rev_data_lo;
+  logic [axil_data_width_p-1:0] fsm_rev_data_lo;
   logic fsm_rev_v_lo, fsm_rev_ready_then_li;
   logic [paddr_width_p-1:0] fsm_rev_addr_li;
   logic fsm_rev_new_li, fsm_rev_critical_li, fsm_rev_last_li;
 
   bp_me_stream_pump
    #(.bp_params_p(bp_params_p)
-     ,.in_data_width_p(l2_data_width_p)
+     ,.in_data_width_p(axil_data_width_p)
      ,.in_payload_width_p(mem_fwd_payload_width_lp)
      ,.in_msg_stream_mask_p(mem_fwd_stream_mask_gp)
      ,.in_fsm_stream_mask_p(mem_fwd_stream_mask_gp | mem_rev_stream_mask_gp)
-     ,.out_data_width_p(l2_data_width_p)
+     ,.out_data_width_p(axil_data_width_p)
      ,.out_payload_width_p(mem_rev_payload_width_lp)
      ,.out_msg_stream_mask_p(mem_rev_stream_mask_gp)
      ,.out_fsm_stream_mask_p(mem_fwd_stream_mask_gp | mem_rev_stream_mask_gp)
@@ -139,7 +139,7 @@ module bp_me_axil_master
   always_comb
     begin
       wdata_li = fsm_fwd_data_li;
-      addr_li = fsm_fwd_header_li.addr;
+      addr_li = fsm_fwd_addr_li;
       v_li = fsm_fwd_v_li;
       w_li = fsm_fwd_header_li.msg_type inside {e_bedrock_mem_wr, e_bedrock_mem_wr};
       fsm_fwd_yumi_lo = fsm_fwd_v_li & ready_and_lo;
@@ -155,11 +155,11 @@ module bp_me_axil_master
 
   localparam size_width_lp = `BSG_WIDTH(byte_offset_width_lp);
 
-  wire [byte_offset_width_lp-1:0] resp_sel_li = fsm_rev_header_lo.addr[0+:byte_offset_width_lp];
+  wire [byte_offset_width_lp-1:0] resp_sel_li = fsm_rev_addr_li[0+:byte_offset_width_lp];
   wire [size_width_lp-1:0] resp_size_li = fsm_rev_header_lo.size;
   logic [axil_data_width_p-1:0] rdata_lo;
   bsg_bus_pack
-   #(.in_width_p(axil_data_width_p), .out_width_p(bedrock_fill_width_p))
+   #(.in_width_p(axil_data_width_p), .out_width_p(axil_data_width_p))
    resp_data_bus_pack
     (.data_i(rdata_lo)
      ,.sel_i(resp_sel_li)

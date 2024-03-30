@@ -244,8 +244,8 @@ module bsg_manycore_axil_bridge
   assign out_packet_li.payload    = out_payload;
   assign out_packet_li.src_x_cord = my_x_i;
   assign out_packet_li.src_y_cord = my_y_i;
-  assign out_packet_li.y_cord     = dest_x_i;
-  assign out_packet_li.x_cord     = dest_y_i;
+  assign out_packet_li.y_cord     = dest_y_i;
+  assign out_packet_li.x_cord     = dest_x_i;
   assign out_v_li = c_v_lo;
   assign c_ready_and_li = out_credit_or_ready_lo;
 
