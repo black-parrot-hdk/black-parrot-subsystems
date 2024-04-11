@@ -17,11 +17,29 @@ module bp_axi_cdl
 
   enum logic [3:0] {READY, BUSY, WFD, WFT} state_r, state_n;
 
+  logic en_sync_li;
+  bsg_sync_sync
+   #(.width_p(1))
+   en_bss
+   (.oclk_i(ds_clk_i)
+   ,.iclk_data_i(en_i)
+   ,.oclk_data_o(en_sync_li)
+   );
+
+  logic [31:0] lat_sync_li;
+  bsg_sync_sync
+   #(.width_p(32))
+   lat_bss
+   (.oclk_i(ds_clk_i)
+   ,.iclk_data_i(lat_i)
+   ,.oclk_data_o(lat_sync_li)
+   );
+
   // Gated BP clk domain
   logic cnt_up_li, cnt_clr_li;
   logic [31:0] cnt_lo;
-  wire start_li = en_i & cmd_v_i;
-  wire end_lo = en_i & (cnt_lo == lat_i);
+  wire start_li = en_sync_li & cmd_v_i;
+  wire end_lo = en_sync_li & (cnt_lo == lat_sync_li);
   assign cnt_clr_li = end_lo;
 
   bsg_dff_reset_en_bypass
@@ -46,8 +64,8 @@ module bp_axi_cdl
 
   // Ungated clk domain
   // FSM
-  assign deq_o = en_i ? (state_n == READY) : 1'b1;
-  wire gate_pos = en_i & (state_n == WFD);
+  assign deq_o = en_sync_li ? (state_n == READY) : 1'b1;
+  wire gate_pos = en_sync_li & (state_n == WFD);
 
   bsg_sync_sync
    #(.width_p(1))
@@ -61,7 +79,7 @@ module bp_axi_cdl
     state_n = state_r;
 
     if(state_r == READY) begin
-      state_n = (en_i & cmd_v_i) ? BUSY : READY;
+      state_n = (en_sync_li & cmd_v_i) ? BUSY : READY;
     end
     else if(state_r == BUSY) begin
       if(resp_v_i & end_lo)
