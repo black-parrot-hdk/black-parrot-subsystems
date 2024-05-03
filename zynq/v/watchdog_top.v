@@ -2,6 +2,7 @@
 module watchdog_top
  #(// The period of the watchdog (default to 1s @2.5MHz)
      parameter integer WATCHDOG_PERIOD      = 250000000
+   , parameter integer WATCHDOG_ADDRESS     = 32'h0f00000
    , parameter integer C_M00_AXI_DATA_WIDTH = 32
    , parameter integer C_M00_AXI_ADDR_WIDTH = 28
    )
@@ -44,6 +45,7 @@ module watchdog_top
 
   bsg_axil_watchdog
    #(.watchdog_period_p(WATCHDOG_PERIOD)
+     ,.watchdog_address_p(WATCHDOG_ADDRESS)
      ,.axil_data_width_p(C_M00_AXI_DATA_WIDTH)
      ,.axil_addr_width_p(C_M00_AXI_ADDR_WIDTH)
      )

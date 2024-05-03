@@ -6,6 +6,7 @@ module bsg_axil_watchdog
  import bsg_tag_pkg::*;
  #(// The period of the watchdog (default to 1s @25MHz)
    parameter watchdog_period_p = 25000000
+   , parameter watchdog_address_p = 32'h0f00000
    // AXI WRITE DATA CHANNEL PARAMS
    , parameter axil_data_width_p = 32
    , parameter axil_addr_width_p = 32
@@ -118,8 +119,7 @@ module bsg_axil_watchdog
   always_comb
     begin
       wdata_li = 1'b1;
-      // Hardcoded for now
-      addr_li = 32'h103000;
+      addr_li = watchdog_address_p;
       v_li = watchdog_send;
       w_li = 1'b1;
       wmask_li = '1;
