@@ -57,7 +57,7 @@ module bsg_hammerblade
    , parameter `BSG_INV_PARAM(reset_depth_p)
 
    , parameter `BSG_INV_PARAM(rev_use_credits_p)
-   , parameter `BSG_INV_PARAM(rev_fifo_els_p)
+   , parameter int rev_fifo_els_p[4:0] = '{2,2,2,2,3}
 
    , parameter `BSG_INV_PARAM(bsg_manycore_network_cfg_p)
 
