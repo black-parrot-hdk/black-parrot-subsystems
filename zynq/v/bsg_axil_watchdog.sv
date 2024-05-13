@@ -61,16 +61,16 @@ module bsg_axil_watchdog
       ,.clients_o(tag_lines_lo)
       );
 
-   wire tag_reset_li;
+   logic core_reset_li;
    bsg_tag_client
     #(.width_p(1))
     btc
      (.bsg_tag_i(tag_lines_lo.core_reset)
       ,.recv_clk_i(clk_i)
       ,.recv_new_r_o() // UNUSED
-      ,.recv_data_r_o(tag_reset_li)
+      ,.recv_data_r_o(core_reset_li)
       );
-  wire core_reset_li = reset_i | tag_reset_li;
+  wire watchdog_clear = core_reset_li;
 
   logic [`BSG_SAFE_CLOG2(watchdog_period_p)-1:0] watchdog_cnt;
   logic watchdog_tick;
@@ -81,13 +81,13 @@ module bsg_axil_watchdog
      )
    watchdog_counter
     (.clk_i(clk_i)
-     ,.reset_i(core_reset_li)
+     ,.reset_i(reset_i)
 
-     ,.clear_i(1'b0)
+     ,.clear_i(watchdog_clear)
      ,.up_i(watchdog_tick)
      ,.count_o(watchdog_cnt)
      );
-  wire watchdog_send = (watchdog_cnt == '0);
+  wire watchdog_send = (watchdog_cnt == watchdog_period_p-1);
 
   logic [axil_data_width_p-1:0] wdata_li;
   logic [axil_addr_width_p-1:0] addr_li;
@@ -99,7 +99,7 @@ module bsg_axil_watchdog
      )
    fifo_master
     (.clk_i(clk_i)
-     ,.reset_i(core_reset_li)
+     ,.reset_i(reset_i)
 
      ,.data_i(wdata_li)
      ,.addr_i(addr_li)
