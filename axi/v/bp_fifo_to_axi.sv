@@ -211,7 +211,7 @@ module bp_fifo_to_axi
     m_axi_awprot_o = '0;
     m_axi_awlen_o = '0; // single data transfer
     m_axi_awsize_o = wr_size_lo;
-    m_axi_awburst_o = 2'b01; // INCR
+    m_axi_awburst_o = 2'b10; // WRAP
     m_axi_awqos_o = '0;
     m_axi_awregion_o = '0;
 
@@ -239,7 +239,7 @@ module bp_fifo_to_axi
     m_axi_arprot_o = '0;
     m_axi_arlen_o = '0; // single data transfer
     m_axi_arsize_o = rd_size_lo;
-    m_axi_arburst_o = 2'b01; // INCR
+    m_axi_arburst_o = 2'b10; // WRAP
     m_axi_arqos_o = '0;
     m_axi_arregion_o = '0;
     // request fifo yumi when AR request sends
