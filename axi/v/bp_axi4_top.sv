@@ -193,6 +193,9 @@ module bp_axi4_top
    , input [1:0]                               m01_axi_rresp_i
    );
 
+  if (daddr_width_p != 1 + caddr_width_p)
+    $error("daddr_width_p must equal to caddr_width_p + 1 for bsg_cache_to_axi");
+
   `declare_bp_bedrock_if(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p);
 
   bp_bedrock_mem_fwd_header_s mem_fwd_header_li;
@@ -312,7 +315,6 @@ module bp_axi4_top
      ,.*
      );
 
-  // TODO: only works if daddr_width_p = 1 + caddr_width_p
   logic [caddr_width_p-1:0] axi_awaddr;
   logic axi_awaddr_unused;
   logic [caddr_width_p-1:0] axi_araddr;
