@@ -53,7 +53,7 @@ module bp_me_manycore_dram
    , input [addr_width_p-1:0]                   dram_offset_i
    );
 
-  `declare_bp_bedrock_if(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p)
+  `declare_bp_bedrock_if(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p);
   `declare_bp_memory_map(paddr_width_p, daddr_width_p);
   `declare_bsg_manycore_packet_s(addr_width_p, data_width_p, x_cord_width_p, y_cord_width_p);
   `bp_cast_i(bp_bedrock_mem_fwd_header_s, mem_fwd_header);
@@ -66,8 +66,7 @@ module bp_me_manycore_dram
   logic fsm_fwd_new_lo, fsm_fwd_critical_lo, fsm_fwd_last_lo;
   bp_me_stream_pump_in
    #(.bp_params_p(bp_params_p)
-     ,.fsm_data_width_p(word_width_gp)
-     ,.block_width_p(bedrock_block_width_p)
+     ,.data_width_p(word_width_gp)
      ,.payload_width_p(mem_fwd_payload_width_lp)
      ,.msg_stream_mask_p(mem_fwd_stream_mask_gp)
      ,.fsm_stream_mask_p(mem_fwd_stream_mask_gp | mem_rev_stream_mask_gp)
@@ -93,13 +92,12 @@ module bp_me_manycore_dram
 
   bp_bedrock_mem_rev_header_s fsm_rev_header_lo;
   logic [word_width_gp-1:0] fsm_rev_data_lo;
-  logic fsm_rev_v_lo, fsm_rev_ready_and_li;
+  logic fsm_rev_v_lo, fsm_rev_ready_then_li;
   logic [paddr_width_p-1:0] fsm_rev_addr_lo;
   logic fsm_rev_new_lo, fsm_rev_critical_lo, fsm_rev_last_lo;
   bp_me_stream_pump_out
    #(.bp_params_p(bp_params_p)
-     ,.fsm_data_width_p(word_width_gp)
-     ,.block_width_p(bedrock_block_width_p)
+     ,.data_width_p(word_width_gp)
      ,.payload_width_p(mem_rev_payload_width_lp)
      ,.msg_stream_mask_p(mem_rev_stream_mask_gp)
      ,.fsm_stream_mask_p(mem_fwd_stream_mask_gp | mem_rev_stream_mask_gp)
@@ -116,7 +114,7 @@ module bp_me_manycore_dram
      ,.fsm_header_i(fsm_rev_header_lo)
      ,.fsm_data_i(fsm_rev_data_lo)
      ,.fsm_v_i(fsm_rev_v_lo)
-     ,.fsm_ready_and_o(fsm_rev_ready_and_li)
+     ,.fsm_ready_then_o(fsm_rev_ready_then_li)
      ,.fsm_addr_o(fsm_rev_addr_lo)
      ,.fsm_new_o(fsm_rev_new_lo)
      ,.fsm_critical_o(fsm_rev_critical_lo)
@@ -304,8 +302,8 @@ module bp_me_manycore_dram
       // Send out mmio response opportunistically
       fsm_rev_header_lo = dram_rev_header_lo;
       fsm_rev_data_lo = dram_rev_data_lo;
-      fsm_rev_v_lo = dram_rev_v_lo;
-      dram_rev_yumi_li = fsm_rev_ready_and_li & fsm_rev_v_lo;
+      fsm_rev_v_lo = fsm_rev_ready_then_li & dram_rev_v_lo;
+      dram_rev_yumi_li = fsm_rev_v_lo;
     end
 
 endmodule

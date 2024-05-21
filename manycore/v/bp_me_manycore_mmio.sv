@@ -260,7 +260,7 @@ module bp_me_manycore_mmio
         end
 
       case (mem_fwd_header_cast_i.msg_type)
-        e_bedrock_mem_uc_rd, e_bedrock_mem_rd:
+        e_bedrock_mem_rd:
           begin
             packet_li.op_v2                                    = e_remote_load;
             packet_li.payload.load_info_s.load_info.is_byte_op = (mem_fwd_header_cast_i.size == e_bedrock_msg_size_1);
@@ -279,7 +279,7 @@ module bp_me_manycore_mmio
               default: packet_li.op_v2 = e_remote_amoswap; // Must never come here
             endcase
           end
-        default: // e_bedrock_mem_uc_wr, e_bedrock_mem_wr:
+        default: // e_bedrock_mem_wr:
           begin
             packet_li.op_v2                                    = store_op;
             packet_li.payload.data                             = store_payload;
@@ -338,7 +338,7 @@ module bp_me_manycore_mmio
       mem_fwd_header_cast_o.payload.src_did[0+:x_cord_width_p] = packet_lo.src_x_cord;
       mem_fwd_header_cast_o.payload.src_did[x_cord_width_p+:y_cord_width_p] = packet_lo.src_y_cord;
       mem_fwd_header_cast_o.payload.src_did[x_cord_width_p+y_cord_width_p+:5] = packet_lo.reg_id;
-      mem_fwd_header_cast_o.msg_type = (packet_lo.op_v2 inside {e_remote_load}) ? e_bedrock_mem_uc_rd : e_bedrock_mem_uc_wr;
+      mem_fwd_header_cast_o.msg_type = (packet_lo.op_v2 inside {e_remote_load}) ? e_bedrock_mem_rd : e_bedrock_mem_wr;
       // TODO: we only support 32-bit loads and stores to BP configuration addresses
       mem_fwd_header_cast_o.size = e_bedrock_msg_size_4;
       mem_fwd_data_o = packet_lo.payload;
@@ -368,7 +368,7 @@ module bp_me_manycore_mmio
       mem_rev_ready_and_o = 1'b1;
       return_packet_v_li = mem_rev_ready_and_o & mem_rev_v_i;
       // TODO: Handle subword ops, float / ifetch ops
-      return_packet_li.pkt_type = (mem_rev_header_cast_i.msg_type inside {e_bedrock_mem_uc_wr}) ? e_return_credit : e_return_int_wb;
+      return_packet_li.pkt_type = (mem_rev_header_cast_i.msg_type inside {e_bedrock_mem_wr}) ? e_return_credit : e_return_int_wb;
       return_packet_li.data = mem_rev_data_i;
       return_packet_li.x_cord = mem_rev_header_cast_i.payload.src_did[0+:x_cord_width_p];
       return_packet_li.y_cord = mem_rev_header_cast_i.payload.src_did[x_cord_width_p+:y_cord_width_p];

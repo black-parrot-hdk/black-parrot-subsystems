@@ -173,8 +173,6 @@ module bsg_manycore_tile_blackparrot
 
   bp_me_xbar_stream
    #(.bp_params_p(bp_params_p)
-     ,.data_width_p(bedrock_fill_width_p)
-     ,.block_width_p(bedrock_block_width_p)
      ,.payload_width_p(mem_fwd_payload_width_lp)
      ,.stream_mask_p(mem_fwd_stream_mask_gp)
      ,.num_source_p(3)
@@ -209,9 +207,7 @@ module bsg_manycore_tile_blackparrot
 
   bp_me_xbar_stream
    #(.bp_params_p(bp_params_p)
-     ,.data_width_p(bedrock_fill_width_p)
      ,.payload_width_p(mem_rev_payload_width_lp)
-     ,.block_width_p(bedrock_block_width_p)
      ,.stream_mask_p(mem_rev_stream_mask_gp)
      ,.num_source_p(8)
      ,.num_sink_p(3)

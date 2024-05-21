@@ -9,10 +9,13 @@ module bsg_manycore_axil_bridge
    , parameter `BSG_INV_PARAM(x_cord_width_p)
    , parameter `BSG_INV_PARAM(y_cord_width_p)
    , parameter `BSG_INV_PARAM(icache_block_size_in_words_p)
-   , parameter `BSG_INV_PARAM(axil_addr_width_p)
-   , parameter `BSG_INV_PARAM(axil_data_width_p)
+   , parameter `BSG_INV_PARAM(m_axil_addr_width_p)
+   , parameter `BSG_INV_PARAM(m_axil_data_width_p)
+   , parameter `BSG_INV_PARAM(s_axil_addr_width_p)
+   , parameter `BSG_INV_PARAM(s_axil_data_width_p)
 
-   , localparam axil_mask_width_lp = axil_data_width_p>>3
+   , localparam m_axil_mask_width_lp = m_axil_data_width_p>>3
+   , localparam s_axil_mask_width_lp = s_axil_data_width_p>>3
    , localparam link_sif_width_lp =
        `bsg_manycore_link_sif_width(addr_width_p, data_width_p, x_cord_width_p, y_cord_width_p)
    )
@@ -30,14 +33,14 @@ module bsg_manycore_axil_bridge
 
    //====================== AXI-4 LITE Master =========================
    // WRITE ADDRESS CHANNEL SIGNALS
-   , output logic [axil_addr_width_p-1:0]       m_axil_awaddr_o
+   , output logic [m_axil_addr_width_p-1:0]     m_axil_awaddr_o
    , output logic [2:0]                         m_axil_awprot_o
    , output logic                               m_axil_awvalid_o
    , input                                      m_axil_awready_i
 
    // WRITE DATA CHANNEL SIGNALS
-   , output logic [axil_data_width_p-1:0]       m_axil_wdata_o
-   , output logic [axil_mask_width_lp-1:0]      m_axil_wstrb_o
+   , output logic [m_axil_data_width_p-1:0]     m_axil_wdata_o
+   , output logic [m_axil_mask_width_lp-1:0]    m_axil_wstrb_o
    , output logic                               m_axil_wvalid_o
    , input                                      m_axil_wready_i
 
@@ -47,27 +50,27 @@ module bsg_manycore_axil_bridge
    , output logic                               m_axil_bready_o
 
    // READ ADDRESS CHANNEL SIGNALS
-   , output logic [axil_addr_width_p-1:0]       m_axil_araddr_o
+   , output logic [m_axil_addr_width_p-1:0]     m_axil_araddr_o
    , output logic [2:0]                         m_axil_arprot_o
    , output logic                               m_axil_arvalid_o
    , input                                      m_axil_arready_i
 
    // READ DATA CHANNEL SIGNALS
-   , input [axil_data_width_p-1:0]              m_axil_rdata_i
+   , input [m_axil_data_width_p-1:0]            m_axil_rdata_i
    , input [1:0]                                m_axil_rresp_i
    , input                                      m_axil_rvalid_i
    , output logic                               m_axil_rready_o
 
    //====================== AXI-4 LITE =========================
    // WRITE ADDRESS CHANNEL SIGNALS
-   , input [axil_addr_width_p-1:0]              s_axil_awaddr_i
+   , input [s_axil_addr_width_p-1:0]              s_axil_awaddr_i
    , input [2:0]                                s_axil_awprot_i
    , input                                      s_axil_awvalid_i
    , output logic                               s_axil_awready_o
 
    // WRITE DATA CHANNEL SIGNALS
-   , input [axil_data_width_p-1:0]              s_axil_wdata_i
-   , input [axil_mask_width_lp-1:0]             s_axil_wstrb_i
+   , input [s_axil_data_width_p-1:0]              s_axil_wdata_i
+   , input [s_axil_mask_width_lp-1:0]             s_axil_wstrb_i
    , input                                      s_axil_wvalid_i
    , output logic                               s_axil_wready_o
 
@@ -77,13 +80,13 @@ module bsg_manycore_axil_bridge
    , input                                      s_axil_bready_i
 
    // READ ADDRESS CHANNEL SIGNALS
-   , input [axil_addr_width_p-1:0]              s_axil_araddr_i
+   , input [s_axil_addr_width_p-1:0]              s_axil_araddr_i
    , input [2:0]                                s_axil_arprot_i
    , input                                      s_axil_arvalid_i
    , output logic                               s_axil_arready_o
 
    // READ DATA CHANNEL SIGNALS
-   , output logic [axil_data_width_p-1:0]       s_axil_rdata_o
+   , output logic [s_axil_data_width_p-1:0]       s_axil_rdata_o
    , output logic [1:0]                         s_axil_rresp_o
    , output logic                               s_axil_rvalid_o
    , input                                      s_axil_rready_i
@@ -174,16 +177,16 @@ module bsg_manycore_axil_bridge
      );
 
 
-  logic [axil_data_width_p-1:0] c_wdata_lo;
-  logic [axil_addr_width_p-1:0] c_addr_lo;
+  logic [s_axil_data_width_p-1:0] c_wdata_lo;
+  logic [s_axil_addr_width_p-1:0] c_addr_lo;
   logic c_v_lo, c_w_lo, c_ready_and_li;
-  logic [axil_mask_width_lp-1:0] c_wmask_lo;
+  logic [s_axil_mask_width_lp-1:0] c_wmask_lo;
 
-  logic [axil_data_width_p-1:0] c_rdata_li;
+  logic [s_axil_data_width_p-1:0] c_rdata_li;
   logic c_v_li, c_ready_and_lo;
   bsg_axil_fifo_client
-   #(.axil_data_width_p(axil_data_width_p)
-     ,.axil_addr_width_p(axil_addr_width_p)
+   #(.axil_data_width_p(s_axil_data_width_p)
+     ,.axil_addr_width_p(s_axil_addr_width_p)
      )
    axil_client
     (.clk_i(clk_i)
@@ -253,16 +256,16 @@ module bsg_manycore_axil_bridge
   assign c_v_li = returned_v_r_lo | returned_credit_v_r_lo;
   assign returned_yumi_li = c_ready_and_lo & c_v_li;
 
-  logic [axil_data_width_p-1:0] m_wdata_li;
-  logic [axil_addr_width_p-1:0] m_addr_li;
+  logic [m_axil_data_width_p-1:0] m_wdata_li;
+  logic [m_axil_addr_width_p-1:0] m_addr_li;
   logic m_v_li, m_w_li, m_ready_and_lo;
-  logic [axil_mask_width_lp-1:0] m_wmask_li;
+  logic [m_axil_mask_width_lp-1:0] m_wmask_li;
 
-  logic [axil_data_width_p-1:0] m_rdata_lo;
+  logic [m_axil_data_width_p-1:0] m_rdata_lo;
   logic m_v_lo, m_ready_and_li;
   bsg_axil_fifo_master
-   #(.axil_data_width_p(axil_data_width_p)
-     ,.axil_addr_width_p(axil_addr_width_p)
+   #(.axil_data_width_p(m_axil_data_width_p)
+     ,.axil_addr_width_p(m_axil_addr_width_p)
      )
    axil_master
     (.clk_i(clk_i)

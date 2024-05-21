@@ -29,9 +29,9 @@ module bsg_hammerblade
    , localparam y_subcord_width_lp=`BSG_SAFE_CLOG2(num_tiles_y_p)
 
    , parameter `BSG_INV_PARAM(dmem_size_p)
-   , parameter `BSG_INV_PARAM(icache_entries_p)
-   , parameter `BSG_INV_PARAM(icache_tag_width_p)
-   , parameter `BSG_INV_PARAM(icache_block_size_in_words_p)
+   , parameter `BSG_INV_PARAM(mc_icache_entries_p)
+   , parameter `BSG_INV_PARAM(mc_icache_tag_width_p)
+   , parameter `BSG_INV_PARAM(mc_icache_block_size_in_words_p)
 
    , parameter `BSG_INV_PARAM(vcache_addr_width_p)
    , parameter `BSG_INV_PARAM(vcache_data_width_p)
@@ -57,7 +57,7 @@ module bsg_hammerblade
    , parameter `BSG_INV_PARAM(reset_depth_p)
 
    , parameter `BSG_INV_PARAM(rev_use_credits_p)
-   , parameter `BSG_INV_PARAM(rev_fifo_els_p)
+   , parameter int rev_fifo_els_p[4:0] = '{2,2,2,2,3}
 
    , parameter `BSG_INV_PARAM(bsg_manycore_network_cfg_p)
 
@@ -104,9 +104,9 @@ module bsg_hammerblade
          ,.num_subarray_y_p(num_subarray_y_p)
 
          ,.dmem_size_p(dmem_size_p)
-         ,.icache_entries_p(icache_entries_p)
-         ,.icache_tag_width_p(icache_tag_width_p)
-         ,.icache_block_size_in_words_p(icache_block_size_in_words_p)
+         ,.icache_entries_p(mc_icache_entries_p)
+         ,.icache_tag_width_p(mc_icache_tag_width_p)
+         ,.icache_block_size_in_words_p(mc_icache_block_size_in_words_p)
 
          ,.vcache_addr_width_p(vcache_addr_width_p)
          ,.vcache_data_width_p(vcache_data_width_p)
@@ -162,9 +162,9 @@ module bsg_hammerblade
          ,.num_subarray_y_p(num_subarray_y_p)
 
          ,.dmem_size_p(dmem_size_p)
-         ,.icache_entries_p(icache_entries_p)
-         ,.icache_tag_width_p(icache_tag_width_p)
-         ,.icache_block_size_in_words_p(icache_block_size_in_words_p)
+         ,.icache_entries_p(mc_icache_entries_p)
+         ,.icache_tag_width_p(mc_icache_tag_width_p)
+         ,.icache_block_size_in_words_p(mc_icache_block_size_in_words_p)
 
          ,.vcache_addr_width_p(vcache_addr_width_p)
          ,.vcache_data_width_p(vcache_data_width_p)
@@ -358,7 +358,7 @@ module bsg_hammerblade
      ,.pod_y_cord_width_p(pod_y_cord_width_p)
      ,.data_width_p(data_width_p)
      ,.addr_width_p(addr_width_p)
-     ,.icache_block_size_in_words_p(icache_block_size_in_words_p)
+     ,.icache_block_size_in_words_p(mc_icache_block_size_in_words_p)
      ,.vcache_block_size_in_words_p(vcache_block_size_in_words_p)
      ,.vcache_size_p(vcache_size_p)
      ,.vcache_sets_p(vcache_sets_p)
