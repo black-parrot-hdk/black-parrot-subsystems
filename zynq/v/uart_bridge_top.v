@@ -6,8 +6,8 @@ module uart_bridge_top
    , parameter integer C_GP0_AXI_ADDR_WIDTH = 28
    , parameter integer UART_BASE_ADDR = 32'h1100000
    )
-   (input wire                                  clk_i
-    , input wire                                reset_i
+   (input wire                                  aclk
+    , input wire                                aresetn
 
     // WRITE ADDRESS CHANNEL SIGNALS
     , output wire [C_M00_AXI_ADDR_WIDTH-1:0]    m_axil_awaddr_o
