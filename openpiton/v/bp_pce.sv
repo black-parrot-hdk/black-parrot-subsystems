@@ -7,11 +7,13 @@
 module bp_pce
   import bp_common_pkg::*;
   #(parameter bp_params_e bp_params_p = e_bp_unicore_parrotpiton_cfg
-   , parameter `BSG_INV_PARAM(sets_p)
    , parameter `BSG_INV_PARAM(assoc_p)
-   , parameter `BSG_INV_PARAM(fill_width_p)
+   , parameter `BSG_INV_PARAM(sets_p)
    , parameter `BSG_INV_PARAM(block_width_p)
-   , parameter `BSG_INV_PARAM(ctag_width_p)
+   , parameter `BSG_INV_PARAM(fill_width_p)
+   , parameter `BSG_INV_PARAM(data_width_p)
+   , parameter `BSG_INV_PARAM(tag_width_p)
+   , parameter `BSG_INV_PARAM(id_width_p)
    , parameter `BSG_INV_PARAM(pce_id_p) // 0 = I$, 1 = D$
 
    // Should not need to change from default
@@ -19,7 +21,7 @@ module bp_pce
    , parameter req_fifo_els_p = pce_id_p == 0 ? 1 : 8
    , parameter ret_fifo_els_p = pce_id_p == 0 ? 4 : 8
    `declare_bp_proc_params(bp_params_p)
-   `declare_bp_cache_engine_if_widths(paddr_width_p, ctag_width_p, sets_p, assoc_p, dword_width_gp, block_width_p, fill_width_p, cache)
+   `declare_bp_cache_engine_generic_if_widths(paddr_width_p, tag_width_p, sets_p, assoc_p, data_width_p, block_width_p, fill_width_p, id_width_p, cache)
    `declare_bp_pce_l15_if_widths(paddr_width_p, dword_width_gp)
 
    // Cache parameters
@@ -71,7 +73,7 @@ module bp_pce
   , output logic                                   l15_pce_ret_ready_and_o
   );
 
-  `declare_bp_cache_engine_if(paddr_width_p, ctag_width_p, sets_p, assoc_p, dword_width_gp, block_width_p, fill_width_p, cache);
+  `declare_bp_cache_engine_generic_if(paddr_width_p, tag_width_p, sets_p, assoc_p, data_width_p, block_width_p, fill_width_p, id_width_p, cache);
   `declare_bp_pce_l15_if(paddr_width_p, dword_width_gp);
 
   `bp_cast_i(bp_cache_req_s, cache_req);
@@ -93,7 +95,7 @@ module bp_pce
 
      ,.v_i(cache_req_v_i)
      ,.data_i(cache_req_cast_i)
-     ,.ready_o(cache_req_ready_and_lo)
+     ,.ready_param_o(cache_req_ready_and_lo)
 
      ,.v_o(cache_req_v_lo)
      ,.data_o(cache_req_lo)
@@ -111,7 +113,7 @@ module bp_pce
 
      ,.v_i(cache_req_metadata_v_i)
      ,.data_i(cache_req_metadata_cast_i)
-     ,.ready_o(/* Same size as cache_req by construction */)
+     ,.ready_param_o(/* Same size as cache_req by construction */)
 
      ,.v_o(/* Follows cache_req by construction */)
      ,.data_o(cache_req_metadata_lo)
@@ -129,7 +131,7 @@ module bp_pce
 
     ,.data_i(l15_pce_ret_cast_i)
     ,.v_i(l15_pce_ret_v_i)
-    ,.ready_o(l15_pce_ret_ready_and_o)
+    ,.ready_param_o(l15_pce_ret_ready_and_o)
 
     ,.data_o(l15_pce_ret_li)
     ,.v_o(l15_pce_ret_v_li)

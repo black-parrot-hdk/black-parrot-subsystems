@@ -12,7 +12,7 @@ module bp_piton_tile
  import bp_me_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_unicore_parrotpiton_cfg // Warning: Change this at your own peril!
    `declare_bp_proc_params(bp_params_p)
-   `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
+   `declare_bp_bedrock_if_widths(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p)
    `declare_bp_pce_l15_if_widths(paddr_width_p, dword_width_gp)
    )
   (input                                               clk_i
@@ -63,43 +63,41 @@ module bp_piton_tile
    , output logic                                      transducer_l15_req_ack
    );
 
-  `declare_bp_cfg_bus_s(vaddr_width_p, hio_width_p, core_id_width_p, cce_id_width_p, lce_id_width_p);
-  `declare_bp_core_if(vaddr_width_p, paddr_width_p, asid_width_p, branch_metadata_fwd_width_p);
-
-  `declare_bp_cache_engine_if(paddr_width_p, dcache_ctag_width_p, dcache_sets_p, dcache_assoc_p, dword_width_gp, dcache_block_width_p, dcache_fill_width_p, dcache);
-  `declare_bp_cache_engine_if(paddr_width_p, icache_ctag_width_p, icache_sets_p, icache_assoc_p, dword_width_gp, icache_block_width_p, icache_fill_width_p, icache);
-  `declare_bp_bedrock_mem_if(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p);
+  `declare_bp_cfg_bus_s(vaddr_width_p, hio_width_p, core_id_width_p, cce_id_width_p, lce_id_width_p, did_width_p);
+  `declare_bp_fe_icache_engine_if(paddr_width_p, icache_tag_width_p, icache_sets_p, icache_assoc_p, icache_data_width_p, icache_block_width_p, icache_fill_width_p, icache_req_id_width_p);
+  `declare_bp_be_dcache_engine_if(paddr_width_p, dcache_tag_width_p, dcache_sets_p, dcache_assoc_p, dcache_data_width_p, dcache_block_width_p, dcache_fill_width_p, dcache_req_id_width_p);
+  `declare_bp_bedrock_if(paddr_width_p, lce_id_width_p, cce_id_width_p, did_width_p, lce_assoc_p);
   `declare_bp_pce_l15_if(paddr_width_p, dword_width_gp);
 
-  bp_dcache_req_s dcache_req_lo;
-  bp_icache_req_s icache_req_lo;
+  bp_be_dcache_req_s dcache_req_lo;
+  bp_fe_icache_req_s icache_req_lo;
   logic dcache_req_v_lo, dcache_req_yumi_li, dcache_req_lock_li, dcache_req_credits_full_li, dcache_req_credits_empty_li;
   logic icache_req_v_lo, icache_req_yumi_li, icache_req_lock_li, icache_req_credits_full_li, icache_req_credits_empty_li;
 
-  bp_dcache_req_metadata_s dcache_req_metadata_lo;
-  bp_icache_req_metadata_s icache_req_metadata_lo;
+  bp_be_dcache_req_metadata_s dcache_req_metadata_lo;
+  bp_fe_icache_req_metadata_s icache_req_metadata_lo;
   logic dcache_req_metadata_v_lo, icache_req_metadata_v_lo;
 
-  bp_dcache_tag_mem_pkt_s dcache_tag_mem_pkt_li;
-  bp_icache_tag_mem_pkt_s icache_tag_mem_pkt_li;
+  bp_be_dcache_tag_mem_pkt_s dcache_tag_mem_pkt_li;
+  bp_fe_icache_tag_mem_pkt_s icache_tag_mem_pkt_li;
   logic dcache_tag_mem_pkt_v_li, dcache_tag_mem_pkt_yumi_lo;
   logic icache_tag_mem_pkt_v_li, icache_tag_mem_pkt_yumi_lo;
-  bp_dcache_tag_info_s dcache_tag_mem_lo;
-  bp_icache_tag_info_s icache_tag_mem_lo;
+  bp_be_dcache_tag_info_s dcache_tag_mem_lo;
+  bp_fe_icache_tag_info_s icache_tag_mem_lo;
 
-  bp_dcache_data_mem_pkt_s dcache_data_mem_pkt_li;
-  bp_icache_data_mem_pkt_s icache_data_mem_pkt_li;
+  bp_be_dcache_data_mem_pkt_s dcache_data_mem_pkt_li;
+  bp_fe_icache_data_mem_pkt_s icache_data_mem_pkt_li;
   logic dcache_data_mem_pkt_v_li, dcache_data_mem_pkt_yumi_lo;
   logic icache_data_mem_pkt_v_li, icache_data_mem_pkt_yumi_lo;
   logic [dcache_block_width_p-1:0] dcache_data_mem_lo;
   logic [icache_block_width_p-1:0] icache_data_mem_lo;
 
-  bp_dcache_stat_mem_pkt_s dcache_stat_mem_pkt_li;
-  bp_icache_stat_mem_pkt_s icache_stat_mem_pkt_li;
+  bp_be_dcache_stat_mem_pkt_s dcache_stat_mem_pkt_li;
+  bp_fe_icache_stat_mem_pkt_s icache_stat_mem_pkt_li;
   logic dcache_stat_mem_pkt_v_li, dcache_stat_mem_pkt_yumi_lo;
   logic icache_stat_mem_pkt_v_li, icache_stat_mem_pkt_yumi_lo;
-  bp_dcache_stat_info_s dcache_stat_mem_lo;
-  bp_icache_stat_info_s icache_stat_mem_lo;
+  bp_be_dcache_stat_info_s dcache_stat_mem_lo;
+  bp_fe_icache_stat_info_s icache_stat_mem_lo;
 
   logic [paddr_width_p-1:0] dcache_req_addr_li, icache_req_addr_li;
 
@@ -130,10 +128,11 @@ module bp_piton_tile
      );
   wire freeze = ~freezen_r;
 
+  localparam boot_pc_lp = 32'h0010000;
   bp_cfg_bus_s cfg_bus_lo;
   assign cfg_bus_lo =
     '{freeze      : freeze
-      ,npc        : 32'h0010000
+      ,npc        : boot_pc_lp
       ,core_id    : config_coreid_flat
       ,icache_id  : 1'b0
       ,icache_mode: e_lce_mode_normal
@@ -142,6 +141,7 @@ module bp_piton_tile
       ,cce_id     : '0
       ,cce_mode   : e_cce_mode_uncached
       ,hio_mask   : '1
+      ,did         : 1'b1
       };
 
   wire posedge_clk =  clk_i;
@@ -160,7 +160,7 @@ module bp_piton_tile
      ,.icache_req_lock_i(icache_req_lock_li)
      ,.icache_req_metadata_o(icache_req_metadata_lo)
      ,.icache_req_metadata_v_o(icache_req_metadata_v_lo)
-     ,.icache_req_addr_i(icache_req_addr_li)
+     ,.icache_req_id_i(icache_req_id_li)
      ,.icache_req_critical_i(icache_req_critical_li)
      ,.icache_req_last_i(icache_req_last_li)
      ,.icache_req_credits_full_i(icache_req_credits_full_li)
@@ -187,7 +187,7 @@ module bp_piton_tile
      ,.dcache_req_lock_i(dcache_req_lock_li)
      ,.dcache_req_metadata_o(dcache_req_metadata_lo)
      ,.dcache_req_metadata_v_o(dcache_req_metadata_v_lo)
-     ,.dcache_req_addr_i(dcache_req_addr_li)
+     ,.dcache_req_id_i(dcache_req_id_li)
      ,.dcache_req_critical_i(dcache_req_critical_li)
      ,.dcache_req_last_i(dcache_req_last_li)
      ,.dcache_req_credits_full_i(dcache_req_credits_full_li)
@@ -217,11 +217,13 @@ module bp_piton_tile
 
   bp_pce
    #(.bp_params_p(bp_params_p)
-    ,.sets_p(icache_sets_p)
     ,.assoc_p(icache_assoc_p)
-    ,.fill_width_p(icache_fill_width_p)
+    ,.sets_p(icache_sets_p)
     ,.block_width_p(icache_block_width_p)
-    ,.ctag_width_p(icache_ctag_width_p)
+    ,.fill_width_p(icache_fill_width_p)
+    ,.data_width_p(icache_data_width_p)
+    ,.tag_width_p(icache_tag_width_p)
+    ,.id_width_p(icache_req_id_width_p)
     ,.pce_id_p(0)
     )
    icache_pce
@@ -263,11 +265,13 @@ module bp_piton_tile
 
   bp_pce
    #(.bp_params_p(bp_params_p)
-    ,.sets_p(dcache_sets_p)
     ,.assoc_p(dcache_assoc_p)
-    ,.fill_width_p(dcache_fill_width_p)
+    ,.sets_p(dcache_sets_p)
     ,.block_width_p(dcache_block_width_p)
-    ,.ctag_width_p(dcache_ctag_width_p)
+    ,.fill_width_p(dcache_fill_width_p)
+    ,.data_width_p(dcache_data_width_p)
+    ,.tag_width_p(dcache_tag_width_p)
+    ,.id_width_p(dcache_req_id_width_p)
     ,.pce_id_p(1)
     )
    dcache_pce
@@ -324,7 +328,7 @@ module bp_piton_tile
 
      ,.data_i(l15_pce_ret_li[1])
      ,.v_i(l15_pce_ret_v_li[1])
-     ,.ready_o(l15_pce_ret_ready_and_lo[1])
+     ,.ready_param_o(l15_pce_ret_ready_and_lo[1])
 
      ,.data_o(_l15_pce_ret_li[1])
      ,.v_o(_l15_pce_ret_v_li[1])
@@ -345,7 +349,7 @@ module bp_piton_tile
 
          ,.data_i(pce_l15_req_lo[i])
          ,.v_i(pce_l15_req_v_lo[i])
-         ,.ready_o(pce_l15_req_ready_and_li[i])
+         ,.ready_param_o(pce_l15_req_ready_and_li[i])
 
          ,.data_o(fifo_lo[i])
          ,.v_o(fifo_v_lo[i])
@@ -357,7 +361,7 @@ module bp_piton_tile
   bsg_arb_fixed
    #(.inputs_p(2), .lo_to_hi_p(0))
    cmd_arbiter
-    (.ready_i(1'b1)
+    (.ready_then_i(1'b1)
      ,.reqs_i(fifo_v_lo)
      ,.grants_o(fifo_grants_lo)
      );
