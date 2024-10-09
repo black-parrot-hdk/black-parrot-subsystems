@@ -1,8 +1,13 @@
-// Copyright lowRISC contributors.
+// Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
 #include "tcp_server.h"
+
+// Strictly speaking, versions of C older than C23 might not declare
+// strdup in string.h. With e.g. glibc, this macro tells it to declare
+// what we need.
+//#define __STDC_WANT_LIB_EXT2__ 1
 
 #include <assert.h>
 #include <errno.h>
@@ -21,6 +26,7 @@
 /**
  * Simple buffer for passing data between TCP sockets and DPI modules
  */
+//#define BUFSIZE_BYTE 256
 #define BUFSIZE_BYTE (16384 * 8)
 
 struct tcp_buf {

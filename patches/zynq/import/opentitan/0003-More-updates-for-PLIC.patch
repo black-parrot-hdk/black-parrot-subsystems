@@ -1,0 +1,94 @@
+From f0915bd76dad009f10515cabba2ee036ee9a992a Mon Sep 17 00:00:00 2001
+From: Dan Petrisko <petrisko@cs.washington.edu>
+Date: Thu, 10 Oct 2024 01:02:04 -0700
+Subject: [PATCH 3/3] More updates for PLIC
+
+---
+ hw/ip_templates/rv_plic/rtl/rv_plic.sv.tpl | 52 +++++++++++++++---------------
+ 1 file changed, 26 insertions(+), 26 deletions(-)
+
+diff --git a/hw/ip_templates/rv_plic/rtl/rv_plic.sv.tpl b/hw/ip_templates/rv_plic/rtl/rv_plic.sv.tpl
+index 7edb81973f..15632cd7dd 100644
+--- a/hw/ip_templates/rv_plic/rtl/rv_plic.sv.tpl
++++ b/hw/ip_templates/rv_plic/rtl/rv_plic.sv.tpl
+@@ -45,14 +45,14 @@ module ${module_instance_name} import ${module_instance_name}_reg_pkg::*; #(
+   input  [NumSrc-1:0] intr_src_i,
+ 
+   // Alerts
+-  input  prim_alert_pkg::alert_rx_t [NumAlerts-1:0] alert_rx_i,
+-  output prim_alert_pkg::alert_tx_t [NumAlerts-1:0] alert_tx_o,
++  //input  prim_alert_pkg::alert_rx_t [NumAlerts-1:0] alert_rx_i,
++  //output prim_alert_pkg::alert_tx_t [NumAlerts-1:0] alert_tx_o,
+ 
+   // Interrupt notification to targets
+   output [NumTarget-1:0] irq_o,
+   output [SRCW-1:0]      irq_id_o [NumTarget],
+ 
+-  output logic [NumTarget-1:0] msip_o
++  //output logic [NumTarget-1:0] msip_o
+ );
+ 
+   ${module_instance_name}_reg2hw_t reg2hw;
+@@ -140,7 +140,7 @@ module ${module_instance_name} import ${module_instance_name}_reg_pkg::*; #(
+   // MSIP register //
+   ///////////////////
+ % for t in range(target):
+-  assign msip_o[${t}] = reg2hw.msip${t}.q;
++//  assign msip_o[${t}] = reg2hw.msip${t}.q;
+ % endfor
+ 
+   ////////
+@@ -208,28 +208,28 @@ module ${module_instance_name} import ${module_instance_name}_reg_pkg::*; #(
+   // Alerts //
+   ////////////
+ 
+-  logic [NumAlerts-1:0] alert_test, alerts;
+-
+-  assign alert_test = {
+-    reg2hw.alert_test.q &
+-    reg2hw.alert_test.qe
+-  };
+-
+-  for (genvar i = 0; i < NumAlerts; i++) begin : gen_alert_tx
+-    prim_alert_sender #(
+-      .AsyncOn(AlertAsyncOn[i]),
+-      .IsFatal(1'b1)
+-    ) u_prim_alert_sender (
+-      .clk_i,
+-      .rst_ni,
+-      .alert_test_i  ( alert_test[i] ),
+-      .alert_req_i   ( alerts[i]     ),
+-      .alert_ack_o   (               ),
+-      .alert_state_o (               ),
+-      .alert_rx_i    ( alert_rx_i[i] ),
+-      .alert_tx_o    ( alert_tx_o[i] )
+-    );
+-  end
++  //logic [NumAlerts-1:0] alert_test, alerts;
++
++  //assign alert_test = {
++  //  reg2hw.alert_test.q &
++  //  reg2hw.alert_test.qe
++  //};
++
++  //for (genvar i = 0; i < NumAlerts; i++) begin : gen_alert_tx
++  //  prim_alert_sender #(
++  //    .AsyncOn(AlertAsyncOn[i]),
++  //    .IsFatal(1'b1)
++  //  ) u_prim_alert_sender (
++  //    .clk_i,
++  //    .rst_ni,
++  //    .alert_test_i  ( alert_test[i] ),
++  //    .alert_req_i   ( alerts[i]     ),
++  //    .alert_ack_o   (               ),
++  //    .alert_state_o (               ),
++  //    .alert_rx_i    ( alert_rx_i[i] ),
++  //    .alert_tx_o    ( alert_tx_o[i] )
++  //  );
++  //end
+ 
+   ////////////////////////
+   // Register interface //
+-- 
+2.16.5
+

@@ -1,4 +1,4 @@
-// Copyright lowRISC contributors.
+// Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
@@ -46,6 +46,11 @@ module dmidpi #(
     dmidpi_close(ctx);
     ctx = null;
   end
+
+//  always_ff @(posedge clk_i, negedge rst_ni) begin
+//    dmidpi_tick(ctx, dmi_req_valid, dmi_req_ready, dmi_req_addr, dmi_req_op,
+//                dmi_req_data, dmi_rsp_valid, dmi_rsp_ready, dmi_rsp_data,
+//                dmi_rsp_resp, dmi_rst_n);
 
   bit        __dmi_req_valid;
   bit        __dmi_req_ready;

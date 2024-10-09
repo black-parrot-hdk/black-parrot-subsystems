@@ -1,0 +1,30 @@
+## Set common environment variables
+SHELL:=/bin/bash
+
+export BP_SUB_DIR         ?= $(TOP)
+export BP_SUB_PATCH_DIR   := $(BP_SUB_DIR)/patches
+export BP_SUB_INSTALL_DIR := $(BP_SUB_DIR)/install
+export BP_SUB_TOUCH_DIR   := $(BP_SUB_INSTALL_DIR)/touch
+export BP_SUB_WORK_DIR    := $(BP_SUB_INSTALL_DIR)/work
+
+define patch_if_new
+    $(eval $@_src_root = $(1))
+    $(eval $@_patch_root = $(2))
+    $(eval $@_patch_list = $(wildcard $($@_patch_root)/*.patch))
+    $(eval $@_patch_is_top = $(findstring patches,$(lastword $(subst /, ,$(dir $($@_patch_root))))))
+	echo "Setting up git repo"; \
+	cd ${$@_src_root}; rm -rf .git; git init; git add .; git commit -m "dummy commit"; \
+    for p in ${$@_patch_list}; \
+	do \
+        echo "Checking if patch is applicable"; \
+        cd ${$@_src_root}; $(CHECK_PATCH) $$p && continue; \
+        echo "Patch is unapplied..."; \
+        cd ${$@_src_root}; git am $$p; \
+    done
+endef
+
+export GIT         ?= git
+export PIP3        ?= pip3
+export PYTHON3     ?= python3
+export PATCH       ?= $(GIT) apply --ignore-whitespace --ignore-space-change
+export CHECK_PATCH ?= $(PATCH) --check --reverse

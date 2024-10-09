@@ -18,7 +18,6 @@ Building blocks for connecting BP to an existing AXI system:
 - bsg_axil_store_packer (Specialized memory ops into a non-blocking fifo)
 - bp_me_axil_client (Bedrock to AXILS converter)
 - bp_me_axil_master (Bedrock to AXILM converter)
-- bsg_manycore_axil_bridge (AXIL to HammerBlade converter)
 
 ### [Wishbone4](https://wishbone-interconnect.readthedocs.io/en/latest/02_interface.html)
 
@@ -34,6 +33,7 @@ Open-source FPGA blocks, with SystemVerilog description and Verilog-2005 topleve
 - bsg_axil_uart_bridge (AXILM/AXILS bridge to UART-16550(ish) controller)
 - bsg_axil_watchdog (AXILM periodic heartbeat)
 - bsg_axis_fifo (AXIS FIFO)
+- bsg_irq_to_axil_adapter (Level-triggered interrupt to AXIL adapter)
 
 ## SoC Integrations
 
@@ -41,6 +41,7 @@ Open-source FPGA blocks, with SystemVerilog description and Verilog-2005 topleve
 
 Integration of BlackParrot as a Linux-capable control processor for the HammerBlade manycore:
 #### HammerBlade modules
+- bsg_manycore_axil_bridge (AXIL to HammerBlade converter)
 - bsg_manycore_endpoint_to_fifos (Gearbox to convert HammerBlade Standard Endpoint to non-blocking FIFOs)
 - bsg_manycore_switch_1x2 (1:2 mux used to bridge two non-interfering HammerBlade links)
 #### BP Widgets
