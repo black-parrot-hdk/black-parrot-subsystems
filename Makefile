@@ -24,7 +24,22 @@ apply_patches: | $(patch_tag)
 $(patch_tag):
 	$(MAKE) checkout
 	git submodule update --init --recursive --recommend-shallow
+	$(PIP3) install mako importlib_resources semantic_version pycrypto
+	cp -r $(zynq_dir)/import/opentitan $(BP_SUB_WORK_DIR)/opentitan
+	@echo "Patching successful, ignore errors"
+	$(call patch_if_new,$(BP_SUB_WORK_DIR)/opentitan,$(BP_SUB_PATCH_DIR)/zynq/import/opentitan)
+	$(PYTHON3) $(BP_SUB_WORK_DIR)/opentitan/util/ipgen.py generate \
+		-c $(zynq_dir)/cfg/rv_plic.ipconfig.hjson \
+		-C $(BP_SUB_WORK_DIR)/opentitan/hw/ip_templates/rv_plic \
+		-o $(BP_SUB_WORK_DIR)/opentitan/rv_plic
+	mkdir -p $(zynq_dir)/v/gen
+	find $(BP_SUB_WORK_DIR)/opentitan \
+		-path $(BP_SUB_WORK_DIR)/opentitan/.git -prune -o \
+		\( -name "*.c" -o -name "*.h" -o -name "*.sv" -o -name "*.svh" \) \
+		-exec cp {} $(zynq_dir)/v/gen \;
 	touch $@
+
+
 
 ## This target just wipes the whole repo clean.
 #  Use with caution.

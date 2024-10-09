@@ -1,0 +1,85 @@
+From 108c585e3c5303f41de9a38737dbaba797d95389 Mon Sep 17 00:00:00 2001
+From: Dan Petrisko <petrisko@cs.washington.edu>
+Date: Wed, 9 Oct 2024 22:55:47 -0700
+Subject: [PATCH 1/6] Update to PLIC
+
+---
+ hw/ip_templates/rv_plic/rtl/rv_plic.sv.tpl | 41 +++++++++++++++++++++---------
+ 1 file changed, 29 insertions(+), 12 deletions(-)
+
+diff --git a/hw/ip_templates/rv_plic/rtl/rv_plic.sv.tpl b/hw/ip_templates/rv_plic/rtl/rv_plic.sv.tpl
+index 6cd349b..ebb3d75 100644
+--- a/hw/ip_templates/rv_plic/rtl/rv_plic.sv.tpl
++++ b/hw/ip_templates/rv_plic/rtl/rv_plic.sv.tpl
+@@ -22,6 +22,7 @@ module ${module_instance_name} import ${module_instance_name}_reg_pkg::*; #(
+   // fully implemented yet (this would require instantiating pulse syncs
+   // and routing the source clocks / resets to the PLIC).
+   parameter logic [NumSrc-1:0]    LevelEdgeTrig = '0, // 0: level, 1: edge
++
+   // derived parameter
+   localparam int SRCW    = $clog2(NumSrc)
+ ) (
+@@ -29,8 +30,16 @@ module ${module_instance_name} import ${module_instance_name}_reg_pkg::*; #(
+   input     rst_ni,
+ 
+   // Bus Interface (device)
+-  input  tlul_pkg::tl_h2d_t tl_i,
+-  output tlul_pkg::tl_d2h_t tl_o,
++//  input  tlul_pkg::tl_h2d_t tl_i,
++//  output tlul_pkg::tl_d2h_t tl_o,
++
++  input                  reg_we,
++  input                  reg_re,
++  input [AW-1:0]         reg_addr,
++  input [DW-1:0]         reg_wdata,
++  input [DBW-1:0]        reg_be,
++  output logic [DW-1:0]  reg_rdata,
++  output logic           reg_error,
+ 
+   // Interrupt Sources
+   input  [NumSrc-1:0] intr_src_i,
+@@ -231,8 +240,16 @@ module ${module_instance_name} import ${module_instance_name}_reg_pkg::*; #(
+     .clk_i,
+     .rst_ni,
+ 
+-    .tl_i,
+-    .tl_o,
++//    .tl_i,
++//    .tl_o,
++
++    .reg_we,
++    .reg_re,
++    .reg_addr,
++    .reg_wdata,
++    .reg_be,
++    .reg_rdata,
++    .reg_error,
+ 
+     .reg2hw,
+     .hw2reg,
+@@ -241,14 +258,14 @@ module ${module_instance_name} import ${module_instance_name}_reg_pkg::*; #(
+     .intg_err_o(alerts[0])
+   );
+ 
+-  // Assertions
+-  `ASSERT_KNOWN(TlDValidKnownO_A, tl_o.d_valid)
+-  `ASSERT_KNOWN(TlAReadyKnownO_A, tl_o.a_ready)
+-  `ASSERT_KNOWN(IrqKnownO_A, irq_o)
+-  `ASSERT_KNOWN(MsipKnownO_A, msip_o)
+-  for (genvar k = 0; k < NumTarget; k++) begin : gen_irq_id_known
+-    `ASSERT_KNOWN(IrqIdKnownO_A, irq_id_o[k])
+-  end
++//  // Assertions
++//  `ASSERT_KNOWN(TlDValidKnownO_A, tl_o.d_valid)
++//  `ASSERT_KNOWN(TlAReadyKnownO_A, tl_o.a_ready)
++//  `ASSERT_KNOWN(IrqKnownO_A, irq_o)
++//  `ASSERT_KNOWN(MsipKnownO_A, msip_o)
++//  for (genvar k = 0; k < NumTarget; k++) begin : gen_irq_id_known
++//    `ASSERT_KNOWN(IrqIdKnownO_A, irq_id_o[k])
++//  end
+ 
+   // Assume
+   `ASSUME(Irq0Tied_A, intr_src_i[0] == 1'b0)
+-- 
+2.16.5
+

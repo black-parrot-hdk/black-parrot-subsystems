@@ -29,6 +29,7 @@ Open-source FPGA blocks, with SystemVerilog description and Verilog-2005 topleve
 - bsg_axil_uart_bridge (AXILM/AXILS bridge to UART-16550(ish) controller)
 - bsg_axil_watchdog (AXILM periodic heartbeat)
 - bsg_axis_fifo (AXIS FIFO)
+- bsg_axil_plic (AXIL wrapper around the [OpenTitan](https://github.com/lowRISC/opentitan) PLIC)
 
 ## SoC Integrations
 

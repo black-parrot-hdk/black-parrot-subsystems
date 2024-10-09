@@ -1,0 +1,110 @@
+From 1b9fd450c06b5d51348380fd1552ca94575652ad Mon Sep 17 00:00:00 2001
+From: Dan Petrisko <petrisko@cs.washington.edu>
+Date: Fri, 11 Oct 2024 23:07:30 -0700
+Subject: [PATCH 3/6] More updates for PLIC
+
+---
+ hw/ip_templates/rv_plic/rtl/rv_plic.sv.tpl | 64 +++++++++++++++---------------
+ 1 file changed, 32 insertions(+), 32 deletions(-)
+
+diff --git a/hw/ip_templates/rv_plic/rtl/rv_plic.sv.tpl b/hw/ip_templates/rv_plic/rtl/rv_plic.sv.tpl
+index ebb3d75..f81d276 100644
+--- a/hw/ip_templates/rv_plic/rtl/rv_plic.sv.tpl
++++ b/hw/ip_templates/rv_plic/rtl/rv_plic.sv.tpl
+@@ -33,26 +33,26 @@ module ${module_instance_name} import ${module_instance_name}_reg_pkg::*; #(
+ //  input  tlul_pkg::tl_h2d_t tl_i,
+ //  output tlul_pkg::tl_d2h_t tl_o,
+ 
+-  input                  reg_we,
+-  input                  reg_re,
+-  input [AW-1:0]         reg_addr,
+-  input [DW-1:0]         reg_wdata,
+-  input [DBW-1:0]        reg_be,
+-  output logic [DW-1:0]  reg_rdata,
+-  output logic           reg_error,
++  input                              reg_we,
++  input                              reg_re,
++  input [top_pkg::TL_AW-1:0]         reg_addr,
++  input [top_pkg::TL_DW-1:0]         reg_wdata,
++  input [top_pkg::TL_DBW-1:0]        reg_be,
++  output logic [top_pkg::TL_DW-1:0]  reg_rdata,
++  output logic                       reg_error,
+ 
+   // Interrupt Sources
+   input  [NumSrc-1:0] intr_src_i,
+ 
+   // Alerts
+-  input  prim_alert_pkg::alert_rx_t [NumAlerts-1:0] alert_rx_i,
+-  output prim_alert_pkg::alert_tx_t [NumAlerts-1:0] alert_tx_o,
++//  input  prim_alert_pkg::alert_rx_t [NumAlerts-1:0] alert_rx_i,
++//  output prim_alert_pkg::alert_tx_t [NumAlerts-1:0] alert_tx_o,
+ 
+   // Interrupt notification to targets
+   output [NumTarget-1:0] irq_o,
+-  output [SRCW-1:0]      irq_id_o [NumTarget],
++  output [SRCW-1:0]      irq_id_o [NumTarget]
+ 
+-  output logic [NumTarget-1:0] msip_o
++//  output logic [NumTarget-1:0] msip_o
+ );
+ 
+   ${module_instance_name}_reg2hw_t reg2hw;
+@@ -140,7 +140,7 @@ module ${module_instance_name} import ${module_instance_name}_reg_pkg::*; #(
+   // MSIP register //
+   ///////////////////
+ % for t in range(target):
+-  assign msip_o[${t}] = reg2hw.msip${t}.q;
++//  assign msip_o[${t}] = reg2hw.msip${t}.q;
+ % endfor
+ 
+   ////////
+@@ -210,26 +210,26 @@ module ${module_instance_name} import ${module_instance_name}_reg_pkg::*; #(
+ 
+   logic [NumAlerts-1:0] alert_test, alerts;
+ 
+-  assign alert_test = {
+-    reg2hw.alert_test.q &
+-    reg2hw.alert_test.qe
+-  };
+-
+-  for (genvar i = 0; i < NumAlerts; i++) begin : gen_alert_tx
+-    prim_alert_sender #(
+-      .AsyncOn(AlertAsyncOn[i]),
+-      .IsFatal(1'b1)
+-    ) u_prim_alert_sender (
+-      .clk_i,
+-      .rst_ni,
+-      .alert_test_i  ( alert_test[i] ),
+-      .alert_req_i   ( alerts[i]     ),
+-      .alert_ack_o   (               ),
+-      .alert_state_o (               ),
+-      .alert_rx_i    ( alert_rx_i[i] ),
+-      .alert_tx_o    ( alert_tx_o[i] )
+-    );
+-  end
++//  assign alert_test = {
++//    reg2hw.alert_test.q &
++//    reg2hw.alert_test.qe
++//  };
++//
++//  for (genvar i = 0; i < NumAlerts; i++) begin : gen_alert_tx
++//    prim_alert_sender #(
++//      .AsyncOn(AlertAsyncOn[i]),
++//      .IsFatal(1'b1)
++//    ) u_prim_alert_sender (
++//      .clk_i,
++//      .rst_ni,
++//      .alert_test_i  ( alert_test[i] ),
++//      .alert_req_i   ( alerts[i]     ),
++//      .alert_ack_o   (               ),
++//      .alert_state_o (               ),
++//      .alert_rx_i    ( alert_rx_i[i] ),
++//      .alert_tx_o    ( alert_tx_o[i] )
++//    );
++//  end
+ 
+   ////////////////////////
+   // Register interface //
+-- 
+2.16.5
+
