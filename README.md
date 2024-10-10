@@ -52,9 +52,9 @@ Integration of BlackParrot as a Linux-capable control processor for the HammerBl
 - bsg_manycore_tile_blackparrot (Integration of BP widgets for a canonical control tile)
 - bsg_manycore_tile_blackparrot_mesh (Set of routers to align with HammerBlade mesh)
 
-### [HammerBlade](https://github.com/bespoke-silicon-group/bsg_manycore)
+### [OpenPiton](https://github.com/PrincetonUniversity/openpiton)
 
-Integration of BlackParrot as a Linux-capable [BYOC](https://decades.cs.princeton.edu/aspl20-balkind.pdf) for the [OpenPiton](https://github.com/PrincetonUniversity/openpiton) manycore:
+Integration of BlackParrot as a Linux-capable [BYOC](https://decades.cs.princeton.edu/aspl20-balkind.pdf) for the OpenPiton manycore:
 #### BP Widgets
 - bp_pce (P-Mesh Cache Engine to bridge BP-Bedrock to OpenPiton L1.5 cache)
 #### BP Wrappers
