@@ -156,7 +156,7 @@ module bp_me_axil_master
   localparam size_width_lp = `BSG_WIDTH(byte_offset_width_lp);
 
   wire [byte_offset_width_lp-1:0] resp_sel_li = fsm_rev_addr_li[0+:byte_offset_width_lp];
-  wire [size_width_lp-1:0] resp_size_li = fsm_rev_header_lo.size;
+  wire [size_width_lp-1:0] resp_size_li = `BSG_MIN(fsm_rev_header_lo.size, byte_offset_width_lp);
   logic [axil_data_width_p-1:0] rdata_lo;
   bsg_bus_pack
    #(.in_width_p(axil_data_width_p), .out_width_p(axil_data_width_p))
