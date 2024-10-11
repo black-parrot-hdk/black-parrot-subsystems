@@ -242,7 +242,7 @@ module bp_axi_top
   logic [num_cce_p*l2_dmas_p-1:0][axi_data_width_p-1:0] axi_dma_data_li;
   logic [num_cce_p*l2_dmas_p-1:0] axi_dma_data_v_li, axi_dma_data_yumi_lo;
 
-  bp_me_axil_client
+  bp_axil_client
    #(.bp_params_p(bp_params_p)
      ,.axil_data_width_p(s_axil_data_width_p)
      ,.axil_addr_width_p(s_axil_addr_width_p)
@@ -266,7 +266,7 @@ module bp_axi_top
      ,.*
      );
 
-  bp_me_axil_master
+  bp_axil_master
    #(.bp_params_p(bp_params_p)
      ,.axil_data_width_p(m_axil_data_width_p)
      ,.axil_addr_width_p(m_axil_addr_width_p)

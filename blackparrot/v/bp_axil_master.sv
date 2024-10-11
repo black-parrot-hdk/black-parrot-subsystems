@@ -6,7 +6,7 @@
 // It could be extended to support pipelined accesses by adding input skid
 //   buffers at the cost of additional area.
 
-module bp_me_axil_master
+module bp_axil_master
  import bp_common_pkg::*;
  import bp_me_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg

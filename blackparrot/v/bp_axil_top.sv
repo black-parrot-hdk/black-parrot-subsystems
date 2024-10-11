@@ -110,7 +110,7 @@ module bp_axil_top
 
   for (genvar i = 0; i < 2; i++)
     begin : rof1
-      bp_me_axil_master
+      bp_axil_master
        #(.bp_params_p(bp_params_p)
          ,.axil_data_width_p(axil_data_width_p)
          ,.axil_addr_width_p(axil_addr_width_p)
