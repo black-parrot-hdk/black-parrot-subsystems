@@ -1,3 +1,15 @@
+*.swp
 install/
+work/
 gen/
 __pycache__/
+bsg_cadenv/
+csrc/
+dump.vpd
+dump.fst
+simv
+simv.daidir/
+ucli.key
+vc_hdrs.h
+obj_dir/
+simsc

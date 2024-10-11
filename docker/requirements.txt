@@ -1,0 +1,8 @@
+orderedmultidict
+wheel
+setuptools>=58
+hjson
+pycryptodome
+mako
+importlib_resources
+semantic_version

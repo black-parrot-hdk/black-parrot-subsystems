@@ -1,23 +1,26 @@
-.PHONY: all exec wave
-
-## Set common environment variables
 TOP ?= $(shell git rev-parse --show-toplevel)
-BASEJUMP_STL ?= $(TOP)/../basejump_stl
+include $(TOP)/Makefile.common
+include $(TOP)/Makefile.env
 
 TOP_MODULE := bsg_axil_mux
 VV := verilator
-all:
+build: ## builds a simulation model
+build: ./obj_dir/V$(TOP_MODULE)
+./obj_dir/V$(TOP_MODULE):
+	$(eval export BASEJUMP_STL_DIR BP_AXI_DIR)
 	$(VV) -Wno-fatal -Gaddr_width_p=32 -Gdata_width_p=32\
     --x-initial unique --x-assign unique --cc -Wall --exe --sv --build -I../../v \
     -I$(BASEJUMP_STL)/bsg_misc -I$(BASEJUMP_STL)/bsg_dataflow -I$(BASEJUMP_STL)/bsg_mem \
-    -CFLAGS "-std=c++11 -pedantic -Wall -Wextra" \
+    -CFLAGS "-std=c++14 -pedantic -Wall -Wextra" \
     --top $(TOP_MODULE) -f flist.vcs --trace-fst --trace-structs
 
-exec:
-	valgrind ./obj_dir/V$(TOP_MODULE) +verilator+rand+reset+2 +verilator+seed+123
+run: ## runs a simulation
+run: ./obj_dir/V$(TOP_MODULE)
+	./$< +verilator+rand+reset+2 +verilator+seed+123
 
-wave:
+wave: ## opens a waveform dump
 	gtkwave dump.fst
 
-clean:
+clean: ## cleans the test directory
 	rm -rf obj_dir dump.fst 
+

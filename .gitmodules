@@ -1,3 +1,25 @@
-[submodule "zynq/import/riscv-dbg"]
-    path = zynq/import/riscv-dbg
+[submodule "import/riscv-dbg"]
+	path = import/riscv-dbg
     url = https://github.com/pulp-platform/riscv-dbg
+    branch = master
+    ignore = dirty
+    shallow = true
+[submodule "import/verilog-ethernet"]
+	path = import/verilog-ethernet
+    url = https://github.com/alexforencich/verilog-ethernet
+    branch = master
+    ignore = dirty
+    shallow = true
+[submodule "import/opentitan"]
+	path = import/opentitan
+    url = https://github.com/lowRISC/opentitan
+    branch = master
+    ignore = dirty
+    shallow = true
+[submodule "import/basejump_stl"]
+	path = import/basejump_stl
+    url = https://github.com/bespoke-silicon-group/basejump_stl
+    branch = master
+    ignore = dirty
+    shallow = true
+
