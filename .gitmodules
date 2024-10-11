@@ -1,3 +1,0 @@
-[submodule "rv_plic/import/opentitan"]
-	path = rv_plic/import/opentitan
-	url = https://github.com/lowRISC/opentitan.git
