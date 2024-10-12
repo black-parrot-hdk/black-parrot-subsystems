@@ -125,3 +125,4 @@ module bsg_axil_fifo_master
 
 endmodule
 
+`BSG_ABSTRACT_MODULE(bsg_axil_fifo_master)

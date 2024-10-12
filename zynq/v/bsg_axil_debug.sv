@@ -5,13 +5,19 @@
 // Client address space is
 // DMI bridge: 0x00_0000 - 0x12_FFFF 
 // DMI client port: 0x13_0000 -
-module bsg_axi_debug
+module bsg_axil_debug
  import dm::*;
  #(parameter m_axil_data_width_p = 32
    , parameter m_axil_addr_width_p = 32
    , parameter s_axil_data_width_p = 32
    , parameter s_axil_addr_width_p = 32
    , parameter bus_width_p = 32
+
+   , parameter debug_base_addr_p = 32'h130000
+   , parameter debug_irq_addr_p  = 32'h30c000
+   , parameter debug_npc_addr_p  = 32'h200010
+   , parameter debug_npc_data_p  = 32'h130800
+   , parameter debug_freeze_addr_p = 32'h200008
    )
   (input                                         clk_i
    , input                                       reset_i
@@ -81,6 +87,8 @@ module bsg_axi_debug
      ,e_send_hireq
      ,e_send_loreq
      ,e_lower_req
+     // Unused but may be useful in the future
+     ,e_freeze
      ,e_unfreeze
      } state_n, state_r;
   wire is_ready      = (state_r == e_ready);
@@ -88,6 +96,7 @@ module bsg_axi_debug
   wire is_send_hireq = (state_r == e_send_hireq);
   wire is_send_loreq = (state_r == e_send_loreq);
   wire is_lower_req  = (state_r == e_lower_req);
+  wire is_freeze     = (state_r == e_freeze);
   wire is_unfreeze   = (state_r == e_unfreeze);
 
   hartinfo_t hartinfo;
@@ -103,28 +112,28 @@ module bsg_axi_debug
   logic ndmreset_lo;
 
   logic slave_req_li, slave_we_li;
-  logic [bus_width_p_p-1:0] slave_addr_li;
-  logic [bus_width_p_p/8-1:0] slave_be_li;
-  logic [bus_width_p_p-1:0] slave_wdata_li;
-  logic [bus_width_p_p-1:0] slave_rdata_lo;
+  logic [bus_width_p-1:0] slave_addr_li;
+  logic [bus_width_p/8-1:0] slave_be_li;
+  logic [bus_width_p-1:0] slave_wdata_li;
+  logic [bus_width_p-1:0] slave_rdata_lo;
 
   logic master_req_lo, master_we_lo, master_gnt_li;
-  logic [bus_width_p_p-1:0] master_add_lo;
-  logic [bus_width_p_p-1:0] master_wdata_lo;
-  logic [bus_width_p_p/8-1:0] master_be_lo;
+  logic [bus_width_p-1:0] master_add_lo;
+  logic [bus_width_p-1:0] master_wdata_lo;
+  logic [bus_width_p/8-1:0] master_be_lo;
 
   logic master_r_valid_li;
   logic master_r_err_li, master_r_other_err_li;
-  logic [bus_width_p_p-1:0] master_r_rdata_li;
+  logic [bus_width_p-1:0] master_r_rdata_li;
 
   dmi_req_t dmi_req_li;
-  logic dmi_v_li, dmi_ready_lo;
+  logic dmi_req_v_li, dmi_req_ready_lo;
   dmi_resp_t dmi_resp_lo;
   logic dmi_resp_v_lo, dmi_resp_ready_li;
   dm_top
    #(.NrHarts(1)
      ,.BusWidth(bus_width_p)
-     ,.Xlen(dword_width_gp)
+     ,.Xlen(64)
      // Forces portable debug rom
      ,.DmBaseAddress(1)
      )
@@ -206,7 +215,6 @@ module bsg_axi_debug
      ,.data_o(c_fifo_v_r)
      );
 
-  // TODO: Parameterize
   always_comb
     begin
       slave_req_li = '0;
@@ -223,7 +231,7 @@ module bsg_axi_debug
 
       c_fifo_v_li = '0;
 
-      if (c_fifo_addr_lo <  32'h130000)
+      if (c_fifo_addr_lo < debug_base_addr_p)
         begin
           dmi_req_v_li = c_fifo_v_lo;
           dmi_req_li.addr = c_fifo_addr_lo >> 2'd2; // 23b word address
@@ -305,25 +313,26 @@ module bsg_axi_debug
 
       unique casez (state_r)
         e_ready:
-          m_fifo_v_li = master_req_lo;
-          m_fifo_w_li = master_we_lo;
-          m_fifo_wmask_li = master_be_lo;
-          m_fifo_data_li = master_wdata_lo;
-          m_fifo_addr_li = master_add_lo;
-          master_gnt_li = m_fifo_ready_and_lo & m_fifo_v_li;
+          begin
+            m_fifo_v_li = master_req_lo;
+            m_fifo_w_li = master_we_lo;
+            m_fifo_wmask_li = master_be_lo;
+            m_fifo_data_li = master_wdata_lo;
+            m_fifo_addr_li = master_add_lo;
+            master_gnt_li = m_fifo_ready_and_lo & m_fifo_v_li;
 
-          master_r_valid_li = m_fifo_v_lo;
-          master_r_rdata_li = m_fifo_data_lo;
+            master_r_valid_li = m_fifo_v_lo;
+            master_r_rdata_li = m_fifo_data_lo;
 
-          state_n = (debug_req & ~outstanding_r) ? e_send_npc : state_r;
+            state_n = (debug_req & ~outstanding_r) ? e_send_npc : state_r;
+          end
         e_send_npc:
           begin
             m_fifo_v_li = ~outstanding_r;
             m_fifo_w_li = 1'b1;
             m_fifo_wmask_li = '1;
-            // TODO: Parameterize
-            m_fifo_data_li = 0x130800;
-            m_fifo_addr_li = 0x200010;
+            m_fifo_data_li = debug_npc_data_p;
+            m_fifo_addr_li = debug_npc_addr_p;
 
             state_n = master_r_valid_li ? e_send_hireq : state_r;
           end
@@ -332,9 +341,8 @@ module bsg_axi_debug
             m_fifo_v_li = ~outstanding_r;
             m_fifo_w_li = 1'b1;
             m_fifo_wmask_li = '1;
-            // TODO: Parameterize
-            m_fifo_data_li = 0x1;
-            m_fifo_addr_li = 0x30c000;
+            m_fifo_data_li = 1;b1;
+            m_fifo_addr_li = debug_irq_addr_p;
 
             state_n = master_r_valid_li ? e_send_loreq : state_r;
           end
@@ -343,20 +351,28 @@ module bsg_axi_debug
             m_fifo_v_li = ~outstanding_r;
             m_fifo_w_li = 1'b1;
             m_fifo_wmask_li = '1;
-            // TODO: Parameterize
-            m_fifo_data_li = 0x0;
-            m_fifo_addr_li = 0x30c000;
+            m_fifo_data_li = 1'b0;
+            m_fifo_addr_li = debug_irq_addr_p;
 
             state_n = master_r_valid_li ? e_lower_req : state_r;
+          end
+        e_freeze:
+          begin
+            m_fifo_v_li = ~outstanding_r;
+            m_fifo_w_li = 1'b1;
+            m_fifo_wmask_li = '1;
+            m_fifo_data_li = 1'b1;
+            m_fifo_addr_li = debug_freeze_addr_p;
+
+            state_n = master_r_valid_li ? e_ready : state_r;
           end
         e_unfreeze:
           begin
             m_fifo_v_li = ~outstanding_r;
             m_fifo_w_li = 1'b1;
             m_fifo_wmask_li = '1;
-            // TODO: Parameterize
-            m_fifo_data_li = 0x0;
-            m_fifo_addr_li = 0x200008;
+            m_fifo_data_li = 1'b0;
+            m_fifo_addr_li = debug_freeze_addr_p;
 
             state_n = master_r_valid_li ? e_ready : state_r;
           end

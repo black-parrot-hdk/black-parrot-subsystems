@@ -1,0 +1,3 @@
+[submodule "zynq/import/riscv-dbg"]
+	path = zynq/import/riscv-dbg
+	url = https://github.com/pulp-platform/riscv-dbg
