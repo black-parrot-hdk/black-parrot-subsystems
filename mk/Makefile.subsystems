@@ -1,0 +1,15 @@
+
+$(eval $(call bsg_fn_build_if_new,opentitan,$(BP_SUB_ZYNQ_DIR),$(BP_SUB_TOUCH_DIR)))
+%/.opentitan_build:
+	@$(PYTHON3) -m pip install mako importlib_resources semantic_version pycrypto
+	@$(CP) -r $(BP_SUB_ZYNQ_DIR)/import/opentitan $(BP_SUB_WORK_DIR)/opentitan
+	$(PYTHON3) $(BP_SUB_WORK_DIR)/opentitan/util/ipgen.py generate \
+		-c $(BP_SUB_ZYNQ_DIR)/cfg/rv_plic.ipconfig.hjson \
+		-C $(BP_SUB_WORK_DIR)/opentitan/hw/ip_templates/rv_plic \
+		-o $(BP_SUB_WORK_DIR)/opentitan/rv_plic
+	$(MKDIR) -p $(BP_SUB_ZYNQ_DIR)/v/gen
+	$(FIND) $(BP_SUB_WORK_DIR)/opentitan \
+		-path $(BP_SUB_WORK_DIR)/opentitan/.git -prune -o \
+		\( -name "*.c" -o -name "*.h" -o -name "*.sv" -o -name "*.svh" \) \
+		-exec $(CP) {} $(BP_SUB_ZYNQ_DIR)/v/gen \;
+

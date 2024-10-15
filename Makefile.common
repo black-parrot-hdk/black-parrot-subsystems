@@ -43,12 +43,11 @@ define bsg_fn_patch_if_new
 	done
 endef
 
-define bsg_fn_build_if_new
+define bsg_fn_build_tag
 	$(eval name := $(1))
 	$(eval src_dir := $(2))
 	$(eval touch_dir := $(3))
-	$(eval hash := $$(shell cd $(src_dir); git rev-parse HEAD))
-	$(eval tag := $(addprefix $(touch_dir)/$(name)., $(hash)))
+	$(eval tag := $(4))
 	$(eval internal_target := $(src_dir)/.$(name)_build)
 	$(eval external_target := build.$(name))
 	$(eval rebuild_target := rebuild.$(name))
@@ -59,6 +58,23 @@ $(rebuild_target):
 $(tag):
 	+$(MAKE) $(internal_target)
 	touch $(tag)
+endef
+
+define bsg_fn_build_if_missing
+	$(eval name := $(1))
+	$(eval src_dir := $(2))
+	$(eval touch_dir := $(3))
+	$(eval tag := $(addprefix $(touch_dir)/$(name).,any))
+	$(call bsg_fn_build_tag,$(name),$(src_dir),$(touch_dir),$(tag))
+endef
+
+define bsg_fn_build_if_new
+	$(eval name := $(1))
+	$(eval src_dir := $(2))
+	$(eval touch_dir := $(3))
+	$(eval hash := $(shell cd $(src_dir); git rev-parse HEAD))
+	$(eval tag := $(addprefix $(touch_dir)/$(name).,$(hash)))
+	$(call bsg_fn_build_tag,$(name),$(src_dir),$(touch_dir),$(tag))
 endef
 
 define bsg_fn_info
@@ -101,6 +117,7 @@ bleach_all: ## wipes the whole repo clean. Use with caution
 #############################
 BP_SUB_DIR         ?= $(TOP)
 BP_SUB_PATCH_DIR   ?= $(BP_SUB_DIR)/patches
+BP_SUB_MK_DIR      ?= $(BP_SUB_DIR)/mk
 BP_SUB_INSTALL_DIR ?= $(BP_SUB_DIR)/install
 BP_SUB_TOUCH_DIR   ?= $(BP_SUB_INSTALL_DIR)/touch
 BP_SUB_WORK_DIR    ?= $(BP_SUB_INSTALL_DIR)/work
