@@ -156,3 +156,4 @@ module bsg_axil_fifo_client
 endmodule
 
 `BSG_ABSTRACT_MODULE(bsg_axil_fifo_client)
+
