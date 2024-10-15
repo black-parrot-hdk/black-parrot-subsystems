@@ -1,0 +1,43 @@
+From b07f0df082b68ba2c6b4556778a9cafb79cfe673 Mon Sep 17 00:00:00 2001
+From: Dan Petrisko <petrisko@cs.washington.edu>
+Date: Sat, 12 Oct 2024 00:34:19 -0700
+Subject: [PATCH 6/6] Using bsg_buf
+
+---
+ hw/ip/prim/rtl/prim_reg_we_check.sv | 20 +++++++++++++-------
+ 1 file changed, 13 insertions(+), 7 deletions(-)
+
+diff --git a/hw/ip/prim/rtl/prim_reg_we_check.sv b/hw/ip/prim/rtl/prim_reg_we_check.sv
+index 0734ec8..65a9928 100644
+--- a/hw/ip/prim/rtl/prim_reg_we_check.sv
++++ b/hw/ip/prim/rtl/prim_reg_we_check.sv
+@@ -21,13 +21,19 @@ module prim_reg_we_check #(
+ );
+ 
+   // Prevent optimization of the onehot input buffer.
+-  logic [OneHotWidth-1:0] oh_buf;
+-  prim_buf #(
+-    .Width(OneHotWidth)
+-  ) u_prim_buf (
+-    .in_i(oh_i),
+-    .out_o(oh_buf)
+-  );
++//  logic [OneHotWidth-1:0] oh_buf;
++//  prim_buf #(
++//    .Width(OneHotWidth)
++//  ) u_prim_buf (
++//    .in_i(oh_i),
++//    .out_o(oh_buf)
++//  );
++  bsg_buf
++   #(.width_p(OneHotWidth))
++   bb
++    (.i(oh_i)
++     ,.o(oh_buf)
++     );
+ 
+   prim_onehot_check #(
+     .OneHotWidth(OneHotWidth),
+-- 
+2.16.5
+
