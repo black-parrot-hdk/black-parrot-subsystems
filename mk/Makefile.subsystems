@@ -1,7 +1,7 @@
 
 $(eval $(call bsg_fn_build_if_new,opentitan,$(BP_SUB_ZYNQ_DIR),$(BP_SUB_TOUCH_DIR)))
 %/.opentitan_build:
-	@$(PYTHON3) -m pip install mako importlib_resources semantic_version pycrypto
+	@$(PYTHON3) -m pip install --user mako importlib_resources semantic_version hjson pycryptodome
 	@$(CP) -r $(BP_SUB_ZYNQ_DIR)/import/opentitan $(BP_SUB_WORK_DIR)/opentitan
 	$(PYTHON3) $(BP_SUB_WORK_DIR)/opentitan/util/ipgen.py generate \
 		-c $(BP_SUB_ZYNQ_DIR)/cfg/rv_plic.ipconfig.hjson \
