@@ -25,11 +25,14 @@ Building blocks for connecting BP to an existing Wishbone system:
 
 Open-source FPGA blocks, with SystemVerilog description and Verilog-2005 toplevel wrappers for compatibility with Vivado IPI:
 
-- bsg_axil_debug (AXILM/AXILS bridge to [RISC-V Debug Module](https://github.com/pulp-platform/riscv-dbg) 
+- bsg_irq_to_axil (edge-trigger to AXILM converter)
+- bsg_axil_debug (AXILM/AXILS bridge to [RISC-V Debug Module](https://github.com/pulp-platform/riscv-dbg)
+- bsg_axil_dma (AXILM/AXILS R/W DMA)
 - bsg_axil_uart_bridge (AXILM/AXILS bridge to UART-16550(ish) controller)
 - bsg_axil_watchdog (AXILM periodic heartbeat)
 - bsg_axis_fifo (AXIS FIFO)
 - bsg_axil_plic (AXIL wrapper around the [OpenTitan](https://github.com/lowRISC/opentitan) PLIC)
+- bsg_axil_ethernet (AXIL wrapper around [verilog-ethernet](https://github.com/alexforencich/verilog-ethernet)
 
 ## SoC Integrations
 

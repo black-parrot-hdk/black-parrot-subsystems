@@ -1,0 +1,89 @@
+
+# Include common GitLab CI macros
+include: '.gitlab-ci.common.yml'
+
+###################################################
+## mixins
+###################################################
+.bp_sub_mixin:
+  variables:
+    REPO_NAME: "black-parrot-subsystems"
+    # template variables
+    DOCKER_PLATFORM: "setme"
+    CONTAINER_IMAGE: "${REGISTRY_IMAGE}:${DOCKER_PLATFORM}"
+    # used internally
+    SUB_PACKAGE: "sub-${DOCKER_PLATFORM}"
+    # exported to make sure things go in the right place
+    BP_WORK_DIR: "${PROJECT_DIR}/${JOB_WORK_ROOT}/bp-sub-work"
+    BP_INSTALL_DIR: "${PROJECT_DIR}/${JOB_WORK_ROOT}/bp-sub-install"
+    # TODO: REMOVE
+    DOCKERFILE_FORCE: "1"
+
+.image_job:
+  extends: [.docker_template, .bp_sub_mixin]
+  script:
+    - echo "[CI] building image ${CONTAINER_IMAGE}" | tee -a ${JOB_LOG}
+    - docker build docker -f docker/Dockerfile.${DOCKER_PLATFORM}
+        --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from ${CONTAINER_IMAGE}
+        --build-arg USER_NAME="${USER_NAME}"
+        --build-arg USER_ID="${USER_ID}"
+        --build-arg GROUP_NAME="${GROUP_NAME}"
+        --build-arg GROUP_ID="${GROUP_ID}"
+        --build-arg OTHER_GROUPS="${OTHER_GROUPS}"
+        -t ${CONTAINER_IMAGE} >> ${JOB_LOG} 2>&1
+  rules:
+    - !reference [.docker_template, rules]
+    - changes:
+        paths:
+          # variable expansion of DOCKER_PLATFORM doesn't seem to work here
+          - docker/Dockerfile.*
+          - docker/entrypoint.*
+          - docker/requirements.txt
+
+.test_job:
+  extends: [.repo_template, .bp_sub_mixin]
+  variables:
+    MODULE: "setme"
+    SIM: "setme"
+  script:
+    - TEST_SCRIPT="./ci/sim-${MODULE}.sh"
+    - echo "[CI] doing makefile checkout" | tee -a ${JOB_LOG}
+    - make -j${CORES_PER_JOB} checkout >> ${JOB_LOG} 2>&1
+    - echo "[CI] regenerating rtl" | tee -a ${JOB_LOG}
+    - make -j${CORES_PER_JOB} gen >> ${JOB_LOG} 2>&1
+    - echo "[CI] running script for ${MODULE} with simulator ${SIM}"
+    - ./ci/common/run-ci.sh ${TEST_SCRIPT} ${SIM}
+  rules: !reference [.repo_template, rules]
+
+###################################################
+## Actual Jobs
+###################################################
+
+# We couple dependencies here while we wait for this feature
+# https://gitlab.com/gitlab-org/gitlab/-/issues/423456
+# needs:
+#  parallel:
+#    matrix:
+#      - DOCKER_PLATFORM: $DOCKER_PLATFORM
+
+image-sub:
+  extends: [.image_job]
+  parallel:
+    matrix:
+      - DOCKER_PLATFORM: ["centos7", "ubuntu24.04"]
+  needs: []
+  rules: !reference [.image_job, rules]
+
+test-sub:
+  extends: [.test_job]
+  parallel:
+    matrix:
+      - DOCKER_PLATFORM: ["centos7", "ubuntu24.04"]
+        MODULE: ["bsg_axil_demux", "bsg_axil_mux", "ethernet"]
+        SIM: ["verilator"]
+      - DOCKER_PLATFORM: ["centos7"]
+        MODULE: ["ethernet"]
+        SIM: ["vcs"]
+  needs: [{job: image-sub, optional: true}]
+  rules: !reference [.test_job, rules]
+
