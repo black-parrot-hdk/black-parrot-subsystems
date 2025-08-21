@@ -14,18 +14,18 @@ $BP_ZYNQ_DIR/v/ethernet/interrupt_control_unit.sv
 $BP_ZYNQ_DIR/v/ethernet/oddr_clock_downsample_and_right_shift.sv
 $BP_ZYNQ_DIR/v/ethernet/axis_fifo_mem.sv
 
-$BP_VETHERNET_DIR/lib/axis/rtl/axis_adapter.v
-$BP_VETHERNET_DIR/lib/axis/rtl/axis_async_fifo_adapter.v
-$BP_VETHERNET_DIR/lib/axis/rtl/axis_async_fifo.v
-$BP_VETHERNET_DIR/lib/axis/rtl/axis_fifo.v
-$BP_VETHERNET_DIR/rtl/axis_gmii_rx.v
-$BP_VETHERNET_DIR/rtl/axis_gmii_tx.v
-$BP_VETHERNET_DIR/rtl/eth_mac_1g_rgmii_fifo.v
-$BP_VETHERNET_DIR/rtl/eth_mac_1g_rgmii.v
-$BP_VETHERNET_DIR/rtl/eth_mac_1g.v
-$BP_VETHERNET_DIR/rtl/lfsr.v
-$BP_VETHERNET_DIR/rtl/rgmii_phy_if.v
-$BP_VETHERNET_DIR/rtl/ssio_ddr_in.v
+$BP_ZYNQ_DIR/v/gen/ethernet/lib/axis/rtl/axis_adapter.v
+$BP_ZYNQ_DIR/v/gen/ethernet/lib/axis/rtl/axis_async_fifo.v
+$BP_ZYNQ_DIR/v/gen/ethernet/lib/axis/rtl/axis_async_fifo_adapter.v
+$BP_ZYNQ_DIR/v/gen/ethernet/lib/axis/rtl/axis_fifo.v
+$BP_ZYNQ_DIR/v/gen/ethernet/rtl/axis_gmii_rx.v
+$BP_ZYNQ_DIR/v/gen/ethernet/rtl/axis_gmii_tx.v
+$BP_ZYNQ_DIR/v/gen/ethernet/rtl/eth_mac_1g.v
+$BP_ZYNQ_DIR/v/gen/ethernet/rtl/eth_mac_1g_rgmii.v
+$BP_ZYNQ_DIR/v/gen/ethernet/rtl/eth_mac_1g_rgmii_fifo.v
+$BP_ZYNQ_DIR/v/gen/ethernet/rtl/lfsr.v
+$BP_ZYNQ_DIR/v/gen/ethernet/rtl/rgmii_phy_if.v
+$BP_ZYNQ_DIR/v/gen/ethernet/rtl/ssio_ddr_in.v
 
 $BASEJUMP_STL_DIR/bsg_link/bsg_link_oddr_phy.sv
 $BASEJUMP_STL_DIR/bsg_link/bsg_link_iddr_phy.sv

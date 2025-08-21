@@ -19,6 +19,12 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
         gperf virtualenv \
         && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+## Install verilator
+RUN mkdir /build && cd /build
+RUN cd /build && git clone -bv5.036 https://github.com/verilator/verilator
+RUN cd /build/verilator && autoconf && ./configure
+RUN cd /build/verilator && make -j4 all && make -j4 install && make -j4 install-all
+
 # Accept arguments for user and group
 ARG USER_NAME
 ARG USER_ID

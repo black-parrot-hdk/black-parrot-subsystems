@@ -1,69 +1,79 @@
-# README
+# BlackParrot Subsystems
 
-BlackParrot Subsystems contains various subsystems intended to connect BlackParrot to traditonal SoC and FPGA environments. There is a focus on standard interfaces such as AXI/Wishbone as well as non-BlackParrot open-source integrations. One primary application is the construction of the [ZynqParrot](https://github.com/black-parrot-hdk/zynq-parrot) prototyping system.
+This repository contains various subsystems intended to connect BlackParrot to traditonal SoC and FPGA environments.
+There is a focus on standard interfaces such as AXI/Wishbone as well as non-BlackParrot open-source integrations.
+One primary application is the construction of the [ZynqParrot](https://github.com/black-parrot-hdk/zynq-parrot) prototyping system.
 
-This repository tends to lag its dependencies. Issues to point out upstream incompatibilities and PRs to fix broken builds are especially appreciated. It is the intention of this repo to rely on high-quality open-source libraries. Hard dependencies on vendor IP should typically be avoided; however, some physical subsystems on FPGA make them mandatory. Please reach out if you would like to help port new subsystems or rebase existing subsystems onto more mature libraries.
+This repository tends to lag its dependencies.
+Issues to point out upstream incompatibilities and PRs to fix broken builds are especially appreciated.
+It is the intention of this repo to rely on high-quality open-source libraries.
+Hard dependencies on vendor IP should typically be avoided; however, some physical subsystems on FPGA make them mandatory.
+Please reach out if you would like to help port new subsystems or rebase existing subsystems onto more mature libraries.
 
 ## Standard Communication Protocols
 
 ### [AXI4](https://developer.arm.com/documentation/ihi0022/latest/) 
 
-Building blocks for connecting BP to an existing AXI system:
-- bsg_axil_demux (1:2 AXIL mux)
-- bsg_axil_mux (2:1 AXIL mux)
-- bsg_axil_fifo_client (AXILS to fifo interface)
-- bsg_axil_fifo_master (Fifo interface to AXILM)
-- bsg_axil_store_packer (Specialized memory ops into a non-blocking fifo)
+Building blocks for connecting BP to an existing AXI system
+- bsg\_axil\_demux (1:2 AXIL mux)
+- bsg\_axil\_mux (2:1 AXIL mux)
+- bsg\_axil\_fifo\_client (AXILS to fifo interface)
+- bsg\_axil\_fifo\_master (Fifo interface to AXILM)
+- bsg\_axil\_store\_packer (Specialized memory ops into a non-blocking fifo)
 
-### [Wishbone4](https://wishbone-interconnect.readthedocs.io/en/latest/02_interface.html)
+### [Wishbone4](https://wishbone-interconnect.readthedocs.io/en/latest/02\_interface.html)
 
-Building blocks for connecting BP to an existing Wishbone system:
-- bp_me_wb_master (Bedrock to WBv4 master converter)
-- bp_me_wb_client (WBv4 client to Bedrock converter)
+Building blocks for connecting BP to an existing Wishbone system
+- bp\_me\_wb\_master (Bedrock to WBv4 master converter)
+- bp\_me\_wb\_client (WBv4 client to Bedrock converter)
 
 ## IP Blocks for [ZynqParrot](https://github.com/black-parrot-hdk/zynq-parrot)
 
-Open-source FPGA blocks, with SystemVerilog description and Verilog-2005 toplevel wrappers for compatibility with Vivado IPI:
+Open-source FPGA blocks, with SystemVerilog description and Verilog-2005 toplevel wrappers for compatibility with Vivado IPI
 
-- bsg_irq_to_axil (edge-trigger to AXILM converter)
-- bsg_axil_debug (AXILM/AXILS bridge to [RISC-V Debug Module](https://github.com/pulp-platform/riscv-dbg)
-- bsg_axil_dma (AXILM/AXILS R/W DMA)
-- bsg_axil_uart_bridge (AXILM/AXILS bridge to UART-16550(ish) controller)
-- bsg_axil_watchdog (AXILM periodic heartbeat)
-- bsg_axis_fifo (AXIS FIFO)
-- bsg_axil_plic (AXIL wrapper around the [OpenTitan](https://github.com/lowRISC/opentitan) PLIC)
-- bsg_axil_ethernet (AXIL wrapper around [verilog-ethernet](https://github.com/alexforencich/verilog-ethernet)
+- bsg\_irq\_to\_axil (edge-trigger to AXILM converter)
+- bsg\_axil\_debug (AXILM/AXILS bridge to [RISC-V Debug Module](https://github.com/pulp-platform/riscv-dbg)
+- bsg\_axil\_dma (AXILM/AXILS R/W DMA)
+- bsg\_axil\_uart\_bridge (AXILM/AXILS bridge to UART-16550(ish) controller)
+- bsg\_axil\_watchdog (AXILM periodic heartbeat)
+- bsg\_axis\_fifo (AXIS FIFO)
+- bsg\_axil\_plic (AXIL wrapper around the [OpenTitan](https://github.com/lowRISC/opentitan) PLIC)
+- bsg\_axil\_ethernet (AXIL wrapper around [verilog-ethernet](https://github.com/alexforencich/verilog-ethernet)
 
 ## SoC Integrations
 
 ### [BlackParrot](https://github.com/black-parrot/black-parrot)
-- bp_axi_top (Wrapper with 1 AXILM, 1 AXILS, 1 AXI4M)
-- bp_axil_top (Wrapper with 2 AXILM)
-- bp_axil_client (Bedrock to AXILS converter)
-- bp_axil_master (Bedrock to AXILM converter)
-- bp_endpoint_to_fifos (Bedrock to FIFO gearbox)
 
-### [HammerBlade](https://github.com/bespoke-silicon-group/bsg_manycore)
+- bp\_axi\_top (Wrapper with 1 AXILM, 1 AXILS, 1 AXI4M)
+- bp\_axil\_top (Wrapper with 2 AXILM)
+- bp\_axil\_client (Bedrock to AXILS converter)
+- bp\_axil\_master (Bedrock to AXILM converter)
+- bp\_endpoint\_to\_fifos (Bedrock to FIFO gearbox)
 
-Integration of BlackParrot as a Linux-capable control processor for the HammerBlade manycore:
+### [HammerBlade](https://github.com/bespoke-silicon-group/bsg\_manycore)
+
+Integration of BlackParrot as a Linux-capable control processor for the HammerBlade manycore
+
 #### HammerBlade modules
-- bsg_manycore_endpoint_to_fifos (Gearbox to convert HammerBlade Standard Endpoint to non-blocking FIFOs)
-- bsg_manycore_switch_1x2 (1:2 mux used to bridge two non-interfering HammerBlade links)
+- bsg\_manycore\_endpoint\_to\_fifos (Gearbox to convert HammerBlade Standard Endpoint to non-blocking FIFOs)
+- bsg\_manycore\_switch\_1x2 (1:2 mux used to bridge two non-interfering HammerBlade links)
 #### Manycore Widgets
-- bsg_manycore_axil_bridge (AXIL to HammerBlade converter)
+- bsg\_manycore\_axil\_bridge (AXIL to HammerBlade converter)
 #### BP Widgets
-- bp_me_manycore_bridge (Memory-mapped CSRs accessible from both BlackParrot and Manycore sides of link)
-- bp_me_manycore_dram (Glue module for L1 fills from the HammerBlade memory system)
-- bp_me_manycore_fifo ([CUDA Lite](https://github.com/bespoke-silicon-group/bsg_replicant)-compatible FIFO interface to the manycore)
-- bp_me_manycore_mmio (Low-latency direct MMIO to HammerBlade address space)
+- bp\_me\_manycore\_bridge (Memory-mapped CSRs accessible from both BlackParrot and Manycore sides of link)
+- bp\_me\_manycore\_dram (Glue module for L1 fills from the HammerBlade memory system)
+- bp\_me\_manycore\_fifo ([CUDA Lite](https://github.com/bespoke-silicon-group/bsg\_replicant)-compatible FIFO interface to the manycore)
+- bp\_me\_manycore\_mmio (Low-latency direct MMIO to HammerBlade address space)
 #### BP Wrappers
-- bsg_manycore_tile_blackparrot (Integration of BP widgets for a canonical control tile)
-- bsg_manycore_tile_blackparrot_mesh (Set of routers to align with HammerBlade mesh)
+- bsg\_manycore\_tile\_blackparrot (Integration of BP widgets for a canonical control tile)
+- bsg\_manycore\_tile\_blackparrot\_mesh (Set of routers to align with HammerBlade mesh)
 
 ### [OpenPiton](https://github.com/PrincetonUniversity/openpiton)
 
-Integration of BlackParrot as a Linux-capable [BYOC](https://decades.cs.princeton.edu/aspl20-balkind.pdf) for the OpenPiton manycore:
+Integration of BlackParrot as a Linux-capable [BYOC](https://decades.cs.princeton.edu/aspl20-balkind.pdf) for the OpenPiton manycore
+
 #### BP Widgets
-- bp_pce (P-Mesh Cache Engine to bridge BP-Bedrock to OpenPiton L1.5 cache)
+- bp\_pce (P-Mesh Cache Engine to bridge BP-Bedrock to OpenPiton L1.5 cache)
 #### BP Wrappers
-- bp_piton_tile (BYOC Integration Wrapper) 
+- bp\_piton\_tile (BYOC Integration Wrapper)
+

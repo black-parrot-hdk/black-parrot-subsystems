@@ -17,6 +17,9 @@ RUN yum install --nogpgcheck --setopt=tsflags=nodocs -y -q \
     python-devel python3-devel openssl-devel openssl11 openssl11-devel openssl11-libs \
     epel-release centos-release-scl scl-utils \
     bzip2 bzip2-devel sqlite-devel \
+    tcsh time perl-Env \
+    libXext libXrender libXtst libXi libXrandr libXScrnSaver \
+    libSM compat-libtiff3 libmng libpng12 \
     && yum clean all && rm -rf /var/cache/yum
 
 # Same thing for SCL mirrors
@@ -68,6 +71,17 @@ RUN mkdir /build && cd /build && \
             --with-lto && \
         make -j4 all && \
         make -j4 altinstall \
+    " && \
+    rm -rf /build
+
+## Install verilator
+RUN  git clone -bv5.036 https://github.com/verilator/verilator /build && \
+    scl enable devtoolset-11 -- bash -c "\
+        cd /build && autoconf && \
+        ./configure  && \
+        make -j4 all && \
+        make -j4 install && \
+        make -j4 install-all \
     " && \
     rm -rf /build
 

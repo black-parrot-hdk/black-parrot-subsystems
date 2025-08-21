@@ -12,7 +12,7 @@ build: ./obj_dir/V$(TOP_MODULE)
     --x-initial unique --x-assign unique --cc -Wall --exe --sv --build -I../../v \
     -I$(BASEJUMP_STL_DIR)/bsg_misc -I$(BASEJUMP_STL_DIR)/bsg_dataflow -I$(BASEJUMP_STL_DIR)/bsg_mem \
     -CFLAGS "-std=c++14 -pedantic -Wall -Wextra" \
-    --top $(TOP_MODULE) -f flist.vcs --trace-fst --trace-structs
+    --top $(TOP_MODULE) -f ../flist.vcs --trace-fst --trace-structs
 
 run: ## runs a simulation
 run: ./obj_dir/V$(TOP_MODULE)
