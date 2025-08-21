@@ -1,15 +1,15 @@
 #!/bin/bash
+source $(dirname $0)/functions.sh
 
-# get common functions
-source $(dirname $0)/common/functions.sh
-bsg_log_info "starting $(basename $0)"
+tool=$1
 
-_bsg_parse_args 1 sim "$1"
+group=zynq
+module=ethernet
+testdir=$group/test/$module/$tool
 
 # do the actual job
-bsg_run_task "cleaning test" make -C zynq/test/ethernet/${_sim} clean
-bsg_run_task "building test" make -C zynq/test/ethernet/${_sim} build
-bsg_run_task "running test" make -C zynq/test/ethernet/${_sim} run
+bsg_run_task "building C++ test" make -C $testdir build
+bsg_run_task "running C++ test" make -C $testdir run
 
 # pass if no error
 bsg_pass $(basename $0)

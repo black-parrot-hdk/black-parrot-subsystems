@@ -16,6 +16,7 @@ VCS_OPTS += -assert svaext
 VCS_OPTS += -debug_all
 VCS_OPTS += -top testbench
 VCS_OPTS += -f ../flist.vcs
+VCS_OPTS += -timescale=1ps/1ps
 
 build: ## builds a simv
 build: $(SIMV)

@@ -1,0 +1,96 @@
+
+spec:
+  inputs:
+    do_build_image:
+    do_sim_regress:
+---
+
+###################################################
+## image setup
+###################################################
+
+build-image:
+  extends: [.docker_mixin]
+  before_script: !reference [.docker_anchors, docker_prefetch]
+  script:
+    - docker build docker -f docker/Dockerfile.${DOCKER_PLATFORM}
+        --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from ${CONTAINER_IMAGE}
+        --build-arg USER_NAME="${BSG_CI_USER_NAME}"
+        --build-arg USER_ID="${BSG_CI_USER_ID}"
+        --build-arg GROUP_NAME="${BSG_CI_GROUP_NAME}"
+        --build-arg GROUP_ID="${BSG_CI_GROUP_ID}"
+        --build-arg OTHER_GROUPS="${BSG_CI_OTHER_GROUPS}"
+        -t ${CONTAINER_IMAGE}
+  after_script: !reference [.docker_anchors, docker_push]
+  rules:
+    - if: '"$[[ inputs.do_build_image ]]" =~ "/on_success/"'
+    - if: '"$[[ inputs.do_build_image ]]" =~ "/on_event/"'
+      changes:
+        paths:
+          - docker/Dockerfile.${DOCKER_PLATFORM}
+          - docker/entrypoint.${DOCKER_PLATFORM}.sh
+          - docker/requirements.txt
+
+###################################################
+## project definition
+###################################################
+
+.project_template:
+  extends: [.job_template]
+  image: $CONTAINER_IMAGE
+  variables:
+    # exported to make sure things go in the right place
+    BP_WORK_DIR: "${PROJECT_DIR}/${JOB_WORK_ROOT}/bp-sub-work"
+    BP_INSTALL_DIR: "${PROJECT_DIR}/${JOB_WORK_ROOT}/bp-sub-install"
+    ZYNQ_GEN_DIR: "zynq/v/gen"
+    GEN_ARTIFACT: "gen"
+
+###################################################
+## job templates
+###################################################
+
+.gen_ip_job:
+  extends: [.project_template]
+  script:
+    - echo "[CI] doing makefile checkout" | tee -a ${JOB_LOG}
+    - make -j${CORES_PER_JOB} checkout >> ${JOB_LOG} 2>&1
+    - echo "[CI] regenerating rtl" | tee -a ${JOB_LOG}
+    - make -j${CORES_PER_JOB} gen >> ${JOB_LOG} 2>&1
+    - mv ${ZYNQ_GEN_DIR} ${JOB_SUCCESS_ROOT}/${GEN_ARTIFACT}
+
+.sim_regress_job:
+  extends: [.project_template]
+  variables:
+    MODULE: "setme"
+    SIM: "setme"
+    RUN_SCRIPT: "./ci/common/run-ci.sh"
+    TEST_SCRIPT: "./ci/sim-${MODULE}.sh"
+  script:
+    - echo "[CI] doing makefile checkout" | tee -a ${JOB_LOG}
+    - make -j${CORES_PER_JOB} checkout >> ${JOB_LOG} 2>&1
+    - echo "[CI] restoring gen ip" | tee -a ${JOB_LOG}
+    - mv ${JOB_DEPS_ROOT}/${GEN_ARTIFACT} ${ZYNQ_GEN_DIR}
+    - echo "[CI] running script for ${MODULE} with simulator ${SIM}"
+    - ${RUN_SCRIPT} ${TEST_SCRIPT} ${SIM}
+  rules:
+    - if: '"$[[ inputs.do_sim_regress ]]" =~ "/on_success|on_event/" && $DOCKER_PLATFORM == "centos7"'
+    - if: '"$[[ inputs.do_sim_regress ]]" =~ "/on_success|on_event/" && $DOCKER_PLATFORM == "ubuntu24.04" && $SIM == "verilator"'
+
+###################################################
+## Actual Jobs
+###################################################
+
+gen-ip:
+  extends: [.gen_ip_job]
+  needs: [{job: build-image, optional: true}]
+
+sim-regress:
+  extends: [.sim_regress_job]
+  parallel:
+    matrix:
+      - MODULE: ["bsg_axil_demux", "bsg_axil_mux", "ethernet"]
+        SIM: ["verilator"]
+      - MODULE: ["ethernet"]
+        SIM: ["vcs"]
+  needs: [gen-ip]
+
