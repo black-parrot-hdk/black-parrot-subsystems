@@ -1,14 +1,17 @@
 
 $(eval $(call bsg_tgt_build_submodule,opentitan,$(BP_OPENTITAN_DIR),$(BP_TOUCH_DIR),$(BP_PATCH_DIR),$(BP_WORK_DIR)))
 %/.opentitan_build:
+	@$(MKDIR) -p $(BP_INSTALL_DIR)/gen/v $(BP_ZYNQ_DIR)/v/gen
 	@$(PYTHON3) $(BP_OPENTITAN_DIR)/util/ipgen.py generate \
 		-c $(BP_ZYNQ_DIR)/cfg/rv_plic.ipconfig.hjson \
 		-C $(BP_OPENTITAN_DIR)/hw/ip_templates/rv_plic \
-		-o $(BP_ZYNQ_DIR)/v/gen/rv_plic
+		-o $(BP_INSTALL_DIR)/gen/v/rv_plic
+	@$(SYMLINK) $(BP_INSTALL_DIR)/gen/v/rv_plic $(BP_ZYNQ_DIR)/v/gen/rv_plic
 
 $(eval $(call bsg_tgt_build_submodule,ethernet,$(BP_VETHERNET_DIR),$(BP_TOUCH_DIR),$(BP_PATCH_DIR),$(BP_WORK_DIR)))
 %/.ethernet_build:
-	@$(MKDIR) -p $(BP_ZYNQ_DIR)/v/gen/ethernet
+	@$(MKDIR) -p $(BP_INSTALL_DIR)/gen/v/ethernet $(BP_ZYNQ_DIR)/v/gen
 	@$(CD) $(BP_VETHERNET_DIR); \
-		$(CP) --parents $$(git ls-files --modified) $(BP_ZYNQ_DIR)/v/gen/ethernet
+		$(CP) --parents $$(git ls-files --modified) $(BP_INSTALL_DIR)/gen/v/ethernet
+	@$(SYMLINK) $(BP_INSTALL_DIR)/gen/v/ethernet $(BP_ZYNQ_DIR)/v/gen/ethernet
 
