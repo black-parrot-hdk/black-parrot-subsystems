@@ -14,6 +14,10 @@ spec:
       type: string
       options: ["never", "on_event", "on_success"]
       default: "on_event"
+    do_gen_ip:
+      type: string
+      options: ["never", "on_event", "on_success"]
+      default: "on_event"
     do_sim_regress:
       type: string
       options: ["never", "on_event", "on_success"]
@@ -37,6 +41,7 @@ trigger_job:
       - local: .gitlab-ci.local.yml
         inputs:
           do_build_image : $[[ inputs.do_build_image ]]
+          do_gen_ip      : $[[ inputs.do_gen_ip ]]
           do_sim_regress : $[[ inputs.do_sim_regress ]]
   parallel:
     matrix:
