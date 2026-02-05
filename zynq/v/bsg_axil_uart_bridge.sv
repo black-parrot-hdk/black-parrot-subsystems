@@ -2,75 +2,75 @@
 `include "bsg_defines.sv"
 
 module bsg_axil_uart_bridge
- #(parameter `BSG_INV_PARAM(m_axil_data_width_p)
-   , parameter `BSG_INV_PARAM(m_axil_addr_width_p)
+ #(parameter `BSG_INV_PARAM(uart_axil_data_width_p)
+   , parameter `BSG_INV_PARAM(uart_axil_addr_width_p)
    , parameter `BSG_INV_PARAM(uart_base_addr_p)
-   , localparam m_axil_mask_width_lp = m_axil_data_width_p/8
+   , localparam uart_axil_mask_width_lp = uart_axil_data_width_p/8
 
-   , parameter `BSG_INV_PARAM(gp0_axil_data_width_p)
-   , parameter `BSG_INV_PARAM(gp0_axil_addr_width_p)
-   , localparam gp0_axil_mask_width_lp = gp0_axil_data_width_p/8
+   , parameter `BSG_INV_PARAM(ui_axil_data_width_p)
+   , parameter `BSG_INV_PARAM(ui_axil_addr_width_p)
+   , localparam ui_axil_mask_width_lp = ui_axil_data_width_p/8
    )
    (input                                        clk_i
     , input                                      reset_i
 
     // WRITE ADDRESS CHANNEL SIGNALS
-    , output logic [m_axil_addr_width_p-1:0]     m_axil_awaddr_o
-    , output logic [2:0]                         m_axil_awprot_o
-    , output logic                               m_axil_awvalid_o
-    , input                                      m_axil_awready_i
+    , output logic [uart_axil_addr_width_p-1:0]  uart_axil_awaddr_o
+    , output logic [2:0]                         uart_axil_awprot_o
+    , output logic                               uart_axil_awvalid_o
+    , input                                      uart_axil_awready_i
 
     // WRITE DATA CHANNEL SIGNALS
-    , output logic [m_axil_data_width_p-1:0]     m_axil_wdata_o
-    , output logic [m_axil_mask_width_lp-1:0]    m_axil_wstrb_o
-    , output logic                               m_axil_wvalid_o
-    , input                                      m_axil_wready_i
+    , output logic [uart_axil_data_width_p-1:0]  uart_axil_wdata_o
+    , output logic [uart_axil_mask_width_lp-1:0] uart_axil_wstrb_o
+    , output logic                               uart_axil_wvalid_o
+    , input                                      uart_axil_wready_i
 
     // WRITE RESPONSE CHANNEL SIGNALS
-    , input [1:0]                                m_axil_bresp_i
-    , input                                      m_axil_bvalid_i
-    , output logic                               m_axil_bready_o
+    , input [1:0]                                uart_axil_bresp_i
+    , input                                      uart_axil_bvalid_i
+    , output logic                               uart_axil_bready_o
 
     // READ ADDRESS CHANNEL SIGNALS
-    , output logic [m_axil_addr_width_p-1:0]     m_axil_araddr_o
-    , output logic [2:0]                         m_axil_arprot_o
-    , output logic                               m_axil_arvalid_o
-    , input                                      m_axil_arready_i
+    , output logic [uart_axil_addr_width_p-1:0]  uart_axil_araddr_o
+    , output logic [2:0]                         uart_axil_arprot_o
+    , output logic                               uart_axil_arvalid_o
+    , input                                      uart_axil_arready_i
 
     // READ DATA CHANNEL SIGNALS
-    , input [m_axil_data_width_p-1:0]            m_axil_rdata_i
-    , input [1:0]                                m_axil_rresp_i
-    , input                                      m_axil_rvalid_i
-    , output logic                               m_axil_rready_o
+    , input [uart_axil_data_width_p-1:0]         uart_axil_rdata_i
+    , input [1:0]                                uart_axil_rresp_i
+    , input                                      uart_axil_rvalid_i
+    , output logic                               uart_axil_rready_o
 
     // WRITE ADDRESS CHANNEL SIGNALS
-    , output logic [gp0_axil_addr_width_p-1:0]   gp0_axil_awaddr_o
-    , output logic [2:0]                         gp0_axil_awprot_o
-    , output logic                               gp0_axil_awvalid_o
-    , input                                      gp0_axil_awready_i
+    , output logic [ui_axil_addr_width_p-1:0]    ui_axil_awaddr_o
+    , output logic [2:0]                         ui_axil_awprot_o
+    , output logic                               ui_axil_awvalid_o
+    , input                                      ui_axil_awready_i
 
     // WRITE DATA CHANNEL SIGNALS
-    , output logic [gp0_axil_data_width_p-1:0]   gp0_axil_wdata_o
-    , output logic [gp0_axil_mask_width_lp-1:0]  gp0_axil_wstrb_o
-    , output logic                               gp0_axil_wvalid_o
-    , input                                      gp0_axil_wready_i
+    , output logic [ui_axil_data_width_p-1:0]    ui_axil_wdata_o
+    , output logic [ui_axil_mask_width_lp-1:0]   ui_axil_wstrb_o
+    , output logic                               ui_axil_wvalid_o
+    , input                                      ui_axil_wready_i
 
     // WRITE RESPONSE CHANNEL SIGNALS
-    , input [1:0]                                gp0_axil_bresp_i
-    , input                                      gp0_axil_bvalid_i
-    , output logic                               gp0_axil_bready_o
+    , input [1:0]                                ui_axil_bresp_i
+    , input                                      ui_axil_bvalid_i
+    , output logic                               ui_axil_bready_o
 
     // READ ADDRESS CHANNEL SIGNALS
-    , output logic [gp0_axil_addr_width_p-1:0]   gp0_axil_araddr_o
-    , output logic [2:0]                         gp0_axil_arprot_o
-    , output logic                               gp0_axil_arvalid_o
-    , input                                      gp0_axil_arready_i
+    , output logic [ui_axil_addr_width_p-1:0]    ui_axil_araddr_o
+    , output logic [2:0]                         ui_axil_arprot_o
+    , output logic                               ui_axil_arvalid_o
+    , input                                      ui_axil_arready_i
 
     // READ DATA CHANNEL SIGNALS
-    , input [gp0_axil_data_width_p-1:0]          gp0_axil_rdata_i
-    , input [1:0]                                gp0_axil_rresp_i
-    , input                                      gp0_axil_rvalid_i
-    , output logic                               gp0_axil_rready_o
+    , input [ui_axil_data_width_p-1:0]           ui_axil_rdata_i
+    , input [1:0]                                ui_axil_rresp_i
+    , input                                      ui_axil_rvalid_i
+    , output logic                               ui_axil_rready_o
     );
 
   enum logic [3:0]
@@ -94,12 +94,11 @@ module bsg_axil_uart_bridge
   wire is_tx_drain   = (state_r == e_tx_drain);
 
   // TODO: Can early exit on reads
-  // Assume small shell address space
   // MUST be sync-ed to C driver
   typedef struct packed
   {
     logic [31:0] data;
-    logic [5:0]  addr7to2;
+    logic [29:0] addr30to2;
     logic        wr_not_rd;
     logic        port;
   } bsg_uart_pkt_s;
@@ -115,16 +114,16 @@ module bsg_axil_uart_bridge
   localparam stat_addr_lp = uart_base_addr_p + 8;
   localparam ctrl_addr_lp = uart_base_addr_p + 12;
 
-  logic [m_axil_data_width_p-1:0] m_wdata_li;
-  logic [m_axil_addr_width_p-1:0] m_addr_li;
+  logic [uart_axil_data_width_p-1:0] m_wdata_li;
+  logic [uart_axil_addr_width_p-1:0] m_addr_li;
   logic m_v_li, m_w_li, m_ready_and_lo;
-  logic [m_axil_mask_width_lp-1:0] m_wmask_li;
+  logic [uart_axil_mask_width_lp-1:0] m_wmask_li;
 
-  logic [m_axil_data_width_p-1:0] m_rdata_lo;
+  logic [uart_axil_data_width_p-1:0] m_rdata_lo;
   logic m_v_lo, m_ready_and_li;
   bsg_axil_fifo_master
-   #(.axil_data_width_p(m_axil_data_width_p)
-     ,.axil_addr_width_p(m_axil_addr_width_p)
+   #(.axil_data_width_p(uart_axil_data_width_p)
+     ,.axil_addr_width_p(uart_axil_addr_width_p)
      )
    fifo_master
     (.clk_i(clk_i)
@@ -141,29 +140,29 @@ module bsg_axil_uart_bridge
      ,.v_o(m_v_lo)
      ,.ready_and_i(m_ready_and_li)
 
-     ,.m_axil_awaddr_o(m_axil_awaddr_o)
-     ,.m_axil_awprot_o(m_axil_awprot_o)
-     ,.m_axil_awvalid_o(m_axil_awvalid_o)
-     ,.m_axil_awready_i(m_axil_awready_i)
+     ,.m_axil_awaddr_o(uart_axil_awaddr_o)
+     ,.m_axil_awprot_o(uart_axil_awprot_o)
+     ,.m_axil_awvalid_o(uart_axil_awvalid_o)
+     ,.m_axil_awready_i(uart_axil_awready_i)
 
-     ,.m_axil_wdata_o(m_axil_wdata_o)
-     ,.m_axil_wstrb_o(m_axil_wstrb_o)
-     ,.m_axil_wvalid_o(m_axil_wvalid_o)
-     ,.m_axil_wready_i(m_axil_wready_i)
+     ,.m_axil_wdata_o(uart_axil_wdata_o)
+     ,.m_axil_wstrb_o(uart_axil_wstrb_o)
+     ,.m_axil_wvalid_o(uart_axil_wvalid_o)
+     ,.m_axil_wready_i(uart_axil_wready_i)
 
-     ,.m_axil_bresp_i(m_axil_bresp_i)
-     ,.m_axil_bvalid_i(m_axil_bvalid_i)
-     ,.m_axil_bready_o(m_axil_bready_o)
+     ,.m_axil_bresp_i(uart_axil_bresp_i)
+     ,.m_axil_bvalid_i(uart_axil_bvalid_i)
+     ,.m_axil_bready_o(uart_axil_bready_o)
 
-     ,.m_axil_araddr_o(m_axil_araddr_o)
-     ,.m_axil_arprot_o(m_axil_arprot_o)
-     ,.m_axil_arvalid_o(m_axil_arvalid_o)
-     ,.m_axil_arready_i(m_axil_arready_i)
+     ,.m_axil_araddr_o(uart_axil_araddr_o)
+     ,.m_axil_arprot_o(uart_axil_arprot_o)
+     ,.m_axil_arvalid_o(uart_axil_arvalid_o)
+     ,.m_axil_arready_i(uart_axil_arready_i)
 
-     ,.m_axil_rdata_i(m_axil_rdata_i)
-     ,.m_axil_rresp_i(m_axil_rresp_i)
-     ,.m_axil_rvalid_i(m_axil_rvalid_i)
-     ,.m_axil_rready_o(m_axil_rready_o)
+     ,.m_axil_rdata_i(uart_axil_rdata_i)
+     ,.m_axil_rresp_i(uart_axil_rresp_i)
+     ,.m_axil_rvalid_i(uart_axil_rvalid_i)
+     ,.m_axil_rready_o(uart_axil_rready_o)
      );
 
   bsg_uart_pkt_s uart_pkt_lo;
@@ -186,16 +185,16 @@ module bsg_axil_uart_bridge
      ,.yumi_i(uart_pkt_yumi_li)
      );
 
-  logic [gp0_axil_data_width_p-1:0] gp0_wdata_li;
-  logic [gp0_axil_addr_width_p-1:0] gp0_addr_li;
+  logic [ui_axil_data_width_p-1:0] gp0_wdata_li;
+  logic [ui_axil_addr_width_p-1:0] gp0_addr_li;
   logic gp0_v_li, gp0_w_li, gp0_ready_and_lo;
-  logic [gp0_axil_mask_width_lp-1:0] gp0_wmask_li;
+  logic [ui_axil_mask_width_lp-1:0] gp0_wmask_li;
 
-  logic [gp0_axil_data_width_p-1:0] gp0_rdata_lo;
+  logic [ui_axil_data_width_p-1:0] gp0_rdata_lo;
   logic gp0_v_lo, gp0_ready_and_li;
   bsg_axil_fifo_master
-   #(.axil_data_width_p(gp0_axil_data_width_p)
-     ,.axil_addr_width_p(gp0_axil_addr_width_p)
+   #(.axil_data_width_p(ui_axil_data_width_p)
+     ,.axil_addr_width_p(ui_axil_addr_width_p)
      )
    gp0_master
     (.clk_i(clk_i)
@@ -212,37 +211,37 @@ module bsg_axil_uart_bridge
      ,.v_o(gp0_v_lo)
      ,.ready_and_i(gp0_ready_and_li)
 
-     ,.m_axil_awaddr_o(gp0_axil_awaddr_o)
-     ,.m_axil_awprot_o(gp0_axil_awprot_o)
-     ,.m_axil_awvalid_o(gp0_axil_awvalid_o)
-     ,.m_axil_awready_i(gp0_axil_awready_i)
+     ,.m_axil_awaddr_o(ui_axil_awaddr_o)
+     ,.m_axil_awprot_o(ui_axil_awprot_o)
+     ,.m_axil_awvalid_o(ui_axil_awvalid_o)
+     ,.m_axil_awready_i(ui_axil_awready_i)
 
-     ,.m_axil_wdata_o(gp0_axil_wdata_o)
-     ,.m_axil_wstrb_o(gp0_axil_wstrb_o)
-     ,.m_axil_wvalid_o(gp0_axil_wvalid_o)
-     ,.m_axil_wready_i(gp0_axil_wready_i)
+     ,.m_axil_wdata_o(ui_axil_wdata_o)
+     ,.m_axil_wstrb_o(ui_axil_wstrb_o)
+     ,.m_axil_wvalid_o(ui_axil_wvalid_o)
+     ,.m_axil_wready_i(ui_axil_wready_i)
 
-     ,.m_axil_bresp_i(gp0_axil_bresp_i)
-     ,.m_axil_bvalid_i(gp0_axil_bvalid_i)
-     ,.m_axil_bready_o(gp0_axil_bready_o)
+     ,.m_axil_bresp_i(ui_axil_bresp_i)
+     ,.m_axil_bvalid_i(ui_axil_bvalid_i)
+     ,.m_axil_bready_o(ui_axil_bready_o)
 
-     ,.m_axil_araddr_o(gp0_axil_araddr_o)
-     ,.m_axil_arprot_o(gp0_axil_arprot_o)
-     ,.m_axil_arvalid_o(gp0_axil_arvalid_o)
-     ,.m_axil_arready_i(gp0_axil_arready_i)
+     ,.m_axil_araddr_o(ui_axil_araddr_o)
+     ,.m_axil_arprot_o(ui_axil_arprot_o)
+     ,.m_axil_arvalid_o(ui_axil_arvalid_o)
+     ,.m_axil_arready_i(ui_axil_arready_i)
 
-     ,.m_axil_rdata_i(gp0_axil_rdata_i)
-     ,.m_axil_rresp_i(gp0_axil_rresp_i)
-     ,.m_axil_rvalid_i(gp0_axil_rvalid_i)
-     ,.m_axil_rready_o(gp0_axil_rready_o)
+     ,.m_axil_rdata_i(ui_axil_rdata_i)
+     ,.m_axil_rresp_i(ui_axil_rresp_i)
+     ,.m_axil_rvalid_i(ui_axil_rvalid_i)
+     ,.m_axil_rready_o(ui_axil_rready_o)
      );
 
-  logic [gp0_axil_data_width_p-1:0] uart_data_li;
-  logic uart_v_li;
+  logic [ui_axil_data_width_p-1:0] uart_data_li;
+  logic uart_v_li, uart_ready_and_lo;
   logic [7:0] tx_data_lo;
   logic tx_v_lo, tx_yumi_li;
   bsg_parallel_in_serial_out
-   #(.width_p(8), .els_p(gp0_axil_data_width_p/8))
+   #(.width_p(8), .els_p(ui_axil_data_width_p/8))
    tx_piso
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
@@ -321,7 +320,7 @@ module bsg_axil_uart_bridge
         e_req_send:
           begin
             gp0_wdata_li = uart_pkt_lo.data;
-            gp0_addr_li = (uart_pkt_lo.addr7to2 << 2'b10);
+            gp0_addr_li = (uart_pkt_lo.addr30to2 << 2'b10);
             gp0_v_li = uart_pkt_v_lo;
             gp0_w_li = uart_pkt_lo.wr_not_rd;
 

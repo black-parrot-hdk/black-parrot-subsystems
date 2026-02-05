@@ -1,131 +1,131 @@
 
 module uart_bridge_top
- #(parameter integer C_M00_AXI_DATA_WIDTH = 32
-   , parameter integer C_M00_AXI_ADDR_WIDTH = 10
-   , parameter integer C_GP0_AXI_DATA_WIDTH = 32
-   , parameter integer C_GP0_AXI_ADDR_WIDTH = 28
+ #(parameter integer C_UART_AXI_DATA_WIDTH = 32
+   , parameter integer C_UART_AXI_ADDR_WIDTH = 12
+   , parameter integer C_UI_AXI_DATA_WIDTH = 32
+   , parameter integer C_UI_AXI_ADDR_WIDTH = 28
    , parameter integer UART_BASE_ADDR = 32'h1100000
    )
    (input wire                                  aclk
     , input wire                                aresetn
 
     // WRITE ADDRESS CHANNEL SIGNALS
-    , output wire [C_M00_AXI_ADDR_WIDTH-1:0]    m_axil_awaddr_o
-    , output wire [2:0]                         m_axil_awprot_o
-    , output wire                               m_axil_awvalid_o
-    , input wire                                m_axil_awready_i
+    , output wire [C_UART_AXI_ADDR_WIDTH-1:0]   uart_axil_awaddr
+    , output wire [2:0]                         uart_axil_awprot
+    , output wire                               uart_axil_awvalid
+    , input wire                                uart_axil_awready
 
     // WRITE DATA CHANNEL SIGNALS
-    , output wire [C_M00_AXI_DATA_WIDTH-1:0]    m_axil_wdata_o
-    , output wire [C_M00_AXI_DATA_WIDTH/8-1:0]  m_axil_wstrb_o
-    , output wire                               m_axil_wvalid_o
-    , input wire                                m_axil_wready_i
+    , output wire [C_UART_AXI_DATA_WIDTH-1:0]   uart_axil_wdata
+    , output wire [C_UART_AXI_DATA_WIDTH/8-1:0] uart_axil_wstrb
+    , output wire                               uart_axil_wvalid
+    , input wire                                uart_axil_wready
 
     // WRITE RESPONSE CHANNEL SIGNALS
-    , input [1:0]                               m_axil_bresp_i
-    , input wire                                m_axil_bvalid_i
-    , output wire                               m_axil_bready_o
+    , input [1:0]                               uart_axil_bresp
+    , input wire                                uart_axil_bvalid
+    , output wire                               uart_axil_bready
 
     // READ ADDRESS CHANNEL SIGNALS
-    , output wire [C_M00_AXI_ADDR_WIDTH-1:0]    m_axil_araddr_o
-    , output wire [2:0]                         m_axil_arprot_o
-    , output wire                               m_axil_arvalid_o
-    , input wire                                m_axil_arready_i
+    , output wire [C_UART_AXI_ADDR_WIDTH-1:0]   uart_axil_araddr
+    , output wire [2:0]                         uart_axil_arprot
+    , output wire                               uart_axil_arvalid
+    , input wire                                uart_axil_arready
 
     // READ DATA CHANNEL SIGNALS
-    , input [C_M00_AXI_DATA_WIDTH-1:0]          m_axil_rdata_i
-    , input [1:0]                               m_axil_rresp_i
-    , input wire                                m_axil_rvalid_i
-    , output wire                               m_axil_rready_o
+    , input [C_UART_AXI_DATA_WIDTH-1:0]         uart_axil_rdata
+    , input [1:0]                               uart_axil_rresp
+    , input wire                                uart_axil_rvalid
+    , output wire                               uart_axil_rready
 
     // WRITE ADDRESS CHANNEL SIGNALS
-    , output wire [C_GP0_AXI_ADDR_WIDTH-1:0]    gp0_axil_awaddr_o
-    , output wire [2:0]                         gp0_axil_awprot_o
-    , output wire                               gp0_axil_awvalid_o
-    , input wire                                gp0_axil_awready_i
+    , output wire [C_UI_AXI_ADDR_WIDTH-1:0]     ui_axil_awaddr
+    , output wire [2:0]                         ui_axil_awprot
+    , output wire                               ui_axil_awvalid
+    , input wire                                ui_axil_awready
 
     // WRITE DATA CHANNEL SIGNALS
-    , output wire [C_GP0_AXI_DATA_WIDTH-1:0 ]   gp0_axil_wdata_o
-    , output wire [C_GP0_AXI_DATA_WIDTH/8-1:0]  gp0_axil_wstrb_o
-    , output wire                               gp0_axil_wvalid_o
-    , input wire                                gp0_axil_wready_i
+    , output wire [C_UI_AXI_DATA_WIDTH-1:0 ]    ui_axil_wdata
+    , output wire [C_UI_AXI_DATA_WIDTH/8-1:0]   ui_axil_wstrb
+    , output wire                               ui_axil_wvalid
+    , input wire                                ui_axil_wready
 
     // WRITE RESPONSE CHANNEL SIGNALS
-    , input [1:0]                               gp0_axil_bresp_i
-    , input wire                                gp0_axil_bvalid_i
-    , output wire                               gp0_axil_bready_o
+    , input [1:0]                               ui_axil_bresp
+    , input wire                                ui_axil_bvalid
+    , output wire                               ui_axil_bready
 
     // READ ADDRESS CHANNEL SIGNALS
-    , output wire [C_GP0_AXI_ADDR_WIDTH-1:0]    gp0_axil_araddr_o
-    , output wire [2:0]                         gp0_axil_arprot_o
-    , output wire                               gp0_axil_arvalid_o
-    , input wire                                gp0_axil_arready_i
+    , output wire [C_UI_AXI_ADDR_WIDTH-1:0]     ui_axil_araddr
+    , output wire [2:0]                         ui_axil_arprot
+    , output wire                               ui_axil_arvalid
+    , input wire                                ui_axil_arready
 
     // READ DATA CHANNEL SIGNALS
-    , input [C_GP0_AXI_DATA_WIDTH-1:0]          gp0_axil_rdata_i
-    , input [1:0]                               gp0_axil_rresp_i
-    , input wire                                gp0_axil_rvalid_i
-    , output wire                               gp0_axil_rready_o
+    , input [C_UI_AXI_DATA_WIDTH-1:0]           ui_axil_rdata
+    , input [1:0]                               ui_axil_rresp
+    , input wire                                ui_axil_rvalid
+    , output wire                               ui_axil_rready
     );
 
-  bsg_zynq_uart_bridge
-   #(.m_axil_data_width_p(C_M00_AXI_DATA_WIDTH)
-     ,.m_axil_addr_width_p(C_M00_AXI_ADDR_WIDTH)
+  bsg_axil_uart_bridge
+   #(.uart_axil_data_width_p(C_UART_AXI_DATA_WIDTH)
+     ,.uart_axil_addr_width_p(C_UART_AXI_ADDR_WIDTH)
      ,.uart_base_addr_p(UART_BASE_ADDR)
-     ,.gp0_axil_data_width_p(C_GP0_AXI_DATA_WIDTH)
-     ,.gp0_axil_addr_width_p(C_GP0_AXI_ADDR_WIDTH)
+     ,.ui_axil_data_width_p(C_UI_AXI_DATA_WIDTH)
+     ,.ui_axil_addr_width_p(C_UI_AXI_ADDR_WIDTH)
      )
    bridge
     (.clk_i(aclk)
      ,.reset_i(~aresetn)
 
-     ,.m_axil_awaddr_o(m01_axi_awaddr)
-     ,.m_axil_awprot_o(m01_axi_awprot)
-     ,.m_axil_awvalid_o(m01_axi_awvalid)
-     ,.m_axil_awready_i(m01_axi_awready)
+     ,.uart_axil_awaddr_o(uart_axil_awaddr)
+     ,.uart_axil_awprot_o(uart_axil_awprot)
+     ,.uart_axil_awvalid_o(uart_axil_awvalid)
+     ,.uart_axil_awready_i(uart_axil_awready)
 
-     ,.m_axil_wdata_o(m01_axi_wdata)
-     ,.m_axil_wstrb_o(m01_axi_wstrb)
-     ,.m_axil_wvalid_o(m01_axi_wvalid)
-     ,.m_axil_wready_i(m01_axi_wready)
+     ,.uart_axil_wdata_o(uart_axil_wdata)
+     ,.uart_axil_wstrb_o(uart_axil_wstrb)
+     ,.uart_axil_wvalid_o(uart_axil_wvalid)
+     ,.uart_axil_wready_i(uart_axil_wready)
 
-     ,.m_axil_bresp_i(m01_axi_bresp)
-     ,.m_axil_bvalid_i(m01_axi_bvalid)
-     ,.m_axil_bready_o(m01_axi_bready)
+     ,.uart_axil_bresp_i(uart_axil_bresp)
+     ,.uart_axil_bvalid_i(uart_axil_bvalid)
+     ,.uart_axil_bready_o(uart_axil_bready)
 
-     ,.m_axil_araddr_o(m01_axi_araddr)
-     ,.m_axil_arprot_o(m01_axi_arprot)
-     ,.m_axil_arvalid_o(m01_axi_arvalid)
-     ,.m_axil_arready_i(m01_axi_arready)
+     ,.uart_axil_araddr_o(uart_axil_araddr)
+     ,.uart_axil_arprot_o(uart_axil_arprot)
+     ,.uart_axil_arvalid_o(uart_axil_arvalid)
+     ,.uart_axil_arready_i(uart_axil_arready)
 
-     ,.m_axil_rdata_i(m01_axi_rdata)
-     ,.m_axil_rresp_i(m01_axi_rresp)
-     ,.m_axil_rvalid_i(m01_axi_rvalid)
-     ,.m_axil_rready_o(m01_axi_rready)
+     ,.uart_axil_rdata_i(uart_axil_rdata)
+     ,.uart_axil_rresp_i(uart_axil_rresp)
+     ,.uart_axil_rvalid_i(uart_axil_rvalid)
+     ,.uart_axil_rready_o(uart_axil_rready)
 
-     ,.gp0_axil_awaddr_o(gp0_axil_awaddr)
-     ,.gp0_axil_awprot_o(gp0_axil_awprot)
-     ,.gp0_axil_awvalid_o(gp0_axil_awvalid)
-     ,.gp0_axil_awready_i(gp0_axil_awready)
+     ,.ui_axil_awaddr_o(ui_axil_awaddr)
+     ,.ui_axil_awprot_o(ui_axil_awprot)
+     ,.ui_axil_awvalid_o(ui_axil_awvalid)
+     ,.ui_axil_awready_i(ui_axil_awready)
 
-     ,.gp0_axil_wdata_o(gp0_axil_wdata)
-     ,.gp0_axil_wstrb_o(gp0_axil_wstrb)
-     ,.gp0_axil_wvalid_o(gp0_axil_wvalid)
-     ,.gp0_axil_wready_i(gp0_axil_wready)
+     ,.ui_axil_wdata_o(ui_axil_wdata)
+     ,.ui_axil_wstrb_o(ui_axil_wstrb)
+     ,.ui_axil_wvalid_o(ui_axil_wvalid)
+     ,.ui_axil_wready_i(ui_axil_wready)
 
-     ,.gp0_axil_bresp_i(gp0_axil_bresp)
-     ,.gp0_axil_bvalid_i(gp0_axil_bvalid)
-     ,.gp0_axil_bready_o(gp0_axil_bready)
+     ,.ui_axil_bresp_i(ui_axil_bresp)
+     ,.ui_axil_bvalid_i(ui_axil_bvalid)
+     ,.ui_axil_bready_o(ui_axil_bready)
 
-     ,.gp0_axil_araddr_o(gp0_axil_araddr)
-     ,.gp0_axil_arprot_o(gp0_axil_arprot)
-     ,.gp0_axil_arvalid_o(gp0_axil_arvalid)
-     ,.gp0_axil_arready_i(gp0_axil_arready)
+     ,.ui_axil_araddr_o(ui_axil_araddr)
+     ,.ui_axil_arprot_o(ui_axil_arprot)
+     ,.ui_axil_arvalid_o(ui_axil_arvalid)
+     ,.ui_axil_arready_i(ui_axil_arready)
 
-     ,.gp0_axil_rdata_i(gp0_axil_rdata)
-     ,.gp0_axil_rresp_i(gp0_axil_rresp)
-     ,.gp0_axil_rvalid_i(gp0_axil_rvalid)
-     ,.gp0_axil_rready_o(gp0_axil_rready)
+     ,.ui_axil_rdata_i(ui_axil_rdata)
+     ,.ui_axil_rresp_i(ui_axil_rresp)
+     ,.ui_axil_rvalid_i(ui_axil_rvalid)
+     ,.ui_axil_rready_o(ui_axil_rready)
      );  
 
 endmodule
