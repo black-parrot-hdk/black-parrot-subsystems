@@ -4,39 +4,38 @@ module uart_bridge_top
    , parameter integer C_UART_AXI_ADDR_WIDTH = 12
    , parameter integer C_UI_AXI_DATA_WIDTH = 32
    , parameter integer C_UI_AXI_ADDR_WIDTH = 28
-   , parameter integer UART_BASE_ADDR = 32'h1100000
    )
    (input wire                                  aclk
     , input wire                                aresetn
 
     // WRITE ADDRESS CHANNEL SIGNALS
-    , output wire [C_UART_AXI_ADDR_WIDTH-1:0]   uart_axil_awaddr
-    , output wire [2:0]                         uart_axil_awprot
-    , output wire                               uart_axil_awvalid
-    , input wire                                uart_axil_awready
+    , (* mark_debug = "true" *) output wire [C_UART_AXI_ADDR_WIDTH-1:0]   uart_axil_awaddr
+    , (* mark_debug = "true" *) output wire [2:0]                         uart_axil_awprot
+    , (* mark_debug = "true" *)  output wire                               uart_axil_awvalid
+    , (* mark_debug = "true" *)  input wire                                uart_axil_awready
 
     // WRITE DATA CHANNEL SIGNALS
-    , output wire [C_UART_AXI_DATA_WIDTH-1:0]   uart_axil_wdata
-    , output wire [C_UART_AXI_DATA_WIDTH/8-1:0] uart_axil_wstrb
-    , output wire                               uart_axil_wvalid
-    , input wire                                uart_axil_wready
+    , (* mark_debug = "true" *)  output wire [C_UART_AXI_DATA_WIDTH-1:0]   uart_axil_wdata
+    , (* mark_debug = "true" *)  output wire [C_UART_AXI_DATA_WIDTH/8-1:0] uart_axil_wstrb
+    , (* mark_debug = "true" *)  output wire                               uart_axil_wvalid
+    , (* mark_debug = "true" *)  input wire                                uart_axil_wready
 
     // WRITE RESPONSE CHANNEL SIGNALS
-    , input [1:0]                               uart_axil_bresp
-    , input wire                                uart_axil_bvalid
-    , output wire                               uart_axil_bready
+    , (* mark_debug = "true" *)  input [1:0]                               uart_axil_bresp
+    , (* mark_debug = "true" *)  input wire                                uart_axil_bvalid
+    , (* mark_debug = "true" *)  output wire                               uart_axil_bready
 
     // READ ADDRESS CHANNEL SIGNALS
-    , output wire [C_UART_AXI_ADDR_WIDTH-1:0]   uart_axil_araddr
-    , output wire [2:0]                         uart_axil_arprot
-    , output wire                               uart_axil_arvalid
-    , input wire                                uart_axil_arready
+    , (* mark_debug = "true" *)  output wire [C_UART_AXI_ADDR_WIDTH-1:0]   uart_axil_araddr
+    , (* mark_debug = "true" *)  output wire [2:0]                         uart_axil_arprot
+    , (* mark_debug = "true" *)  output wire                               uart_axil_arvalid
+    , (* mark_debug = "true" *)  input wire                                uart_axil_arready
 
     // READ DATA CHANNEL SIGNALS
-    , input [C_UART_AXI_DATA_WIDTH-1:0]         uart_axil_rdata
-    , input [1:0]                               uart_axil_rresp
-    , input wire                                uart_axil_rvalid
-    , output wire                               uart_axil_rready
+    , (* mark_debug = "true" *)  input [C_UART_AXI_DATA_WIDTH-1:0]         uart_axil_rdata
+    , (* mark_debug = "true" *)  input [1:0]                               uart_axil_rresp
+    , (* mark_debug = "true" *)  input wire                                uart_axil_rvalid
+    ,  (* mark_debug = "true" *) output wire                               uart_axil_rready
 
     // WRITE ADDRESS CHANNEL SIGNALS
     , output wire [C_UI_AXI_ADDR_WIDTH-1:0]     ui_axil_awaddr
@@ -71,7 +70,6 @@ module uart_bridge_top
   bsg_axil_uart_bridge
    #(.uart_axil_data_width_p(C_UART_AXI_DATA_WIDTH)
      ,.uart_axil_addr_width_p(C_UART_AXI_ADDR_WIDTH)
-     ,.uart_base_addr_p(UART_BASE_ADDR)
      ,.ui_axil_data_width_p(C_UI_AXI_DATA_WIDTH)
      ,.ui_axil_addr_width_p(C_UI_AXI_ADDR_WIDTH)
      )

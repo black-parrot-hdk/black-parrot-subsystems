@@ -5,6 +5,7 @@ module bsg_axil_fifo_master
  import bsg_axi_pkg::*;
  #(parameter `BSG_INV_PARAM(axil_data_width_p)
    , parameter `BSG_INV_PARAM(axil_addr_width_p)
+   , parameter autoack_wr_p = 0
 
    , localparam axi_mask_width_lp = axil_data_width_p >> 3
    )
@@ -90,6 +91,7 @@ module bsg_axil_fifo_master
      );
 
   logic return_ready_lo, return_w_lo, return_v_lo, return_yumi_li;
+  wire return_v_li = ready_and_o & v_i & (~w_i | ~autoack_wr_p);
   bsg_one_fifo
    #(.width_p(1))
    return_fifo
@@ -97,7 +99,7 @@ module bsg_axil_fifo_master
      ,.reset_i(reset_i)
 
      ,.data_i(w_i)
-     ,.v_i(ready_and_o & v_i)
+     ,.v_i(return_v_li)
      ,.ready_and_o(return_ready_lo)
 
      ,.data_o(return_w_lo)
@@ -118,7 +120,7 @@ module bsg_axil_fifo_master
 
   assign v_o = return_v_lo & (return_w_lo ? m_axil_bvalid_i : m_axil_rvalid_i);
   assign data_o = m_axil_rdata_i;
-  assign m_axil_bready_o = return_v_lo &  return_w_lo & ready_and_i;
+  assign m_axil_bready_o = (return_v_lo &  return_w_lo & ready_and_i) || autoack_wr_p;
   assign m_axil_rready_o = return_v_lo & ~return_w_lo & ready_and_i;
 
   assign return_yumi_li = ready_and_i & v_o;
