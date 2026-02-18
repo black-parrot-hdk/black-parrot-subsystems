@@ -215,57 +215,58 @@ module bsg_axil_uart_bridge
      ,.yumi_i(uart_pkt_yumi_li)
      );
 
-//  logic [ui_axil_data_width_p-1:0] gp0_wdata_li;
-//  logic [ui_axil_addr_width_p-1:0] gp0_addr_li;
-//  logic gp0_v_li, gp0_w_li, gp0_ready_and_lo;
-//  logic [ui_axil_mask_width_lp-1:0] gp0_wmask_li;
-//
-//  logic [ui_axil_data_width_p-1:0] gp0_rdata_lo;
-//  logic gp0_v_lo, gp0_ready_and_li;
-//  bsg_axil_fifo_master
-//   #(.axil_data_width_p(ui_axil_data_width_p)
-//     ,.axil_addr_width_p(ui_axil_addr_width_p)
-//     )
-//   gp0_master
-//    (.clk_i(clk_i)
-//     ,.reset_i(reset_i)
-//
-//     ,.data_i(gp0_wdata_li)
-//     ,.addr_i(gp0_addr_li)
-//     ,.v_i(gp0_v_li)
-//     ,.w_i(gp0_w_li)
-//     ,.wmask_i(gp0_wmask_li)
-//     ,.ready_and_o(gp0_ready_and_lo)
-//
-//     ,.data_o(gp0_rdata_lo)
-//     ,.v_o(gp0_v_lo)
-//     ,.ready_and_i(gp0_ready_and_li)
-//
-//     ,.m_axil_awaddr_o(ui_axil_awaddr_o)
-//     ,.m_axil_awprot_o(ui_axil_awprot_o)
-//     ,.m_axil_awvalid_o(ui_axil_awvalid_o)
-//     ,.m_axil_awready_i(ui_axil_awready_i)
-//
-//     ,.m_axil_wdata_o(ui_axil_wdata_o)
-//     ,.m_axil_wstrb_o(ui_axil_wstrb_o)
-//     ,.m_axil_wvalid_o(ui_axil_wvalid_o)
-//     ,.m_axil_wready_i(ui_axil_wready_i)
-//
-//     ,.m_axil_bresp_i(ui_axil_bresp_i)
-//     ,.m_axil_bvalid_i(ui_axil_bvalid_i)
-//     ,.m_axil_bready_o(ui_axil_bready_o)
-//
-//     ,.m_axil_araddr_o(ui_axil_araddr_o)
-//     ,.m_axil_arprot_o(ui_axil_arprot_o)
-//     ,.m_axil_arvalid_o(ui_axil_arvalid_o)
-//     ,.m_axil_arready_i(ui_axil_arready_i)
-//
-//     ,.m_axil_rdata_i(ui_axil_rdata_i)
-//     ,.m_axil_rresp_i(ui_axil_rresp_i)
-//     ,.m_axil_rvalid_i(ui_axil_rvalid_i)
-//     ,.m_axil_rready_o(ui_axil_rready_o)
-//     );
-//
+  logic [ui_axil_data_width_p-1:0] gp0_wdata_li;
+  logic [ui_axil_addr_width_p-1:0] gp0_addr_li;
+  logic gp0_v_li, gp0_w_li, gp0_ready_and_lo;
+  logic [ui_axil_mask_width_lp-1:0] gp0_wmask_li;
+
+  logic [ui_axil_data_width_p-1:0] gp0_rdata_lo;
+  logic gp0_v_lo, gp0_ready_and_li;
+  bsg_axil_fifo_master
+   #(.axil_data_width_p(ui_axil_data_width_p)
+     ,.axil_addr_width_p(ui_axil_addr_width_p)
+     ,.autoack_wr_p(1)
+     )
+   gp0_master
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+
+     ,.data_i(gp0_wdata_li)
+     ,.addr_i(gp0_addr_li)
+     ,.v_i(gp0_v_li)
+     ,.w_i(gp0_w_li)
+     ,.wmask_i(gp0_wmask_li)
+     ,.ready_and_o(gp0_ready_and_lo)
+
+     ,.data_o(gp0_rdata_lo)
+     ,.v_o(gp0_v_lo)
+     ,.ready_and_i(gp0_ready_and_li)
+
+     ,.m_axil_awaddr_o(ui_axil_awaddr_o)
+     ,.m_axil_awprot_o(ui_axil_awprot_o)
+     ,.m_axil_awvalid_o(ui_axil_awvalid_o)
+     ,.m_axil_awready_i(ui_axil_awready_i)
+
+     ,.m_axil_wdata_o(ui_axil_wdata_o)
+     ,.m_axil_wstrb_o(ui_axil_wstrb_o)
+     ,.m_axil_wvalid_o(ui_axil_wvalid_o)
+     ,.m_axil_wready_i(ui_axil_wready_i)
+
+     ,.m_axil_bresp_i(ui_axil_bresp_i)
+     ,.m_axil_bvalid_i(ui_axil_bvalid_i)
+     ,.m_axil_bready_o(ui_axil_bready_o)
+
+     ,.m_axil_araddr_o(ui_axil_araddr_o)
+     ,.m_axil_arprot_o(ui_axil_arprot_o)
+     ,.m_axil_arvalid_o(ui_axil_arvalid_o)
+     ,.m_axil_arready_i(ui_axil_arready_i)
+
+     ,.m_axil_rdata_i(ui_axil_rdata_i)
+     ,.m_axil_rresp_i(ui_axil_rresp_i)
+     ,.m_axil_rvalid_i(ui_axil_rvalid_i)
+     ,.m_axil_rready_o(ui_axil_rready_o)
+     );
+
   logic [ui_axil_data_width_p-1:0] uart_data_li;
   logic uart_v_li, uart_ready_and_lo;
   logic [7:0] tx_data_lo;
@@ -304,6 +305,14 @@ module bsg_axil_uart_bridge
       uart_v_li = 1'b0;
       tx_yumi_li = 1'b0;
 
+      // default GP0 (UI) master signals to avoid inferred latches
+      gp0_wdata_li = '0;
+      gp0_addr_li  = '0;
+      gp0_v_li     = 1'b0;
+      gp0_w_li     = 1'b0;
+      gp0_wmask_li = '1;
+      gp0_ready_and_li = 1'b0;
+
       state_n = state_r;
 
       case (state_r)
@@ -318,13 +327,8 @@ module bsg_axil_uart_bridge
             m_w_li = 1'b0;
             m_addr_li = stat_addr_lp;
 
-
-            // Fake data for loopback
-            uart_data_li = uart_pkt_lo;
-            uart_v_li = uart_pkt_v_lo;
-
             state_n = uart_pkt_v_lo
-                      ? e_tx_probe
+                      ? e_req_send
                       : (m_ready_and_lo & m_v_li)
                         ? e_poll_check
                         : state_r;
@@ -351,6 +355,24 @@ module bsg_axil_uart_bridge
 
             state_n = (m_ready_and_li & m_v_lo) ? e_poll_probe : state_r;
           end
+        e_req_send:
+          begin
+            gp0_wdata_li = uart_pkt_lo.data;
+            gp0_addr_li = (uart_pkt_lo.addr30to2 << 2'b10);
+            gp0_v_li = uart_pkt_v_lo;
+            gp0_w_li = uart_pkt_lo.wr_not_rd;
+            uart_pkt_yumi_li = gp0_ready_and_lo & gp0_v_li;
+
+            state_n = uart_pkt_yumi_li ? gp0_w_li ? e_poll_probe : e_req_wait : state_r;
+          end
+        e_req_wait:
+          begin
+            uart_v_li = gp0_v_lo;
+            uart_data_li = gp0_rdata_lo;
+            gp0_ready_and_li = uart_ready_and_lo;
+
+            state_n = (gp0_ready_and_li & gp0_v_lo) ? e_tx_probe : state_r;
+          end
         e_tx_probe:
           begin
             m_v_li = 1'b1;
@@ -373,9 +395,7 @@ module bsg_axil_uart_bridge
             m_wdata_li = tx_data_lo;
             tx_yumi_li = m_v_li & m_ready_and_lo;
 
-            uart_pkt_yumi_li = uart_pkt_v_lo & ~tx_v_lo;
-
-            state_n = uart_pkt_yumi_li ? e_poll_probe : state_r;
+            state_n = ~tx_v_lo ? e_poll_probe : state_r;
           end
 //        e_tx_send:
 //          begin
