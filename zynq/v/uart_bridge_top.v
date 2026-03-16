@@ -37,6 +37,8 @@ module uart_bridge_top
     , (* mark_debug = "true" *)  input wire                                uart_axil_rvalid
     ,  (* mark_debug = "true" *) output wire                               uart_axil_rready
 
+    , (* mark_debug = "true" *) input 									   uart_interrupt
+
     // WRITE ADDRESS CHANNEL SIGNALS
     , output wire [C_UI_AXI_ADDR_WIDTH-1:0]     ui_axil_awaddr
     , output wire [2:0]                         ui_axil_awprot
@@ -100,6 +102,7 @@ module uart_bridge_top
      ,.uart_axil_rresp_i(uart_axil_rresp)
      ,.uart_axil_rvalid_i(uart_axil_rvalid)
      ,.uart_axil_rready_o(uart_axil_rready)
+     ,.uart_interrupt_i(uart_interrupt)
 
      ,.ui_axil_awaddr_o(ui_axil_awaddr)
      ,.ui_axil_awprot_o(ui_axil_awprot)

@@ -42,6 +42,8 @@ module bsg_axil_uart_bridge
     , (* mark_debug = "true" *) input                                      uart_axil_rvalid_i
     , (* mark_debug = "true" *) output logic                               uart_axil_rready_o
 
+    , (* mark_debug = "true" *) input 									   uart_interrupt_i
+
     // WRITE ADDRESS CHANNEL SIGNALS
     ,  output logic [ui_axil_addr_width_p-1:0]    ui_axil_awaddr_o
     ,  output logic [2:0]                         ui_axil_awprot_o
@@ -286,6 +288,7 @@ module bsg_axil_uart_bridge
      ,.yumi_i(tx_yumi_li)
      );
 
+  // TODO: make poll_state, send_state, recv_state ??
   // This could certainly be more efficient by leveraging bursty transfer patterns
   always_comb
     begin
@@ -318,14 +321,15 @@ module bsg_axil_uart_bridge
       case (state_r)
         e_reset:
           begin
-            state_n = e_poll_probe;
+			state_n = e_poll_probe;
           end
-        e_poll_probe:
+ 		e_poll_probe:
           begin
             // If we have a uart wr/rd packet, send it, else poll the rx fifo
-            m_v_li = ~uart_pkt_v_lo;
+            //m_v_li = ~uart_pkt_v_lo;
+            m_v_li = 1'b0;
             m_w_li = 1'b0;
-            m_addr_li = stat_addr_lp;
+            m_addr_li = uart_axil_addr_width_p'(stat_addr_lp);
 
             state_n = uart_pkt_v_lo
                       ? e_req_send
@@ -333,70 +337,139 @@ module bsg_axil_uart_bridge
                         ? e_poll_check
                         : state_r;
           end
-        e_poll_check:
-          begin
+       e_poll_check:
+		  begin
             m_ready_and_li = 1'b1;
 
             state_n = (m_ready_and_li & m_v_lo) ? rx_fifo_valid ? e_poll_send : e_poll_probe : state_r;
-          end
-        e_poll_send:
-          begin
+		  end
+	   e_poll_send:
+		  begin
             m_v_li = 1'b1;
             m_w_li = 1'b0;
-            m_addr_li = rx_addr_lp;
+            m_addr_li = uart_axil_addr_width_p'(rx_addr_lp);
 
             state_n = (m_ready_and_lo & m_v_li) ? e_poll_recv : state_r;
-          end
-        e_poll_recv:
-          begin
-            recv_data_li = m_rdata_lo;
-            recv_v_li = m_v_lo;
-            m_ready_and_li = recv_ready_and_lo;
+		  end
+	   e_poll_recv:
+		  begin
 
-            state_n = (m_ready_and_li & m_v_lo) ? e_poll_probe : state_r;
-          end
-        e_req_send:
-          begin
-            gp0_wdata_li = uart_pkt_lo.data;
-            gp0_addr_li = (uart_pkt_lo.addr30to2 << 2'b10);
-            gp0_v_li = uart_pkt_v_lo;
-            gp0_w_li = uart_pkt_lo.wr_not_rd;
-            uart_pkt_yumi_li = gp0_ready_and_lo & gp0_v_li;
+		  end
+        default: begin end
+      endcase
+  end
 
-            state_n = uart_pkt_yumi_li ? gp0_w_li ? e_poll_probe : e_req_wait : state_r;
-          end
-        e_req_wait:
-          begin
-            uart_v_li = gp0_v_lo;
-            uart_data_li = gp0_rdata_lo;
-            gp0_ready_and_li = uart_ready_and_lo;
-
-            state_n = (gp0_ready_and_li & gp0_v_lo) ? e_tx_probe : state_r;
-          end
-        e_tx_probe:
-          begin
-            m_v_li = 1'b1;
-            m_w_li = 1'b0;
-            m_addr_li = stat_addr_lp;
-
-            state_n = (m_ready_and_lo & m_v_li) ? e_tx_check : state_r;
-          end
-        e_tx_check:
-          begin
-            m_ready_and_li = 1'b1;
-
-            state_n = (m_ready_and_li & m_v_lo) ? tx_fifo_empty ? e_tx_send : e_tx_probe : state_r;
-            end
-        e_tx_send:
-          begin
-            m_v_li = tx_v_lo;
-            m_w_li = 1'b1;
-            m_addr_li = tx_addr_lp;
-            m_wdata_li = tx_data_lo;
-            tx_yumi_li = m_v_li & m_ready_and_lo;
-
-            state_n = ~tx_v_lo ? e_poll_probe : state_r;
-          end
+//  // This could certainly be more efficient by leveraging bursty transfer patterns
+//  always_comb
+//    begin
+//      m_wdata_li = '0;
+//      m_addr_li = '0;
+//      m_v_li = '0;
+//      m_w_li = '0;
+//      m_wmask_li = '1;
+//       
+//      m_ready_and_li = 1'b0;
+//      
+//      recv_data_li = '0;
+//      recv_v_li = 1'b0;
+//      uart_pkt_yumi_li = 1'b0;
+//
+//      uart_data_li = '0;
+//      uart_v_li = 1'b0;
+//      tx_yumi_li = 1'b0;
+//
+//      // default GP0 (UI) master signals to avoid inferred latches
+//      gp0_wdata_li = '0;
+//      gp0_addr_li  = '0;
+//      gp0_v_li     = 1'b0;
+//      gp0_w_li     = 1'b0;
+//      gp0_wmask_li = '1;
+//      gp0_ready_and_li = 1'b0;
+//
+//      state_n = state_r;
+//
+//      case (state_r)
+//        e_reset:
+//          begin
+//            state_n = e_poll_probe;
+//          end
+//        e_poll_probe:
+//          begin
+//            // If we have a uart wr/rd packet, send it, else poll the rx fifo
+//            m_v_li = ~uart_pkt_v_lo;
+//            m_w_li = 1'b0;
+//            m_addr_li = stat_addr_lp;
+//
+//            state_n = uart_pkt_v_lo
+//                      ? e_req_send
+//                      : (m_ready_and_lo & m_v_li)
+//                        ? e_poll_check
+//                        : state_r;
+//          end
+//        e_poll_check:
+//          begin
+//            m_ready_and_li = 1'b1;
+//
+//            state_n = (m_ready_and_li & m_v_lo) ? rx_fifo_valid ? e_poll_send : e_poll_probe : state_r;
+//          end
+//        e_poll_send:
+//          begin
+//            m_v_li = 1'b1;
+//            m_w_li = 1'b0;
+//            m_addr_li = rx_addr_lp;
+//
+//            state_n = (m_ready_and_lo & m_v_li) ? e_poll_recv : state_r;
+//          end
+//        e_poll_recv:
+//          begin
+//            recv_data_li = m_rdata_lo;
+//            recv_v_li = m_v_lo;
+//            m_ready_and_li = recv_ready_and_lo;
+//
+//            state_n = (m_ready_and_li & m_v_lo) ? e_poll_probe : state_r;
+//          end
+//        e_req_send:
+//          begin
+//            gp0_wdata_li = uart_pkt_lo.data;
+//            gp0_addr_li = (uart_pkt_lo.addr30to2 << 2'b10);
+//            gp0_v_li = uart_pkt_v_lo;
+//            gp0_w_li = uart_pkt_lo.wr_not_rd;
+//            uart_pkt_yumi_li = gp0_ready_and_lo & gp0_v_li;
+//
+//            state_n = uart_pkt_yumi_li ? gp0_w_li ? e_poll_probe : e_req_wait : state_r;
+//          end
+//        e_req_wait:
+//          begin
+//            uart_v_li = gp0_v_lo;
+//            uart_data_li = gp0_rdata_lo;
+//            gp0_ready_and_li = uart_ready_and_lo;
+//
+//            state_n = (gp0_ready_and_li & gp0_v_lo) ? e_tx_probe : state_r;
+//          end
+//        e_tx_probe:
+//          begin
+//            m_v_li = 1'b1;
+//            m_w_li = 1'b0;
+//            m_addr_li = stat_addr_lp;
+//
+//            state_n = (m_ready_and_lo & m_v_li) ? e_tx_check : state_r;
+//          end
+//        e_tx_check:
+//          begin
+//            m_ready_and_li = 1'b1;
+//
+//            state_n = (m_ready_and_li & m_v_lo) ? tx_fifo_empty ? e_tx_send : e_tx_probe : state_r;
+//            end
+//        e_tx_send:
+//          begin
+//            m_v_li = tx_v_lo;
+//            m_w_li = 1'b1;
+//            m_addr_li = tx_addr_lp;
+//            m_wdata_li = tx_data_lo;
+//            tx_yumi_li = m_v_li & m_ready_and_lo;
+//
+//            state_n = ~tx_v_lo ? e_poll_probe : state_r;
+//          end
 //        e_tx_send:
 //          begin
 //            m_v_li = tx_v_lo;
@@ -406,11 +479,11 @@ module bsg_axil_uart_bridge
 //            tx_yumi_li = m_ready_and_lo & m_v_li;
 //
 //            state_n = tx_yumi_li ? e_tx_drain : state_r;
-
-        default: begin end
-      endcase
-    end
-
+//
+//        default: begin end
+//      endcase
+//    end
+//
 //  always_comb
 //    begin
 //      m_wdata_li = '0;
