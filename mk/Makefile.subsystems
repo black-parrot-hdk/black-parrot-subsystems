@@ -2,7 +2,6 @@
 $(eval $(call bsg_tgt_build_submodule,opentitan,$(BP_OPENTITAN_DIR),$(BP_TOUCH_DIR),$(BP_PATCH_DIR),$(BP_WORK_DIR)))
 %/.opentitan_build:
 	@$(MKDIR) -p $(BP_INSTALL_DIR)/gen/v $(BP_ZYNQ_DIR)/v/gen
-	@$(PYTHON3) -m pip install --user -r $(BP_OPENTITAN_DIR)/python-requirements.txt --require-hashes
 	@$(PYTHON3) $(BP_OPENTITAN_DIR)/util/ipgen.py generate \
 		-c $(BP_ZYNQ_DIR)/cfg/rv_plic.ipconfig.hjson \
 		-C $(BP_OPENTITAN_DIR)/hw/ip_templates/rv_plic \
