@@ -6,3 +6,7 @@ pycryptodome
 mako
 importlib_resources
 semantic_version
+
+# OpenTitan requirements
+pyyaml==6.0.2
+types-pyyaml==6.0.11
