@@ -60,10 +60,10 @@ build-image:
 .gen_ip_job:
   extends: [.project_template]
   script:
-    - echo "[CI] doing makefile checkout" | tee -a ${JOB_LOG}
-    - make -j${CORES_PER_JOB} checkout >> ${JOB_LOG} 2>&1
-    - echo "[CI] regenerating rtl" | tee -a ${JOB_LOG}
-    - make -j${CORES_PER_JOB} gen >> ${JOB_LOG} 2>&1
+    - echo "[CI] doing makefile checkout"
+    - make -j${CORES_PER_JOB} checkout
+    - echo "[CI] regenerating rtl"
+    - make -j${CORES_PER_JOB} gen
     - mv ${BP_INSTALL_DIR} ${JOB_SUCCESS_ROOT}/${GEN_ARTIFACT}
   rules:
     - if: '"$[[ inputs.do_gen_ip ]]" =~ "/on_success|on_event/"'
@@ -76,10 +76,10 @@ build-image:
     API_PACKAGE_VER: "${CI_COMMIT_REF_SLUG}"
     API_PROJECT_ID: "${CI_PROJECT_ID}"
   script:
-    - echo "[CI] gathering inputs for ${API_PACKAGE_NAME}" | tee -a ${JOB_LOG}
+    - echo "[CI] gathering inputs for ${API_PACKAGE_NAME}"
     - mkdir -p ${API_UPLOAD_ROOT}
     - find ${JOB_DEPS_ROOT} -maxdepth 1 -type d -name ${GEN_WILDCARD}
-        -exec rsync --remove-source-files -a {}/ ${API_UPLOAD_ROOT} \; >> ${JOB_LOG} 2>&1
+        -exec rsync --remove-source-files -a {}/ ${API_UPLOAD_ROOT} \;
     - !reference [.api_anchors, api_upload]
   rules:
     - if: '"$[[ inputs.do_gen_ip ]]" =~ "/on_success|on_event/"'
@@ -92,7 +92,7 @@ build-image:
     API_PACKAGE_VER: "${CI_COMMIT_REF_SLUG}"
     API_PROJECT_ID: "${CI_PROJECT_ID}"
   script:
-    - echo "[CI] scattering outputs for ${API_PACKAGE_NAME}" | tee -a ${JOB_LOG}
+    - echo "[CI] scattering outputs for ${API_PACKAGE_NAME}"
     - !reference [.api_anchors, api_download]
     - mv ${API_DOWNLOAD_ROOT}/* ${COMMON_INSTALL_DIR}
 
@@ -104,10 +104,12 @@ build-image:
     RUN_SCRIPT: "./ci/common/run-ci.sh"
     TEST_SCRIPT: "./ci/sim-${MODULE}.sh"
   script:
-    - echo "[CI] running script for ${TEST_SCRIPT}" | tee -a ${JOB_LOG}
-    - ln -nsf ${COMMON_INSTALL_DIR} ${BP_INSTALL_DIR}
-    - echo "[CI] doing makefile checkout" | tee -a ${JOB_LOG}
-    - make -j${CORES_PER_JOB} checkout >> ${JOB_LOG} 2>&1
+    - echo "[CI] doing makefile checkout"
+    - make -j${CORES_PER_JOB} checkout
+    - echo "[CI] creating symlinks"
+    - mkdir -p ./zynq/v/gen
+    - ln -nsf ${COMMON_INSTALL_DIR}/gen/v/ethernet ./zynq/v/gen/ethernet
+    - ln -nsf ${COMMON_INSTALL_DIR}/gen/v/rv_plic ./zynq/v/gen/rv_plic
     - echo "[CI] running script for ${MODULE} with simulator ${SIM}"
     - ${RUN_SCRIPT} ${TEST_SCRIPT} ${SIM}
   rules:
